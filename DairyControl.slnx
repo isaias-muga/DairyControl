@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src/DairyControl.Api/DairyControl.Api.csproj" />
+  <Project Path="src/DairyControl.Application/DairyControl.Application.csproj" />
+  <Project Path="src/DairyControl.Domain/DairyControl.Domain.csproj" />
+  <Project Path="src/DairyControl.Infrastructure/DairyControl.Infrastructure.csproj" />
+  <Project Path="tests/DairyControl.Application.Tests/DairyControl.Application.Tests.csproj" />
+  <Project Path="tests/DairyControl.Domain.Tests/DairyControl.Domain.Tests.csproj" />
+</Solution>
