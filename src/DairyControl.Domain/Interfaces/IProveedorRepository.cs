@@ -6,5 +6,7 @@ namespace DairyControl.Domain.Interfaces
         Task<Proveedor?> GetByIdAsync(Guid id);
 
         Task AddAsync(Proveedor proveedor);
+
+        Task UpdateAsync(Proveedor proveedor);
     }
 }
