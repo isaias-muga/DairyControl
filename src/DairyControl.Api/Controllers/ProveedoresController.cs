@@ -30,5 +30,15 @@ namespace DairyControl.Api.Controllers
             }
             return Ok(proveedor);
         }
+        [HttpPost("{id}/recepciones")]
+        public async Task<ActionResult<ProveedorDto>> RegistrarRecepcionAsync(Guid id, [FromBody] RegistrarRecepcionDto dto)
+        {
+            var proveedor = await _service.RegistrarRecepcionAsync(id, dto);
+            if (proveedor == null)
+            {
+                return NotFound();
+            }
+            return Ok(proveedor);
+        }
     }
 }
