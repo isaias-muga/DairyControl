@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DairyControl.Api.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class ProveedoresController : ControllerBase
     {
         private readonly ProveedorAppService _service;
@@ -17,10 +19,10 @@ namespace DairyControl.Api.Controllers
         public async Task<ActionResult<ProveedorDto>> CrearAsync([FromBody] CrearProveedorDto dto)
         {
             var proveedor = await _service.CrearAsync(dto);
-            return CreatedAtAction(nameof(GetByIdAsync), new { id = proveedor.Id }, proveedor);
+            return CreatedAtRoute("GetProveedorById", new { id = proveedor.Id }, proveedor);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id}", Name = "GetProveedorById")]
         public async Task<ActionResult<ProveedorDto>> GetByIdAsync(Guid id)
         {
             var proveedor = await _service.GetByIdAsync(id);
