@@ -20,10 +20,14 @@ namespace DairyControl.Infrastructure.Persistence.Configurations
                 r.Property(x => x.Id).ValueGeneratedNever();
                 r.OwnsOne(x => x.Parametros, p =>
                 {
-                    p.Property(x => x.Grasa).IsRequired().HasPrecision(ParametrosCalidad.Precision, ParametrosCalidad.Scale);
+                    p.Property(x => x.Grasa).HasPrecision(ParametrosCalidad.Precision, ParametrosCalidad.Scale);
                     p.Property(x => x.Acidez).IsRequired().HasPrecision(ParametrosCalidad.Precision, ParametrosCalidad.Scale);
                     p.Property(x => x.Temperatura).IsRequired().HasPrecision(ParametrosCalidad.Precision, ParametrosCalidad.Scale);
+                    p.Property(x => x.Litros).IsRequired().HasPrecision(ParametrosCalidad.PrecisionLitros, ParametrosCalidad.ScaleLitros);
                 });
+                r.Property(x => x.FechaHora).IsRequired();
+                r.Property(x => x.Silo);
+                r.Property(x => x.Observaciones).HasMaxLength(RecepcionLeche.ObservacionesMaxLength);
             });
         }
     }
