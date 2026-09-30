@@ -40,5 +40,21 @@ namespace DairyControl.Application.Services
                 CantidadRecepciones = proveedor.Recepciones.Count
             };
         }
+
+        public async Task<ProveedorDto?> RegistrarRecepcionAsync(Guid proveedorId, RegistrarRecepcionDto dto)
+        {
+            var proveedor = await _repository.GetByIdAsync(proveedorId);
+
+            if (proveedor == null)
+                return null;
+
+
+            return new ProveedorDto
+            {
+                Id = proveedor.Id,
+                Nombre = proveedor.Nombre,
+                CantidadRecepciones = proveedor.Recepciones.Count
+            };
+        }
     }
 }
