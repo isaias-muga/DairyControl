@@ -9,7 +9,8 @@
   <ItemGroup>
     <ProjectReference Include="..\DairyControl.Application\DairyControl.Application.csproj" />
     <ProjectReference Include="..\DairyControl.Infrastructure\DairyControl.Infrastructure.csproj" />
-	<PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.12" />
+	<PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,6 +18,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Settings\" />
   </ItemGroup>
 
 </Project>
