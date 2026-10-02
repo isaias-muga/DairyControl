@@ -1,5 +1,6 @@
 ﻿using DairyControl.Application.DTOs;
 using DairyControl.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DairyControl.Api.Controllers
@@ -16,6 +17,7 @@ namespace DairyControl.Api.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<ProveedorDto>> CrearAsync([FromBody] CrearProveedorDto dto)
         {
             var proveedor = await _service.CrearAsync(dto);
@@ -32,7 +34,9 @@ namespace DairyControl.Api.Controllers
             }
             return Ok(proveedor);
         }
+
         [HttpPost("{id}/recepciones")]
+        [Authorize]
         public async Task<ActionResult<ProveedorDto>> RegistrarRecepcionAsync(Guid id, [FromBody] RegistrarRecepcionDto dto)
         {
             var proveedor = await _service.RegistrarRecepcionAsync(id, dto);
