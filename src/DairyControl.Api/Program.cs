@@ -1,4 +1,5 @@
-﻿using DairyControl.Application.Services;
+﻿using DairyControl.Api.Middleware;
+using DairyControl.Application.Services;
 using DairyControl.Domain.Interfaces;
 using DairyControl.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
