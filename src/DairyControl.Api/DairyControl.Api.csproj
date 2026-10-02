@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DairyControl.Application\DairyControl.Application.csproj" />
     <ProjectReference Include="..\DairyControl.Infrastructure\DairyControl.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
 	<PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
