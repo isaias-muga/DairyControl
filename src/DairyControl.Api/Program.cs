@@ -1,4 +1,5 @@
-﻿using DairyControl.Api.Middleware;
+using DairyControl.Api.Middleware;
+using DairyControl.Api.Settings;
 using DairyControl.Application.Services;
 using DairyControl.Domain.Interfaces;
 using DairyControl.Infrastructure.Persistence.Repositories;
@@ -16,6 +17,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IProveedorRepository, ProveedorRepository>();
 builder.Services.AddScoped<ProveedorAppService>();
+
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<AdminUserSettings>(builder.Configuration.GetSection("AdminUser"));
 
 var app = builder.Build();
 
