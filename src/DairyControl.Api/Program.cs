@@ -1,6 +1,6 @@
 using DairyControl.Api.Middleware;
-using DairyControl.Api.Settings;
 using DairyControl.Application.Services;
+using DairyControl.Application.Settings;
 using DairyControl.Domain.Interfaces;
 using DairyControl.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;

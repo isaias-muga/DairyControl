@@ -1,4 +1,4 @@
-﻿namespace DairyControl.Api.Settings
+﻿namespace DairyControl.Application.Settings
 {
     public class AdminUserSettings
     {
