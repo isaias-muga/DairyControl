@@ -1,0 +1,108 @@
+﻿using DairyControl.Application.DTOs;
+using DairyControl.Application.Services;
+using DairyControl.Domain.Entities;
+using DairyControl.Domain.Interfaces;
+using Moq;
+
+namespace DairyControl.Application.Tests
+{
+    public class ProveedorAppServiceTests
+    {
+        [Fact]
+        public async Task GetByIdAsync_ProveedorDoesNotExist_ReturnsNull()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Proveedor?)null);
+
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var result = await service.GetByIdAsync(Guid.NewGuid());
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+
+        public async Task GetByIdAsync_ProveedorExists_ReturnsProveedorDto()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(Proveedor.Crear("Proveedor Test"));
+
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var result = await service.GetByIdAsync(Guid.NewGuid());
+
+            // Assert
+            Assert.Equal("Proveedor Test", result?.Nombre);
+
+        }
+
+        [Fact]
+
+        public async Task CrearAsync_ValidDto_CallsAddAsyncAndReturnsDto()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            var dto = new CrearProveedorDto { Nombre = "Proveedor Test" };
+
+            // Act
+            var result = await service.CrearAsync(dto);
+
+            // Assert
+            Assert.Equal("Proveedor Test", result.Nombre);
+            mockRepo.Verify(r => r.AddAsync(It.IsAny<Proveedor>()), Times.Once);
+
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_ProveedorDoesNotExist_ReturnsNullAndNeverCallsUpdate()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Proveedor?)null);
+
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var result = await service.RegistrarRecepcionAsync(Guid.NewGuid(), new RegistrarRecepcionDto());
+
+            // Assert
+            Assert.Null(result);
+            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_ProveedorExists_CallsUpdateAsyncAndReturnsUpdatedDt()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(Proveedor.Crear("Proveedor Test"));
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            var RegistrarRecepcionDto = new RegistrarRecepcionDto
+            {
+                Grasa = 3.5m,
+                Acidez = 6.5m,
+                Temperatura = 4.0m,
+                Litros = 1000m,
+                FechaHora = DateTime.Now,
+                Silo = 1,
+                Observaciones = "Observación de prueba"
+            };
+
+            // Act
+            var result = await service.RegistrarRecepcionAsync(Guid.NewGuid(), RegistrarRecepcionDto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(1, result.CantidadRecepciones);
+            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Once);
+        }
+    }
+}
