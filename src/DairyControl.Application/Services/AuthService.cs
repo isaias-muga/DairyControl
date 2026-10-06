@@ -25,7 +25,7 @@ namespace DairyControl.Application.Services
             if (dto.Username == _adminUserSettings.Value.Username &&
                 CryptographicOperations.FixedTimeEquals(
                     Encoding.UTF8.GetBytes(dto.Password),
-                    Encoding.UTF8.GetBytes(_adminUserSettings.Value.Password))) //hash passwords to a fixed length
+                    Encoding.UTF8.GetBytes(_adminUserSettings.Value.Password))) // hash passwords to a fixed length
             {
                 var keyBytes = Encoding.UTF8.GetBytes(_jwtSettings.Value.SigningKey);
                 var signingKey = new SymmetricSecurityKey(keyBytes);
