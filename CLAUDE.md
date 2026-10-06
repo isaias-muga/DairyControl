@@ -81,7 +81,7 @@ Milk reception and quality-control backend for a dairy plant. Stack: .NET 10, AS
 ## Commands (run from the repo root)
 
 - Build: `dotnet build DairyControl.slnx`
-- Test: `dotnet test`
+- Test: `dotnet test --solution DairyControl.slnx`
 - Run the API: `dotnet run --project src/DairyControl.Api`
 - Add a migration: `dotnet ef migrations add <Name> --project src/DairyControl.Infrastructure --startup-project src/DairyControl.Api`
 - Apply migrations: `dotnet ef database update --project src/DairyControl.Infrastructure --startup-project src/DairyControl.Api`
