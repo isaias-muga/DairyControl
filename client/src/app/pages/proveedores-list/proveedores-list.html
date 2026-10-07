@@ -1,1 +1,8 @@
-<p>proveedores-list works!</p>
+<h1>Proveedores</h1>
+<ul>
+  @for (proveedor of proveedores(); track proveedor.id) {
+    <li>
+      <a [routerLink]="['/proveedores', proveedor.id]">{{ proveedor.nombre }}</a>
+    </li>
+  }
+</ul>
