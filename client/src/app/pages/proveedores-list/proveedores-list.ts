@@ -2,7 +2,7 @@ import { Component, signal, inject } from '@angular/core';
 import { Proveedor } from '../../models/proveedor';
 import { RouterLink } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
-import { ProveedoresService } from '../../services/Proveedores';
+import { ProveedoresService } from '../../services/proveedores';
 
 @Component({
   imports: [RouterLink],
