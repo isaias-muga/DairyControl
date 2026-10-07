@@ -1,8 +1,18 @@
 <h1>Proveedores</h1>
-<ul>
-  @for (proveedor of proveedores(); track proveedor.id) {
-    <li>
-      <a [routerLink]="['/proveedores', proveedor.id]">{{ proveedor.nombre }}</a>
-    </li>
-  }
-</ul>
+
+@if (loading()) {
+  <p>Cargando...</p>
+} @else if (error()) {
+  <p>No se pudieron cargar los proveedores.</p>
+} @else {
+  <ul>
+    @for (proveedor of proveedores(); track proveedor.id) {
+      <li>
+        <a [routerLink]="['/proveedores', proveedor.id]">{{ proveedor.nombre }}</a
+        >: {{ proveedor.cantidadRecepciones }} recepciones
+      </li>
+    } @empty {
+      <li>No hay proveedores cargados.</li>
+    }
+  </ul>
+}
