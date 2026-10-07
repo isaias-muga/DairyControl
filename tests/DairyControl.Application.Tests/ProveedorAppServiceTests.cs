@@ -2,6 +2,7 @@
 using DairyControl.Application.Services;
 using DairyControl.Domain.Entities;
 using DairyControl.Domain.Interfaces;
+using DairyControl.Domain.ValueObjects;
 using Moq;
 
 namespace DairyControl.Application.Tests
@@ -39,6 +40,67 @@ namespace DairyControl.Application.Tests
             // Assert
             Assert.Equal("Proveedor Test", result?.Nombre);
 
+        }
+
+        [Fact]
+        public async Task GetAllAsync_NoProveedores_ReturnsEmptyList()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor>());
+
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var result = await service.GetAllAsync();
+
+            // Assert
+            Assert.Empty(result);
+            mockRepo.Verify(r => r.GetAllAsync(), Times.Once);
+            mockRepo.Verify(r => r.AddAsync(It.IsAny<Proveedor>()), Times.Never);
+            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_ProveedoresExist_ReturnsMappedDtos()
+        {
+            // Arrange
+            var proveedorA = Proveedor.Crear("Proveedor A");
+            var proveedorB = Proveedor.Crear("Proveedor B");
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor> { proveedorA, proveedorB });
+
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var result = await service.GetAllAsync();
+
+            // Assert
+            Assert.Equal(2, result.Count);
+            Assert.Equal(proveedorA.Id, result[0].Id);
+            Assert.Equal("Proveedor A", result[0].Nombre);
+            Assert.Equal(proveedorB.Id, result[1].Id);
+            Assert.Equal("Proveedor B", result[1].Nombre);
+            mockRepo.Verify(r => r.GetAllAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_ProveedorWithRecepciones_MapsCantidadRecepciones()
+        {
+            // Arrange
+            var proveedor = Proveedor.Crear("Proveedor Test");
+            proveedor.RegistrarRecepcion(ParametrosCalidad.Create(3.5m, 6.5m, 4.0m, 1000m), DateTime.Now, 1, null);
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor> { proveedor });
+
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var result = await service.GetAllAsync();
+
+            // Assert
+            var dto = Assert.Single(result);
+            Assert.Equal(1, dto.CantidadRecepciones);
         }
 
         [Fact]
