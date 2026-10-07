@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
 
 @Component({
   imports: [],
@@ -6,4 +6,6 @@ import { Component } from '@angular/core';
   styleUrl: './proveedor-detail.css',
   templateUrl: './proveedor-detail.html',
 })
-export class ProveedorDetail {}
+export class ProveedorDetail {
+  readonly id = input<string>();
+}
