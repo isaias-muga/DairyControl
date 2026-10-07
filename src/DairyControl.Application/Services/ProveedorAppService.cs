@@ -42,6 +42,18 @@ namespace DairyControl.Application.Services
             };
         }
 
+        public async Task<IReadOnlyList<ProveedorDto>> GetAllAsync()
+        {
+            var proveedores = await _repository.GetAllAsync();
+
+            return proveedores.Select(proveedor => new ProveedorDto
+            {
+                Id = proveedor.Id,
+                Nombre = proveedor.Nombre,
+                CantidadRecepciones = proveedor.Recepciones.Count
+            }).ToList();
+        }
+
         public async Task<ProveedorDto?> RegistrarRecepcionAsync(Guid proveedorId, RegistrarRecepcionDto dto)
         {
             var proveedor = await _repository.GetByIdAsync(proveedorId);

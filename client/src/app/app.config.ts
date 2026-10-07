@@ -1,6 +1,7 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
+import { HttpClient } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [

@@ -1,5 +1,6 @@
 ﻿using DairyControl.Domain.Entities;
 using DairyControl.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 namespace DairyControl.Infrastructure.Persistence.Repositories
 {
     public class ProveedorRepository : IProveedorRepository
@@ -12,6 +13,10 @@ namespace DairyControl.Infrastructure.Persistence.Repositories
         public async Task<Proveedor?> GetByIdAsync(Guid id)
         {
             return await _context.Proveedores.FindAsync(id);
+        }
+        public async Task<IReadOnlyList<Proveedor>> GetAllAsync()
+        {
+            return await _context.Proveedores.AsNoTracking().ToListAsync();
         }
         public async Task AddAsync(Proveedor proveedor)
         {

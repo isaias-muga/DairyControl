@@ -1,1 +1,12 @@
-<h2>Proveedor {{ id() }}</h2>
+<a routerLink="/proveedores">← Volver a proveedores</a>
+
+@if (loading()) {
+  <p>Cargando...</p>
+} @else if (notFound()) {
+  <p>No existe un proveedor con ese id.</p>
+} @else if (error()) {
+  <p>No se pudo cargar el proveedor.</p>
+} @else {
+  <h1>{{ proveedor()?.nombre }}</h1>
+  <p>Recepciones registradas: {{ proveedor()?.cantidadRecepciones }}</p>
+}

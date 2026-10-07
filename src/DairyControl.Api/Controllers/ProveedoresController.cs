@@ -24,6 +24,13 @@ namespace DairyControl.Api.Controllers
             return CreatedAtRoute("GetProveedorById", new { id = proveedor.Id }, proveedor);
         }
 
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<ProveedorDto>>> GetAllAsync()
+        {
+            var proveedores = await _service.GetAllAsync();
+            return Ok(proveedores);
+        }
+
         [HttpGet("{id}", Name = "GetProveedorById")]
         public async Task<ActionResult<ProveedorDto>> GetByIdAsync(Guid id)
         {
