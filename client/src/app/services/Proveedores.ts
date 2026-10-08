@@ -1,18 +1,27 @@
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Proveedor } from '../models/proveedor';
+import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { inject, Injectable } from '@angular/core';
+import { Proveedor, ProveedorDetalle, RegistrarRecepcion } from '../models/proveedor';
 
 @Injectable({ providedIn: 'root' })
 export class ProveedoresService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${environment.apiUrl}/Proveedores`;
+  private http = inject(HttpClient);
+  private apiUrl = `${environment.apiUrl}/Proveedores`;
 
-  getAll() {
-    return this.http.get<Proveedor[]>(this.baseUrl);
+  getAll(): Observable<Proveedor[]> {
+    return this.http.get<Proveedor[]>(this.apiUrl);
   }
 
-  getById(id: string) {
-    return this.http.get<Proveedor>(`${this.baseUrl}/${id}`);
+  getById(id: string): Observable<ProveedorDetalle> {
+    return this.http.get<ProveedorDetalle>(`${this.apiUrl}/${id}`);
+  }
+
+  create(nombre: string): Observable<Proveedor> {
+    return this.http.post<Proveedor>(this.apiUrl, { nombre });
+  }
+
+  registrarRecepcion(proveedorId: string, recepcion: RegistrarRecepcion): Observable<Proveedor> {
+    return this.http.post<Proveedor>(`${this.apiUrl}/${proveedorId}/recepciones`, recepcion);
   }
 }

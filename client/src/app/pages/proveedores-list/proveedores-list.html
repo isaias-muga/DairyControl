@@ -1,15 +1,31 @@
-<h1>Proveedores</h1>
+<h2>Proveedores</h2>
+
+<form [formGroup]="form" (ngSubmit)="crear()" class="crear">
+  <label for="nombre">Nuevo proveedor</label>
+  <div class="fila">
+    <input id="nombre" type="text" formControlName="nombre" [maxlength]="nombreMaxLength" />
+    <button type="submit" [disabled]="saving()">
+      {{ saving() ? 'Guardando...' : 'Agregar' }}
+    </button>
+  </div>
+  @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+    <p class="error">Ingresá un nombre (máximo {{ nombreMaxLength }} caracteres).</p>
+  }
+  @if (saveError()) {
+    <p class="error">{{ saveError() }}</p>
+  }
+</form>
 
 @if (loading()) {
   <p>Cargando...</p>
 } @else if (error()) {
-  <p>No se pudieron cargar los proveedores.</p>
+  <p class="error">{{ error() }}</p>
 } @else {
   <ul>
-    @for (proveedor of proveedores(); track proveedor.id) {
+    @for (p of proveedores(); track p.id) {
       <li>
-        <a [routerLink]="['/proveedores', proveedor.id]">{{ proveedor.nombre }}</a
-        >: {{ proveedor.cantidadRecepciones }} recepciones
+        <a [routerLink]="['/proveedores', p.id]">{{ p.nombre }}</a>
+        ({{ p.cantidadRecepciones }} recepciones)
       </li>
     } @empty {
       <li>No hay proveedores cargados.</li>

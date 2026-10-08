@@ -1,0 +1,38 @@
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 640px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 0.4rem;
+  box-sizing: border-box;
+}
+
+.opcional {
+  color: #888;
+  font-size: 0.85em;
+}
+
+.error {
+  color: #c0392b;
+  margin: 0.25rem 0 0;
+}
+
+button {
+  align-self: flex-start;
+}

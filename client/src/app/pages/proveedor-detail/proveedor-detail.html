@@ -1,12 +1,46 @@
-<a routerLink="/proveedores">← Volver a proveedores</a>
+<a routerLink="/proveedores">← Volver</a>
 
 @if (loading()) {
   <p>Cargando...</p>
 } @else if (notFound()) {
-  <p>No existe un proveedor con ese id.</p>
+  <p>Proveedor no encontrado.</p>
 } @else if (error()) {
-  <p>No se pudo cargar el proveedor.</p>
-} @else {
-  <h1>{{ proveedor()?.nombre }}</h1>
-  <p>Recepciones registradas: {{ proveedor()?.cantidadRecepciones }}</p>
+  <p class="error">{{ error() }}</p>
+} @else if (proveedor(); as p) {
+  <h2>{{ p.nombre }}</h2>
+
+  <app-recepcion-form [proveedorId]="p.id" (registrada)="load(false)" />
+
+  <h3>Recepciones ({{ p.recepciones.length }})</h3>
+
+  @if (p.recepciones.length > 0) {
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha y hora</th>
+          <th>Litros</th>
+          <th>Grasa (%)</th>
+          <th>Acidez</th>
+          <th>Temp. (°C)</th>
+          <th>Silo</th>
+          <th>Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of p.recepciones; track r.id) {
+          <tr>
+            <td>{{ r.fechaHora | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ r.litros | number: '1.0-3' }}</td>
+            <td>{{ r.grasa !== null ? (r.grasa | number: '1.2-2') : '—' }}</td>
+            <td>{{ r.acidez | number: '1.2-2' }}</td>
+            <td>{{ r.temperatura | number: '1.1-2' }}</td>
+            <td>{{ r.silo ?? '—' }}</td>
+            <td>{{ r.observaciones ?? '' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  } @else {
+    <p>Todavía no hay recepciones registradas.</p>
+  }
 }
