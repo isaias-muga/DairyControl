@@ -7,6 +7,7 @@ namespace DairyControl.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ProveedoresController : ControllerBase
     {
         private readonly ProveedorAppService _service;
@@ -17,7 +18,6 @@ namespace DairyControl.Api.Controllers
         }
 
         [HttpPost]
-        [Authorize]
         public async Task<ActionResult<ProveedorDto>> CrearAsync([FromBody] CrearProveedorDto dto)
         {
             var proveedor = await _service.CrearAsync(dto);
@@ -43,7 +43,6 @@ namespace DairyControl.Api.Controllers
         }
 
         [HttpPost("{id}/recepciones")]
-        [Authorize]
         public async Task<ActionResult<ProveedorDto>> RegistrarRecepcionAsync(Guid id, [FromBody] RegistrarRecepcionDto dto)
         {
             var proveedor = await _service.RegistrarRecepcionAsync(id, dto);

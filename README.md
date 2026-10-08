@@ -2,7 +2,7 @@
 
 Milk reception and quality-control system for a small dairy plant: a **.NET 10** REST API built with **Clean Architecture** and **Domain-Driven Design**, and an **Angular** client.
 
-> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests, CI). Angular client connected to the API: browsing proveedores works; authentication and forms in progress.
+> **Status:** Angular client connected to the API with login and protected pages; forms in progress.
 
 ## What it does
 
@@ -70,9 +70,9 @@ graph TD
 | Method | Endpoint                            | Auth   | Description                                    |
 | ------ | ----------------------------------- | ------ | ---------------------------------------------- |
 | `POST` | `/api/Auth/login`                   | Public | Returns a signed JWT for valid credentials     |
-| `GET`  | `/api/Proveedores`                  | Public | Lists all proveedores                          |
+| `GET`  | `/api/Proveedores`                  | JWT    | Lists all proveedores                          |
 | `POST` | `/api/Proveedores`                  | JWT    | Creates a proveedor                            |
-| `GET`  | `/api/Proveedores/{id}`             | Public | Gets a proveedor by ID                         |
+| `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor by ID                         |
 | `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor |
 
 ## Getting started
@@ -141,7 +141,7 @@ Every change is tracked as a GitHub Issue, implemented on a feature branch, and 
 - [x] CI with GitHub Actions
 - [x] `GET /api/Proveedores` list endpoint and CORS configuration
 - [x] Angular client: browse proveedores and proveedor detail from the API
-- [ ] Angular client: login, JWT handling and protected pages
+- [x] Angular client: login, JWT handling and protected pages
 - [ ] Angular client: UI design pass
 - [ ] Angular client: create proveedor and register recepción forms
 - [ ] Deployment
