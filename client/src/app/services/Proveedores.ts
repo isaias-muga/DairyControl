@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Proveedor, ProveedorDetalle } from '../models/proveedor';
+import { Proveedor, ProveedorDetalle, RegistrarRecepcion } from '../models/proveedor';
 
 @Injectable({ providedIn: 'root' })
 export class ProveedoresService {
@@ -19,5 +19,9 @@ export class ProveedoresService {
 
   create(nombre: string): Observable<Proveedor> {
     return this.http.post<Proveedor>(this.apiUrl, { nombre });
+  }
+
+  registrarRecepcion(proveedorId: string, recepcion: RegistrarRecepcion): Observable<Proveedor> {
+    return this.http.post<Proveedor>(`${this.apiUrl}/${proveedorId}/recepciones`, recepcion);
   }
 }

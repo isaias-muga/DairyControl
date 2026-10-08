@@ -8,7 +8,10 @@
   <p class="error">{{ error() }}</p>
 } @else if (proveedor(); as p) {
   <h2>{{ p.nombre }}</h2>
-  <p>Recepciones: {{ p.recepciones.length }}</p>
+
+  <app-recepcion-form [proveedorId]="p.id" (registrada)="load(false)" />
+
+  <h3>Recepciones ({{ p.recepciones.length }})</h3>
 
   @if (p.recepciones.length > 0) {
     <table>

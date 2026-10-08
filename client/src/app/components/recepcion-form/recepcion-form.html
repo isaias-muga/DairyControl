@@ -1,0 +1,71 @@
+<h3>Registrar recepción</h3>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <div class="grid">
+    <div>
+      <label for="fechaHora">Fecha y hora</label>
+      <input id="fechaHora" type="datetime-local" formControlName="fechaHora" />
+      @if (invalid('fechaHora')) {
+        <p class="error">Requerido.</p>
+      }
+    </div>
+
+    <div>
+      <label for="litros">Litros</label>
+      <input id="litros" type="number" step="0.001" formControlName="litros" />
+      @if (invalid('litros')) {
+        <p class="error">Mínimo 0,1 y menor a 100.000.</p>
+      }
+    </div>
+
+    <div>
+      <label for="grasa">Grasa (%) <span class="opcional">opcional</span></label>
+      <input id="grasa" type="number" step="0.01" formControlName="grasa" />
+      @if (invalid('grasa')) {
+        <p class="error">Entre 0 y 999,99.</p>
+      }
+    </div>
+
+    <div>
+      <label for="acidez">Acidez</label>
+      <input id="acidez" type="number" step="0.01" formControlName="acidez" />
+      @if (invalid('acidez')) {
+        <p class="error">Requerido, entre 0 y 999,99.</p>
+      }
+    </div>
+
+    <div>
+      <label for="temperatura">Temperatura (°C)</label>
+      <input id="temperatura" type="number" step="0.1" formControlName="temperatura" />
+      @if (invalid('temperatura')) {
+        <p class="error">Requerido, entre 0 y 999,99.</p>
+      }
+    </div>
+
+    <div>
+      <label for="silo">Silo <span class="opcional">opcional</span></label>
+      <input id="silo" type="number" step="1" formControlName="silo" />
+      @if (invalid('silo')) {
+        <p class="error">Número entero mayor a 0.</p>
+      }
+    </div>
+  </div>
+
+  <div>
+    <label for="observaciones">Observaciones <span class="opcional">opcional</span></label>
+    <textarea
+      id="observaciones"
+      rows="2"
+      formControlName="observaciones"
+      [maxlength]="observacionesMaxLength"
+    ></textarea>
+  </div>
+
+  @if (saveError()) {
+    <p class="error">{{ saveError() }}</p>
+  }
+
+  <button type="submit" [disabled]="saving()">
+    {{ saving() ? 'Guardando...' : 'Registrar' }}
+  </button>
+</form>

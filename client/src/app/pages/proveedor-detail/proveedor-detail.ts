@@ -1,18 +1,21 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ProveedoresService } from '../../services/proveedores';
 import { ProveedorDetalle } from '../../models/proveedor';
+import { RecepcionForm } from '../../components/recepcion-form/recepcion-form';
 
 @Component({
   selector: 'app-proveedor-detail',
-  imports: [RouterLink, DatePipe, DecimalPipe],
+  imports: [RouterLink, DatePipe, DecimalPipe, RecepcionForm],
   templateUrl: './proveedor-detail.html',
   styleUrl: './proveedor-detail.css',
 })
-export class ProveedorDetail implements OnInit {
+export class ProveedorDetail {
   private proveedoresService = inject(ProveedoresService);
+  private request?: Subscription;
 
   id = input.required<string>();
 
@@ -21,15 +24,23 @@ export class ProveedorDetail implements OnInit {
   error = signal<string | null>(null);
   notFound = signal(false);
 
-  ngOnInit(): void {
-    this.load();
+  constructor() {
+    effect(() => {
+      this.id(); // re-run whenever the route id changes
+      untracked(() => this.load());
+    });
   }
 
-  protected load(): void {
-    this.loading.set(true);
-    this.error.set(null);
+  protected load(showSpinner = true): void {
+    this.request?.unsubscribe();
 
-    this.proveedoresService.getById(this.id()).subscribe({
+    if (showSpinner) {
+      this.loading.set(true);
+    }
+    this.error.set(null);
+    this.notFound.set(false);
+
+    this.request = this.proveedoresService.getById(this.id()).subscribe({
       next: (data) => {
         this.proveedor.set(data);
         this.loading.set(false);

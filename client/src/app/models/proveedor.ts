@@ -20,3 +20,13 @@ export interface ProveedorDetalle {
   nombre: string;
   recepciones: Recepcion[];
 }
+
+export interface RegistrarRecepcion {
+  fechaHora: string;
+  litros: number;
+  grasa: number | null;
+  acidez: number;
+  temperatura: number;
+  silo: number | null;
+  observaciones: string | null;
+}
