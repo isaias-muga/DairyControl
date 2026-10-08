@@ -1,10 +1,14 @@
-<main>
-  <nav>
-    <ul>
-      <li><a routerLink="/login">Login</a></li>
+<h1>DairyControl</h1>
+
+<nav>
+  <ul>
+    @if (auth.isLoggedIn()) {
       <li><a routerLink="/proveedores">Proveedores</a></li>
-      <li><a routerLink="/proveedores/1">Proveedor Detail</a></li>
-    </ul>
-  </nav>
-  <router-outlet></router-outlet>
-</main>
+      <li><button type="button" (click)="auth.logout()">Cerrar sesión</button></li>
+    } @else {
+      <li><a routerLink="/login">Iniciar sesión</a></li>
+    }
+  </ul>
+</nav>
+
+<router-outlet />
