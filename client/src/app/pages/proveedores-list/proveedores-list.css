@@ -1,0 +1,14 @@
+.crear {
+  margin-bottom: 1.5rem;
+}
+
+.fila {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.error {
+  color: #c0392b;
+  margin: 0.25rem 0 0;
+}

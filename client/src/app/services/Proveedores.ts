@@ -16,4 +16,8 @@ export class ProveedoresService {
   getById(id: string): Observable<ProveedorDetalle> {
     return this.http.get<ProveedorDetalle>(`${this.apiUrl}/${id}`);
   }
+
+  create(nombre: string): Observable<Proveedor> {
+    return this.http.post<Proveedor>(this.apiUrl, { nombre });
+  }
 }
