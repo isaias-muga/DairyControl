@@ -26,7 +26,7 @@ namespace DairyControl.Application.Tests
 
         [Fact]
 
-        public async Task GetByIdAsync_ProveedorExists_ReturnsProveedorDto()
+        public async Task GetByIdAsync_ProveedorExists_ReturnsDetalleDto()
         {
             // Arrange
             var mockRepo = new Mock<IProveedorRepository>();
@@ -38,7 +38,9 @@ namespace DairyControl.Application.Tests
             var result = await service.GetByIdAsync(Guid.NewGuid());
 
             // Assert
-            Assert.Equal("Proveedor Test", result?.Nombre);
+            Assert.NotNull(result);
+            Assert.Equal("Proveedor Test", result.Nombre);
+            Assert.Empty(result.Recepciones);
 
         }
 
@@ -102,9 +104,33 @@ namespace DairyControl.Application.Tests
             var dto = Assert.Single(result);
             Assert.Equal(1, dto.CantidadRecepciones);
         }
+        [Fact]
+        public async Task GetByIdAsync_ProveedorWithRecepciones_ReturnsRecepcionesNewestFirst()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            var proveedor = Proveedor.Crear("Tambo La Esperanza");
+            var parametros = ParametrosCalidad.Create(3.5m, 6.5m, 4.0m, 1500m);
+            var anterior = new DateTime(2026, 10, 1, 6, 0, 0);
+            var reciente = new DateTime(2026, 10, 2, 6, 0, 0);
+            proveedor.RegistrarRecepcion(parametros, anterior, 1, null);
+            proveedor.RegistrarRecepcion(parametros, reciente, 2, "Sin novedades");
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+
+            // Act
+            var result = await service.GetByIdAsync(proveedor.Id);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Recepciones.Count);
+            Assert.Equal(reciente, result.Recepciones[0].FechaHora);
+            Assert.Equal(1500m, result.Recepciones[0].Litros);
+            Assert.Equal("Sin novedades", result.Recepciones[0].Observaciones);
+        }
 
         [Fact]
-
         public async Task CrearAsync_ValidDto_CallsAddAsyncAndReturnsDto()
         {
             // Arrange
@@ -140,7 +166,7 @@ namespace DairyControl.Application.Tests
         }
 
         [Fact]
-        public async Task RegistrarRecepcionAsync_ProveedorExists_CallsUpdateAsyncAndReturnsUpdatedDt()
+        public async Task RegistrarRecepcionAsync_ProveedorExists_CallsUpdateAsyncAndReturnsUpdatedDto()
         {
             // Arrange
             var mockRepo = new Mock<IProveedorRepository>();

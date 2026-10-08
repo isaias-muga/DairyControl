@@ -1,27 +1,35 @@
-import { Component, inject, input, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { Proveedor } from '../../models/proveedor';
 import { ProveedoresService } from '../../services/proveedores';
+import { ProveedorDetalle } from '../../models/proveedor';
 
 @Component({
   selector: 'app-proveedor-detail',
-  imports: [RouterLink],
+  imports: [RouterLink, DatePipe, DecimalPipe],
   templateUrl: './proveedor-detail.html',
   styleUrl: './proveedor-detail.css',
 })
 export class ProveedorDetail implements OnInit {
-  private readonly service = inject(ProveedoresService);
+  private proveedoresService = inject(ProveedoresService);
 
-  readonly id = input.required<string>();
+  id = input.required<string>();
 
-  protected readonly proveedor = signal<Proveedor | null>(null);
-  protected readonly loading = signal(true);
-  protected readonly notFound = signal(false);
-  protected readonly error = signal(false);
+  proveedor = signal<ProveedorDetalle | null>(null);
+  loading = signal(true);
+  error = signal<string | null>(null);
+  notFound = signal(false);
 
-  ngOnInit() {
-    this.service.getById(this.id()).subscribe({
+  ngOnInit(): void {
+    this.load();
+  }
+
+  protected load(): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    this.proveedoresService.getById(this.id()).subscribe({
       next: (data) => {
         this.proveedor.set(data);
         this.loading.set(false);
@@ -30,7 +38,7 @@ export class ProveedorDetail implements OnInit {
         if (err.status === 404) {
           this.notFound.set(true);
         } else {
-          this.error.set(true);
+          this.error.set('No se pudo cargar el proveedor.');
         }
         this.loading.set(false);
       },

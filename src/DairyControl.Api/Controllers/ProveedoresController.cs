@@ -1,4 +1,5 @@
-﻿using DairyControl.Application.DTOs;
+﻿using DairyControl.Application.Dtos;
+using DairyControl.Application.DTOs;
 using DairyControl.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,7 @@ namespace DairyControl.Api.Controllers
         }
 
         [HttpGet("{id}", Name = "GetProveedorById")]
-        public async Task<ActionResult<ProveedorDto>> GetByIdAsync(Guid id)
+        public async Task<ActionResult<ProveedorDetalleDto>> GetByIdAsync(Guid id)
         {
             var proveedor = await _service.GetByIdAsync(id);
             if (proveedor == null)

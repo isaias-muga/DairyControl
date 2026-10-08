@@ -1,4 +1,5 @@
-﻿using DairyControl.Application.DTOs;
+﻿using DairyControl.Application.Dtos;
+using DairyControl.Application.DTOs;
 using DairyControl.Domain.Entities;
 using DairyControl.Domain.Interfaces;
 using DairyControl.Domain.ValueObjects;
@@ -27,21 +28,32 @@ namespace DairyControl.Application.Services
             };
         }
 
-        public async Task<ProveedorDto?> GetByIdAsync(Guid id)
+        public async Task<ProveedorDetalleDto?> GetByIdAsync(Guid id)
         {
             var proveedor = await _repository.GetByIdAsync(id);
-
-            if (proveedor == null)
+            if (proveedor is null)
                 return null;
 
-            return new ProveedorDto
+            return new ProveedorDetalleDto
             {
                 Id = proveedor.Id,
                 Nombre = proveedor.Nombre,
-                CantidadRecepciones = proveedor.Recepciones.Count
+                Recepciones = proveedor.Recepciones
+                    .OrderByDescending(r => r.FechaHora)
+                    .Select(r => new RecepcionDto
+                    {
+                        Id = r.Id,
+                        FechaHora = r.FechaHora,
+                        Litros = r.Parametros.Litros,
+                        Grasa = r.Parametros.Grasa,
+                        Acidez = r.Parametros.Acidez,
+                        Temperatura = r.Parametros.Temperatura,
+                        Silo = r.Silo,
+                        Observaciones = r.Observaciones
+                    })
+                    .ToList()
             };
         }
-
         public async Task<IReadOnlyList<ProveedorDto>> GetAllAsync()
         {
             var proveedores = await _repository.GetAllAsync();
