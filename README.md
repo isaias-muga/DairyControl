@@ -154,8 +154,9 @@ Every change is tracked as a GitHub Issue, implemented on a feature branch, and 
 - [x] `GET /api/Proveedores` list endpoint and CORS configuration
 - [x] Angular client: browse proveedores and proveedor detail from the API
 - [x] Angular client: login, JWT handling and protected pages
-- [x] Angular client: UI design pass
 - [x] Angular client: create proveedor and register recepción forms
+- [x] Angular client: UI design pass
+- [ ] Client build and tests in CI
 - [ ] Deployment
 - [ ] Structured logging in the exception middleware
 - [ ] Tests for `AuthService`
