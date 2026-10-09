@@ -1,14 +1,14 @@
-<h1>DairyControl</h1>
+<mat-toolbar color="primary" class="toolbar">
+  <a class="title" routerLink="/proveedores">DairyControl</a>
+  <span class="spacer"></span>
+  @if (auth.isLoggedIn()) {
+    <a mat-button routerLink="/proveedores">Proveedores</a>
+    <button mat-button type="button" (click)="auth.logout()">Cerrar sesión</button>
+  } @else {
+    <a mat-button routerLink="/login">Iniciar sesión</a>
+  }
+</mat-toolbar>
 
-<nav>
-  <ul>
-    @if (auth.isLoggedIn()) {
-      <li><a routerLink="/proveedores">Proveedores</a></li>
-      <li><button type="button" (click)="auth.logout()">Cerrar sesión</button></li>
-    } @else {
-      <li><a routerLink="/login">Iniciar sesión</a></li>
-    }
-  </ul>
-</nav>
-
-<router-outlet />
+<main class="page">
+  <router-outlet />
+</main>

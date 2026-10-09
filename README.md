@@ -2,13 +2,23 @@
 
 Milk reception and quality-control system for a small dairy plant: a **.NET 10** REST API built with **Clean Architecture** and **Domain-Driven Design**, and an **Angular** client.
 
-> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests, CI). Angular client connected to the API: login, protected pages, proveedores and recepción registration. UI design pass in progress.
+> > **Status:** backend complete (REST API, JWT authentication, error handling, unit tests, CI). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, Angular Material UI..
 
 ## What it does
 
 DairyControl registers milk suppliers (_proveedores_) and every delivery received at the plant (_recepción_): volume in liters, temperature, acidity, optional fat content, destination silo, timestamp and free-text notes.
 
 The domain model is based on real reception logs from a dairy plant. All data in this repository is synthetic.
+
+## Screenshots
+
+| Proveedores                                           | Recepciones                                       |
+| ----------------------------------------------------- | ------------------------------------------------- |
+| ![Proveedores list](docs/screenshots/proveedores.png) | ![Proveedor detail](docs/screenshots/detalle.png) |
+
+| Register recepción                                                      | Mobile                                      |
+| ----------------------------------------------------------------------- | ------------------------------------------- |
+| ![Registrar recepción dialog](docs/screenshots/registrar-recepcion.png) | ![Mobile view](docs/screenshots/mobile.png) |
 
 ## Tech stack
 
@@ -24,7 +34,9 @@ The domain model is based on real reception logs from a dairy plant. All data in
 **Client**
 
 - Angular (standalone components, signals, new control flow)
-- `HttpClient` services and environment-based API configuration
+- Angular Material 3
+- Reactive forms with validation mirroring the domain rules
+- JWT handling with an HTTP interceptor and route guards
 
 ## Architecture
 
@@ -142,7 +154,7 @@ Every change is tracked as a GitHub Issue, implemented on a feature branch, and 
 - [x] `GET /api/Proveedores` list endpoint and CORS configuration
 - [x] Angular client: browse proveedores and proveedor detail from the API
 - [x] Angular client: login, JWT handling and protected pages
-- [ ] Angular client: UI design pass
+- [x] Angular client: UI design pass
 - [x] Angular client: create proveedor and register recepción forms
 - [ ] Deployment
 - [ ] Structured logging in the exception middleware

@@ -11,6 +11,11 @@ import {
 } from '../../models/limits';
 import { lessThan } from '../../utils/validators';
 import { getApiErrorMessage } from '../../utils/api-error';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
 
 function ahoraLocal(): string {
   const now = new Date();
@@ -20,13 +25,20 @@ function ahoraLocal(): string {
 
 @Component({
   selector: 'app-recepcion-form',
-  imports: [ReactiveFormsModule],
+  imports: [
+    ReactiveFormsModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+  ],
   templateUrl: './recepcion-form.html',
   styleUrl: './recepcion-form.css',
 })
 export class RecepcionForm {
   private proveedoresService = inject(ProveedoresService);
   private fb = inject(FormBuilder);
+  private snackBar = inject(MatSnackBar);
 
   proveedorId = input.required<string>();
   registrada = output<void>();
@@ -84,6 +96,7 @@ export class RecepcionForm {
       next: () => {
         this.form.reset({ fechaHora: ahoraLocal(), observaciones: '' });
         this.saving.set(false);
+        this.snackBar.open('Recepción registrada.', 'Cerrar', { duration: 4000 });
         this.registrada.emit();
       },
       error: (err: HttpErrorResponse) => {

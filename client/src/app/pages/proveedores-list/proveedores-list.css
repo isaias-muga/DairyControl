@@ -1,14 +1,14 @@
-.crear {
-  margin-bottom: 1.5rem;
+.page-header {
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
-.fila {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
+mat-card {
+  overflow: hidden;
 }
 
-.error {
-  color: #c0392b;
-  margin: 0.25rem 0 0;
+@media (max-width: 599px) {
+  .page-header button {
+    width: 100%;
+  }
 }

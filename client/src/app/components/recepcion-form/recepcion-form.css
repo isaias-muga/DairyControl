@@ -1,38 +1,49 @@
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-width: 640px;
+mat-card-header {
+  margin-bottom: 16px;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  column-gap: 16px;
 }
 
-label {
-  display: block;
-  margin-bottom: 0.25rem;
+@media (min-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-input,
-textarea {
-  width: 100%;
-  padding: 0.4rem;
-  box-sizing: border-box;
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
-.opcional {
-  color: #888;
-  font-size: 0.85em;
+:host-context(mat-dialog-content) mat-card {
+  box-shadow: none;
+  background: transparent;
+  --mat-card-elevated-container-color: transparent;
 }
 
-.error {
-  color: #c0392b;
-  margin: 0.25rem 0 0;
+:host-context(mat-dialog-content) mat-card-header {
+  display: none;
 }
 
-button {
-  align-self: flex-start;
+@media (min-width: 600px) {
+  :host-context(mat-dialog-content) .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 599px) {
+  .actions {
+    flex-direction: column;
+  }
 }

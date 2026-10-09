@@ -1,32 +1,41 @@
-<h2>Iniciar sesión</h2>
+<div class="login-wrapper">
+  <mat-card class="login-card">
+    <mat-card-header>
+      <mat-card-title>Iniciar sesión</mat-card-title>
+    </mat-card-header>
 
-<form [formGroup]="form" (ngSubmit)="submit()">
-  <div>
-    <label for="username">Usuario</label>
-    <input id="username" type="text" formControlName="username" autocomplete="username" />
-    @if (form.controls.username.touched && form.controls.username.invalid) {
-      <p class="field-error">Ingresá el usuario.</p>
-    }
-  </div>
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Usuario</mat-label>
+          <input matInput id="username" type="text" formControlName="username" autocomplete="username" />
+          @if (form.controls.username.touched && form.controls.username.invalid) {
+            <mat-error>Ingresá el usuario.</mat-error>
+          }
+        </mat-form-field>
 
-  <div>
-    <label for="password">Contraseña</label>
-    <input
-      id="password"
-      type="password"
-      formControlName="password"
-      autocomplete="current-password"
-    />
-    @if (form.controls.password.touched && form.controls.password.invalid) {
-      <p class="field-error">Ingresá la contraseña.</p>
-    }
-  </div>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Contraseña</mat-label>
+          <input
+            matInput
+            id="password"
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+          />
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <mat-error>Ingresá la contraseña.</mat-error>
+          }
+        </mat-form-field>
 
-  @if (error()) {
-    <p class="error">{{ error() }}</p>
-  }
+        @if (error()) {
+          <p class="form-error" role="alert">{{ error() }}</p>
+        }
 
-  <button type="submit" [disabled]="loading()">
-    {{ loading() ? 'Ingresando...' : 'Ingresar' }}
-  </button>
-</form>
+        <button mat-flat-button type="submit" class="full-width" [disabled]="loading()">
+          {{ loading() ? 'Ingresando...' : 'Ingresar' }}
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

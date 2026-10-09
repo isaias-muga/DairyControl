@@ -1,15 +1,23 @@
-table {
-  border-collapse: collapse;
-  margin-top: 1rem;
+.page-header {
+  justify-content: space-between;
+  margin: 8px 0 16px;
 }
 
-th,
-td {
-  border: 1px solid #ccc;
-  padding: 0.4rem 0.6rem;
-  text-align: left;
+@media (max-width: 599px) {
+  .page-header button {
+    width: 100%;
+  }
 }
 
-.error {
-  color: #c0392b;
+h3 {
+  margin: 24px 0 12px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+th.mat-mdc-header-cell,
+td.mat-mdc-cell {
+  white-space: nowrap;
 }
