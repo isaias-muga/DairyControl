@@ -1,46 +1,71 @@
-<a routerLink="/proveedores">← Volver</a>
+<a mat-button routerLink="/proveedores">← Volver</a>
 
 @if (loading()) {
-  <p>Cargando...</p>
+  <div class="state-message">
+    <mat-spinner diameter="32" />
+    <span>Cargando...</span>
+  </div>
 } @else if (notFound()) {
-  <p>Proveedor no encontrado.</p>
+  <p class="state-message">Proveedor no encontrado.</p>
 } @else if (error()) {
-  <p class="error">{{ error() }}</p>
+  <p class="form-error" role="alert">{{ error() }}</p>
 } @else if (proveedor(); as p) {
-  <h2>{{ p.nombre }}</h2>
-
-  <app-recepcion-form [proveedorId]="p.id" (registrada)="load(false)" />
+  <div class="page-header">
+    <h2>{{ p.nombre }}</h2>
+    <button mat-flat-button type="button" (click)="abrirRegistro(p.id)">
+      Registrar recepción
+    </button>
+  </div>
 
   <h3>Recepciones ({{ p.recepciones.length }})</h3>
 
   @if (p.recepciones.length > 0) {
-    <table>
-      <thead>
-        <tr>
-          <th>Fecha y hora</th>
-          <th>Litros</th>
-          <th>Grasa (%)</th>
-          <th>Acidez</th>
-          <th>Temp. (°C)</th>
-          <th>Silo</th>
-          <th>Observaciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (r of p.recepciones; track r.id) {
-          <tr>
-            <td>{{ r.fechaHora | date: 'dd/MM/yyyy HH:mm' }}</td>
-            <td>{{ r.litros | number: '1.0-3' }}</td>
-            <td>{{ r.grasa !== null ? (r.grasa | number: '1.2-2') : '—' }}</td>
-            <td>{{ r.acidez | number: '1.2-2' }}</td>
-            <td>{{ r.temperatura | number: '1.1-2' }}</td>
-            <td>{{ r.silo ?? '—' }}</td>
-            <td>{{ r.observaciones ?? '' }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
+    <mat-card>
+      <div class="table-wrapper">
+        <table mat-table [dataSource]="p.recepciones" class="full-width">
+          <ng-container matColumnDef="fechaHora">
+            <th mat-header-cell *matHeaderCellDef>Fecha y hora</th>
+            <td mat-cell *matCellDef="let r">{{ r.fechaHora | date: 'dd/MM/yyyy HH:mm' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="litros">
+            <th mat-header-cell *matHeaderCellDef>Litros</th>
+            <td mat-cell *matCellDef="let r">{{ r.litros | number: '1.0-3' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="grasa">
+            <th mat-header-cell *matHeaderCellDef>Grasa (%)</th>
+            <td mat-cell *matCellDef="let r">
+              {{ r.grasa !== null ? (r.grasa | number: '1.2-2') : '—' }}
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="acidez">
+            <th mat-header-cell *matHeaderCellDef>Acidez</th>
+            <td mat-cell *matCellDef="let r">{{ r.acidez | number: '1.2-2' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="temperatura">
+            <th mat-header-cell *matHeaderCellDef>Temp. (°C)</th>
+            <td mat-cell *matCellDef="let r">{{ r.temperatura | number: '1.1-2' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="silo">
+            <th mat-header-cell *matHeaderCellDef>Silo</th>
+            <td mat-cell *matCellDef="let r">{{ r.silo ?? '—' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="observaciones">
+            <th mat-header-cell *matHeaderCellDef>Observaciones</th>
+            <td mat-cell *matCellDef="let r">{{ r.observaciones ?? '' }}</td>
+          </ng-container>
+
+          <tr
+            mat-header-row
+            *matHeaderRowDef="['fechaHora', 'litros', 'grasa', 'acidez', 'temperatura', 'silo', 'observaciones']"
+          ></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: ['fechaHora', 'litros', 'grasa', 'acidez', 'temperatura', 'silo', 'observaciones']"
+          ></tr>
+        </table>
+      </div>
+    </mat-card>
   } @else {
-    <p>Todavía no hay recepciones registradas.</p>
+    <p class="state-message">Todavía no hay recepciones registradas.</p>
   }
 }

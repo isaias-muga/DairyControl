@@ -5,16 +5,33 @@ import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ProveedoresService } from '../../services/proveedores';
 import { ProveedorDetalle } from '../../models/proveedor';
-import { RecepcionForm } from '../../components/recepcion-form/recepcion-form';
+import {
+  RegistrarRecepcionDialog,
+  RegistrarRecepcionDialogData,
+} from '../../components/registrar-recepcion-dialog/registrar-recepcion-dialog';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTableModule } from '@angular/material/table';
 
 @Component({
   selector: 'app-proveedor-detail',
-  imports: [RouterLink, DatePipe, DecimalPipe, RecepcionForm],
+  imports: [
+    RouterLink,
+    DatePipe,
+    DecimalPipe,
+    MatButtonModule,
+    MatCardModule,
+    MatProgressSpinnerModule,
+    MatTableModule,
+  ],
   templateUrl: './proveedor-detail.html',
   styleUrl: './proveedor-detail.css',
 })
 export class ProveedorDetail {
   private proveedoresService = inject(ProveedoresService);
+  private dialog = inject(MatDialog);
   private request?: Subscription;
 
   id = input.required<string>();
@@ -29,6 +46,20 @@ export class ProveedorDetail {
       this.id(); // re-run whenever the route id changes
       untracked(() => this.load());
     });
+  }
+
+  protected abrirRegistro(proveedorId: string): void {
+    this.dialog
+      .open<RegistrarRecepcionDialog, RegistrarRecepcionDialogData, boolean>(
+        RegistrarRecepcionDialog,
+        { data: { proveedorId }, width: '640px', maxWidth: '95vw' },
+      )
+      .afterClosed()
+      .subscribe((registrada) => {
+        if (registrada) {
+          this.load(false);
+        }
+      });
   }
 
   protected load(showSpinner = true): void {

@@ -1,0 +1,7 @@
+<h2 mat-dialog-title>Registrar recepción</h2>
+
+<mat-dialog-content>
+  <app-recepcion-form [proveedorId]="data.proveedorId" (registrada)="onRegistrada()">
+    <button formActions mat-button type="button" mat-dialog-close>Cancelar</button>
+  </app-recepcion-form>
+</mat-dialog-content>

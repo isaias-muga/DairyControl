@@ -1,34 +1,31 @@
-<h2>Proveedores</h2>
-
-<form [formGroup]="form" (ngSubmit)="crear()" class="crear">
-  <label for="nombre">Nuevo proveedor</label>
-  <div class="fila">
-    <input id="nombre" type="text" formControlName="nombre" [maxlength]="nombreMaxLength" />
-    <button type="submit" [disabled]="saving()">
-      {{ saving() ? 'Guardando...' : 'Agregar' }}
-    </button>
-  </div>
-  @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
-    <p class="error">Ingresá un nombre (máximo {{ nombreMaxLength }} caracteres).</p>
-  }
-  @if (saveError()) {
-    <p class="error">{{ saveError() }}</p>
-  }
-</form>
+<div class="page-header">
+  <h2>Proveedores</h2>
+  <button mat-flat-button type="button" (click)="abrirCrear()">Nuevo proveedor</button>
+</div>
 
 @if (loading()) {
-  <p>Cargando...</p>
+  <div class="state-message">
+    <mat-spinner diameter="32" />
+    <span>Cargando...</span>
+  </div>
 } @else if (error()) {
-  <p class="error">{{ error() }}</p>
+  <p class="form-error" role="alert">{{ error() }}</p>
 } @else {
-  <ul>
-    @for (p of proveedores(); track p.id) {
-      <li>
-        <a [routerLink]="['/proveedores', p.id]">{{ p.nombre }}</a>
-        ({{ p.cantidadRecepciones }} recepciones)
-      </li>
-    } @empty {
-      <li>No hay proveedores cargados.</li>
-    }
-  </ul>
+  <mat-card>
+    <mat-nav-list>
+      @for (p of proveedores(); track p.id) {
+        <a mat-list-item [routerLink]="['/proveedores', p.id]">
+          <span matListItemTitle>{{ p.nombre }}</span>
+          <span matListItemLine>({{ p.cantidadRecepciones }} recepciones)</span>
+        </a>
+        @if (!$last) {
+          <mat-divider />
+        }
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>No hay proveedores cargados.</span>
+        </mat-list-item>
+      }
+    </mat-nav-list>
+  </mat-card>
 }
