@@ -84,7 +84,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Authentication: only `AuthService` reads or writes the token. `authInterceptor` adds the `Authorization` header; never add it manually. Protected routes use `authGuard`.
 - The API base URL comes from `environments/`; never hardcode it.
 - User-facing text is in Spanish.
-- Styling: each component's styles live in its own CSS file; global styles and theme in `styles.css`.
+- Styling: each component's styles live in its own CSS file; global styles and theme in `styles.scss`.
 
 ## Testing
 
