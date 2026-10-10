@@ -156,7 +156,7 @@ Every change is tracked as a GitHub Issue, implemented on a feature branch, and 
 - [x] Angular client: login, JWT handling and protected pages
 - [x] Angular client: create proveedor and register recepción forms
 - [x] Angular client: UI design pass
-- [ ] Client build and tests in CI
+- [x] Client build and tests in CI
 - [ ] Deployment
 - [ ] Structured logging in the exception middleware
 - [ ] Tests for `AuthService`
