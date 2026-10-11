@@ -108,6 +108,14 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Add a migration: `dotnet ef migrations add <Name> --project src/DairyControl.Infrastructure --startup-project src/DairyControl.Api`
 - Apply migrations: `dotnet ef database update --project src/DairyControl.Infrastructure --startup-project src/DairyControl.Api`
 - Client (from `client/`): `npm install`, `ng serve` (http://localhost:4200), `ng build`
+- Full stack in Docker: `docker compose up --build` (http://localhost:8080; needs a `.env` copied from `.env.example`)
+- Stop the stack and reset the database: `docker compose down -v`
+
+### Docker / configuration flags
+
+- The compose stack is configured only through environment variables in `.env` (`ConnectionStrings__Default`, `Jwt__SigningKey`, `AdminUser__Password`), not User Secrets. Local development keeps using LocalDB and User Secrets.
+- `Database:ApplyMigrationsOnStartup` (default `false`): when `true`, the API runs `Database.Migrate()` at startup. Enabled only in `compose.yaml`.
+- `HttpsRedirection:Enabled` (default `true`): when `false`, `UseHttpsRedirection` is skipped. Set to `false` only in `compose.yaml`, where the API listens on plain HTTP behind nginx.
 
 ## How to work in this repo
 
