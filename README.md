@@ -1,8 +1,8 @@
 # DairyControl
 
-Milk reception and quality-control system for a small dairy plant: a **.NET 10** REST API built with **Clean Architecture** and **Domain-Driven Design**, and an **Angular** client.
+Milk reception and quality-control system for a small dairy plant: a **.NET 10** REST API built with **Clean Architecture** and **Domain-Driven Design**, an **Angular** client, and a containerized stack with **Docker Compose**.
 
-> > **Status:** backend complete (REST API, JWT authentication, error handling, unit tests, CI). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, Angular Material UI..
+> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, Angular Material UI. Full stack runs with Docker Compose; CI builds and tests both backend and client. Deployment in progress.
 
 ## What it does
 
@@ -20,23 +20,43 @@ The domain model is based on real reception logs from a dairy plant. All data in
 | ----------------------------------------------------------------------- | ------------------------------------------- |
 | ![Registrar recepción dialog](docs/screenshots/registrar-recepcion.png) | ![Mobile view](docs/screenshots/mobile.png) |
 
+## Quick start (Docker)
+
+The fastest way to run everything: SQL Server, the API and the client. Only Docker is required.
+
+```bash
+cp .env.example .env        # PowerShell: Copy-Item .env.example .env
+# edit .env and set your own values
+docker compose up --build
+```
+
+Open `http://localhost:8080` and log in as `admin` with the `ADMIN_PASSWORD` from `.env`. Migrations are applied automatically when the API starts.
+
+- Stop: `docker compose down`
+- Stop and delete the database: `docker compose down -v`
+
 ## Tech stack
 
 **Backend**
 
 - .NET 10, ASP.NET Core Web API
-- Entity Framework Core 10 + SQL Server (LocalDB for development)
+- Entity Framework Core 10 + SQL Server
 - JWT bearer authentication
-- Swagger / OpenAPI (Swashbuckle)
+- Swagger / OpenAPI (Swashbuckle, development only)
 - xUnit + Moq
-- GitHub Actions (build and test on every pull request)
 
 **Client**
 
 - Angular (standalone components, signals, new control flow)
-- Angular Material 3
+- Angular Material 3, `es-AR` locale for numbers and dates
 - Reactive forms with validation mirroring the domain rules
 - JWT handling with an HTTP interceptor and route guards
+
+**Infrastructure**
+
+- Docker (multi-stage images, non-root containers) and Docker Compose
+- nginx serving the client and reverse-proxying the API
+- GitHub Actions: backend and client build and tests on every push and pull request
 
 ## Architecture
 
@@ -57,8 +77,19 @@ graph TD
 | **Domain**         | Entities, value objects, business rules, repository interfaces. No framework dependencies.                          |
 | **Application**    | Use-case orchestration (`ProveedorAppService`, `AuthService`), DTOs, settings. Depends only on Domain abstractions. |
 | **Infrastructure** | EF Core `DbContext`, Fluent API mappings, migrations, repository implementations.                                   |
-| **Api**            | Controllers, middleware, CORS, dependency injection and pipeline setup (composition root).                          |
+| **Api**            | Controllers, middleware, authentication, dependency injection and pipeline setup (composition root).                |
 | **Client**         | Angular pages, routing and services that consume the API.                                                           |
+
+### Runtime (Docker Compose)
+
+```mermaid
+graph LR
+    Browser -->|":8080"| Client["client<br/>nginx + Angular"]
+    Client -->|"/api/*"| Api["api<br/>ASP.NET Core :8080"]
+    Api --> Db[("db<br/>SQL Server<br/>named volume")]
+```
+
+Only the client publishes a port. The API and the database are reachable only inside the Compose network, by service name.
 
 ## Domain model
 
@@ -68,14 +99,32 @@ graph TD
 
 ## Key design decisions
 
+**Domain and persistence**
+
 - **Invariants live in the domain.** Factory methods, private constructors and private setters make invalid state impossible to construct, rather than relying on callers to validate.
 - **One repository per aggregate.** `IProveedorRepository` is defined in Domain and implemented in Infrastructure (dependency inversion).
 - **Owned types for the aggregate.** Recepciones are mapped with `OwnsMany` and quality parameters with `OwnsOne`. Recepciones have no `DbSet`, so they can't be queried or saved outside their aggregate.
 - **Client-generated IDs.** The domain assigns its own `Guid` IDs and EF Core is configured with `ValueGeneratedNever()`, so new recepciones added to a loaded aggregate are inserted, not mistaken for existing rows.
 - **Shared limits.** Constants such as maximum name length and decimal precision are defined once in the domain and reused by both validation and the database mapping.
+- **Recepciones are records of what happened.** They can be registered but not edited or deleted; a correction flow would void a recepción with a reason rather than remove it.
+
+**API**
+
+- **DTOs shaped for their consumer.** The list returns a lightweight `ProveedorDto`; the detail returns `ProveedorDetalleDto` with flattened `RecepcionDto`s, so the client never sees domain value objects.
 - **Global exception middleware.** Domain validation errors (`ArgumentException`) return `400` with a JSON message. Any other exception returns a generic `500` without exposing internal details.
-- **Secrets stay out of the repo.** The JWT signing key and admin password live in .NET User Secrets.
-- **One place for API access in the client.** Components never call `HttpClient` directly; they go through `ProveedoresService`, and the API base URL comes from Angular environment files.
+- **Authenticated by default.** `ProveedoresController` requires a JWT at class level, so new endpoints are protected unless explicitly opened.
+
+**Client**
+
+- **One place for API access.** Components never call `HttpClient` directly; they go through services, and the API base URL comes from Angular environment files.
+- **Client validation mirrors the domain.** Limits are mirrored in `models/limits.ts` for immediate feedback; the API remains the source of truth and its error messages are shown in the forms.
+
+**Infrastructure and security**
+
+- **Secrets stay out of the repo.** Locally, the JWT signing key and admin password live in .NET User Secrets; in Docker they come from a git-ignored `.env` file. `.env.example` documents the required values.
+- **Single origin through a reverse proxy.** nginx serves the client and forwards `/api` to the API, so the browser never makes cross-origin calls and the database and API are not exposed.
+- **Least privilege in containers.** The API and nginx images run as non-root users; multi-stage builds keep the SDK and source code out of the runtime images.
+- **Container-only behavior behind configuration flags.** Applying migrations on startup and disabling HTTPS redirection are enabled only in Compose, so local development is unchanged.
 
 ## API
 
@@ -87,12 +136,12 @@ graph TD
 | `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor with its recepciones, newest first |
 | `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor      |
 
-## Getting started
+## Local development (without Docker)
 
 ### Prerequisites
 
 - .NET 10 SDK
-- SQL Server LocalDB (included with Visual Studio) or SQL Server Express
+- SQL Server LocalDB (Windows, included with Visual Studio) or SQL Server Express. On Linux or macOS, use the Docker setup above.
 - EF Core CLI: `dotnet tool install --global dotnet-ef`
 - Node.js and the Angular CLI: `npm install -g @angular/cli`
 
@@ -131,18 +180,9 @@ ng serve
 
 The app runs at `http://localhost:4200`. In development, the API's CORS policy allows requests from that origin.
 
-## Run with Docker
-
-Runs SQL Server, the API and the client together. Only the client is exposed on the host.
-
-```bash
-cp .env.example .env   # then edit .env and set real values
-docker compose up --build
-```
-
-Open `http://localhost:8080` and log in as `admin` with the `ADMIN_PASSWORD` from `.env`. Migrations are applied automatically on API startup. To stop: `docker compose down`; add `-v` to also delete the database volume.
-
 ## Tests
+
+**Backend**
 
 ```bash
 dotnet test --solution DairyControl.slnx
@@ -151,13 +191,20 @@ dotnet test --solution DairyControl.slnx
 Unit tests, none of which touch a database:
 
 - **Domain:** `ParametrosCalidad` validation, covering negative values, minimum volume, and optional fat content.
-- **Application:** `ProveedorAppService` with a mocked repository (Moq), covering found and not-found paths, listing, and verifying that persistence methods are called exactly as often as they should be.
+- **Application:** `ProveedorAppService` with a mocked repository (Moq), covering found and not-found paths, listing, recepciones mapping and ordering, and verifying that persistence methods are called exactly as often as they should be.
 
-The same command runs in GitHub Actions on every push and pull request to `main`.
+**Client**
+
+```bash
+cd client
+npm test
+```
+
+Both suites run in GitHub Actions on every push and pull request to `main`.
 
 ## Development workflow
 
-Every change is tracked as a GitHub Issue, implemented on a feature branch, and merged through a pull request that includes evidence (Swagger responses, screenshots, database checks or test results). Pull requests can only be merged when the CI build and tests pass.
+Every change is tracked as a GitHub Issue, implemented on a short-lived feature branch, and merged into `main` through a pull request that includes evidence (screenshots, API responses, test results). Two CI checks are required to merge: `build-test` (backend) and `client`. Environments are separated by configuration, not by branches.
 
 ## Roadmap
 
@@ -168,7 +215,9 @@ Every change is tracked as a GitHub Issue, implemented on a feature branch, and 
 - [x] Angular client: create proveedor and register recepción forms
 - [x] Angular client: UI design pass
 - [x] Client build and tests in CI
-- [ ] Deployment
+- [x] Full stack with Docker Compose
+- [ ] Deployment with a public URL
 - [ ] Structured logging in the exception middleware
 - [ ] Tests for `AuthService`
+- [ ] Automated dependency and image updates (Dependabot)
 - [ ] Database-backed user accounts (only if multiple operators are needed)
