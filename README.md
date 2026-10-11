@@ -131,6 +131,17 @@ ng serve
 
 The app runs at `http://localhost:4200`. In development, the API's CORS policy allows requests from that origin.
 
+## Run with Docker
+
+Runs SQL Server, the API and the client together. Only the client is exposed on the host.
+
+```bash
+cp .env.example .env   # then edit .env and set real values
+docker compose up --build
+```
+
+Open `http://localhost:8080` and log in as `admin` with the `ADMIN_PASSWORD` from `.env`. Migrations are applied automatically on API startup. To stop: `docker compose down`; add `-v` to also delete the database volume.
+
 ## Tests
 
 ```bash
