@@ -2,7 +2,7 @@
 
 Milk reception and quality-control system for a small dairy plant: a **.NET 10** REST API built with **Clean Architecture** and **Domain-Driven Design**, an **Angular** client, and a containerized stack with **Docker Compose**.
 
-> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, Angular Material UI. Full stack runs with Docker Compose; CI builds and tests both backend and client. Deployment in progress.
+> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, Angular Material UI. Full stack runs with Docker Compose; CI builds and tests both backend and client. Demo data is seeded on startup. Deployment in progress.
 
 ## What it does
 
@@ -30,7 +30,7 @@ cp .env.example .env        # PowerShell: Copy-Item .env.example .env
 docker compose up --build
 ```
 
-Open `http://localhost:8080` and log in as `admin` with the `ADMIN_PASSWORD` from `.env`. Migrations are applied automatically when the API starts.
+Open `http://localhost:8080` and log in as `admin` with the `ADMIN_PASSWORD` from `.env`. Migrations are applied automatically when the API starts. On a fresh database the API also seeds about 6 months of demo data (8 proveedores, ~1,400 recepciones), so the app looks like a plant in operation.
 
 - Stop: `docker compose down`
 - Stop and delete the database: `docker compose down -v`
@@ -124,7 +124,8 @@ Only the client publishes a port. The API and the database are reachable only in
 - **Secrets stay out of the repo.** Locally, the JWT signing key and admin password live in .NET User Secrets; in Docker they come from a git-ignored `.env` file. `.env.example` documents the required values.
 - **Single origin through a reverse proxy.** nginx serves the client and forwards `/api` to the API, so the browser never makes cross-origin calls and the database and API are not exposed.
 - **Least privilege in containers.** The API and nginx images run as non-root users; multi-stage builds keep the SDK and source code out of the runtime images.
-- **Container-only behavior behind configuration flags.** Applying migrations on startup and disabling HTTPS redirection are enabled only in Compose, so local development is unchanged.
+- **Container-only behavior behind configuration flags.** Applying migrations on startup, seeding demo data and disabling HTTPS redirection are enabled only in Compose, so local development is unchanged.
+- **Demo data through the domain.** The seeder creates proveedores and recepciones with the same factory methods as the API, runs once in a single transaction, and skips if any proveedor exists. Value ranges come from aggregated real reception logs; names are invented.
 
 ## API
 
@@ -216,7 +217,14 @@ Every change is tracked as a GitHub Issue, implemented on a short-lived feature 
 - [x] Angular client: UI design pass
 - [x] Client build and tests in CI
 - [x] Full stack with Docker Compose
-- [ ] Deployment with a public URL
+- [x] Synthetic demo data seeded on startup
+- [ ] Deployment to Azure Container Apps with a public URL and continuous deployment
+- [ ] Recepciones by period: filter by date range and proveedor (`GET /api/Recepciones`)
+- [ ] Automatic summaries by day, week, month or year: total liters, quality averages and proveedor ranking (`GET /api/Recepciones/resumen`)
+- [ ] Angular client: summaries page and period filter on the proveedor detail
+- [ ] Chart and quality alerts: out-of-range limits as a domain rule, highlighted in the UI
+- [ ] Integration tests with a real database (`WebApplicationFactory`)
+- [ ] Health check endpoint
 - [ ] Structured logging in the exception middleware
 - [ ] Tests for `AuthService`
 - [ ] Automated dependency and image updates (Dependabot)

@@ -116,6 +116,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - The compose stack is configured only through environment variables in `.env` (`ConnectionStrings__Default`, `Jwt__SigningKey`, `AdminUser__Password`), not User Secrets. Local development keeps using LocalDB and User Secrets.
 - `Database:ApplyMigrationsOnStartup` (default `false`): when `true`, the API runs `Database.Migrate()` at startup. Enabled only in `compose.yaml`.
 - `HttpsRedirection:Enabled` (default `true`): when `false`, `UseHttpsRedirection` is skipped. Set to `false` only in `compose.yaml`, where the API listens on plain HTTP behind nginx.
+- `DemoData:SeedOnStartup` (default `false`): when `true` and the database has no proveedores, `DemoDataSeeder` creates demo data at startup. Enabled only in `compose.yaml`.
 
 ## How to work in this repo
 
