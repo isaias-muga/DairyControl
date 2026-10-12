@@ -2,6 +2,7 @@ using DairyControl.Api.Middleware;
 using DairyControl.Application.Services;
 using DairyControl.Application.Settings;
 using DairyControl.Domain.Interfaces;
+using DairyControl.Infrastructure.Persistence;
 using DairyControl.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -72,6 +73,13 @@ if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
 {
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
+
+if (app.Configuration.GetValue<bool>("DemoData:SeedOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    var seeder = new DemoDataSeeder(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    await seeder.SeedAsync();
 }
 
 // 2. The pipeline — what happens to every incoming request, in order
