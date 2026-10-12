@@ -7,7 +7,11 @@ services:
     volumes:
       - sqldata:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          '/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" || exit 1',
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -26,6 +30,7 @@ services:
       AdminUser__Password: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
       Database__ApplyMigrationsOnStartup: "true"
       HttpsRedirection__Enabled: "false"
+      DemoData__SeedOnStartup: "true"
 
   client:
     build: ./client
