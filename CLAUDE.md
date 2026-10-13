@@ -57,6 +57,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Domain-generated IDs are configured with `ValueGeneratedNever()`.
 - One `IEntityTypeConfiguration<T>` class per aggregate, in `Persistence/Configurations`, declared `internal`.
 - Never edit a migration that has already been applied. Add a new migration instead.
+- `AppDbContext` uses `EnableRetryOnFailure` (Azure SQL serverless pauses when idle). Explicit transactions must run inside `Database.CreateExecutionStrategy().ExecuteAsync(...)`; a plain `BeginTransaction` throws with a retrying strategy.
 
 ## API conventions
 
@@ -109,6 +110,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Apply migrations: `dotnet ef database update --project src/DairyControl.Infrastructure --startup-project src/DairyControl.Api`
 - Client (from `client/`): `npm install`, `ng serve` (http://localhost:4200), `ng build`
 - Full stack in Docker: `docker compose up --build` (http://localhost:8080; needs a `.env` copied from `.env.example`)
+- Deployment: `.github/workflows/deploy.yml` runs after CI passes on `main`: builds both images, pushes them to ghcr.io tagged with the short commit SHA, and updates both Azure container apps. Azure login uses OIDC; no credentials are stored in the repo or the workflow.
 - Stop the stack and reset the database: `docker compose down -v`
 
 ### Docker / configuration flags
@@ -117,6 +119,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `Database:ApplyMigrationsOnStartup` (default `false`): when `true`, the API runs `Database.Migrate()` at startup. Enabled only in `compose.yaml`.
 - `HttpsRedirection:Enabled` (default `true`): when `false`, `UseHttpsRedirection` is skipped. Set to `false` only in `compose.yaml`, where the API listens on plain HTTP behind nginx.
 - `DemoData:SeedOnStartup` (default `false`): when `true` and the database has no proveedores, `DemoDataSeeder` creates demo data at startup. Enabled only in `compose.yaml`.
+- `API_UPSTREAM` (client image, default `http://api:8080`): where nginx proxies `/api`. `client/nginx.conf.template` is filled from environment variables when the container starts. On Azure it points to the API's internal ingress.
 
 ## How to work in this repo
 

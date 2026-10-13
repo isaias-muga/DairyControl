@@ -2,7 +2,15 @@
 
 Milk reception and quality-control system for a small dairy plant: a **.NET 10** REST API built with **Clean Architecture** and **Domain-Driven Design**, an **Angular** client, and a containerized stack with **Docker Compose**.
 
-> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, Angular Material UI. Full stack runs with Docker Compose; CI builds and tests both backend and client. Demo data is seeded on startup. Deployment in progress.
+> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, Angular Material UI. Full stack runs with Docker Compose; CI builds and tests both backend and client. Demo data is seeded on startup. **Live on Azure Container Apps**, deployed automatically on every merge to `main`.
+
+## Live demo
+
+**https://dairycontrol-client.graywave-771c6a95.brazilsouth.azurecontainerapps.io**
+
+Log in as `admin` with the password `demodemo123`. These credentials exist only for the demo environment, and all data is synthetic.
+
+The demo scales to zero when nobody is using it and its database pauses, so the first request after a quiet period can take up to a minute.
 
 ## What it does
 
@@ -56,7 +64,9 @@ Open `http://localhost:8080` and log in as `admin` with the `ADMIN_PASSWORD` fro
 
 - Docker (multi-stage images, non-root containers) and Docker Compose
 - nginx serving the client and reverse-proxying the API
-- GitHub Actions: backend and client build and tests on every push and pull request
+- GitHub Actions: backend and client build and tests on every push and pull request; deployment on every merge to `main`
+- Azure Container Apps (consumption plan, scale to zero) and Azure SQL Database (serverless, free offer)
+- GitHub Container Registry for images; Azure login from GitHub Actions with OIDC
 
 ## Architecture
 
@@ -91,6 +101,17 @@ graph LR
 
 Only the client publishes a port. The API and the database are reachable only inside the Compose network, by service name.
 
+### Runtime (Azure)
+
+```mermaid
+graph LR
+    Browser -->|HTTPS| Client["dairycontrol-client<br/>nginx + Angular<br/>external ingress"]
+    Client -->|"/api/* (HTTPS)"| Api["dairycontrol-api<br/>ASP.NET Core<br/>internal ingress"]
+    Api --> Db[("Azure SQL Database<br/>serverless, auto-pause")]
+```
+
+The same shape as Compose: only the client is public. The API's ingress is internal to the Container Apps environment, and the nginx upstream comes from the `API_UPSTREAM` environment variable. Both apps scale from 0 to 1 replica.
+
 ## Domain model
 
 - **`Proveedor`** (aggregate root): the single entry point to the aggregate. Its recepciones are exposed read-only and can only be added through `RegistrarRecepcion`.
@@ -124,6 +145,10 @@ Only the client publishes a port. The API and the database are reachable only in
 - **Secrets stay out of the repo.** Locally, the JWT signing key and admin password live in .NET User Secrets; in Docker they come from a git-ignored `.env` file. `.env.example` documents the required values.
 - **Single origin through a reverse proxy.** nginx serves the client and forwards `/api` to the API, so the browser never makes cross-origin calls and the database and API are not exposed.
 - **Least privilege in containers.** The API and nginx images run as non-root users; multi-stage builds keep the SDK and source code out of the runtime images.
+- **Passwordless deployment with OIDC.** GitHub Actions logs in to Azure with a short-lived federated token that Azure trusts only for this repository's `main` branch. The deploy identity has Contributor rights on the app's resource group only, and no cloud credentials are stored in GitHub.
+- **Immutable image tags.** Images are tagged with the commit SHA, so every Azure revision maps to one commit, and a rollback is a redeploy of the previous tag.
+- **Built for a serverless database.** EF Core retries transient failures (`EnableRetryOnFailure`), so the first request after the database resumes succeeds instead of failing.
+- **Cost-aware hosting.** The Azure SQL free offer, the Container Apps free grant, scale to zero and a budget alert keep the demo at $0 a month.
 - **Container-only behavior behind configuration flags.** Applying migrations on startup, seeding demo data and disabling HTTPS redirection are enabled only in Compose, so local development is unchanged.
 - **Demo data through the domain.** The seeder creates proveedores and recepciones with the same factory methods as the API, runs once in a single transaction, and skips if any proveedor exists. Value ranges come from aggregated real reception logs; names are invented.
 
@@ -207,6 +232,8 @@ Both suites run in GitHub Actions on every push and pull request to `main`.
 
 Every change is tracked as a GitHub Issue, implemented on a short-lived feature branch, and merged into `main` through a pull request that includes evidence (screenshots, API responses, test results). Two CI checks are required to merge: `build-test` (backend) and `client`. Environments are separated by configuration, not by branches.
 
+Every merge to `main` is deployed automatically: once CI passes, `deploy.yml` builds both images, pushes them to GitHub Container Registry and updates both container apps.
+
 ## Roadmap
 
 - [x] CI with GitHub Actions
@@ -218,7 +245,7 @@ Every change is tracked as a GitHub Issue, implemented on a short-lived feature 
 - [x] Client build and tests in CI
 - [x] Full stack with Docker Compose
 - [x] Synthetic demo data seeded on startup
-- [ ] Deployment to Azure Container Apps with a public URL and continuous deployment
+- [x] Deployment to Azure Container Apps with a public URL and continuous deployment
 - [ ] Recepciones by period: filter by date range and proveedor (`GET /api/Recepciones`)
 - [ ] Automatic summaries by day, week, month or year: total liters, quality averages and proveedor ranking (`GET /api/Recepciones/resumen`)
 - [ ] Angular client: summaries page and period filter on the proveedor detail
