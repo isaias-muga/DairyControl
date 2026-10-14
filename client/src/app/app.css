@@ -13,3 +13,13 @@
 .spacer {
   flex: 1 1 auto;
 }
+
+.waking-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
