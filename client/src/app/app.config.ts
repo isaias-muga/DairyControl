@@ -5,7 +5,7 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './interceptors/auth-interceptor';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-
+import { slowRequestInterceptor } from './interceptors/slow-request-interceptor';
 registerLocaleData(localeEsAr);
 
 export const appConfig: ApplicationConfig = {
@@ -13,6 +13,6 @@ export const appConfig: ApplicationConfig = {
     { provide: LOCALE_ID, useValue: 'es-AR' },
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, slowRequestInterceptor])),
   ],
 };

@@ -9,6 +9,13 @@
   }
 </mat-toolbar>
 
+@if (serverStatus.isWakingUp()) {
+  <div class="waking-banner" role="status">
+    <mat-spinner diameter="20" />
+    <span>El servidor se está iniciando. La primera carga puede tardar hasta un minuto.</span>
+  </div>
+}
+
 <main class="page">
   <router-outlet />
 </main>

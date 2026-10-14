@@ -10,7 +10,7 @@ Milk reception and quality-control system for a small dairy plant: a **.NET 10**
 
 Log in as `admin` with the password `demodemo123`. These credentials exist only for the demo environment, and all data is synthetic.
 
-The demo scales to zero when nobody is using it and its database pauses, so the first request after a quiet period can take up to a minute.
+The demo scales to zero when nobody is using it and its database pauses, so the first request after a quiet period can take up to a minute; the app shows a message while the server wakes up.
 
 ## What it does
 
@@ -232,7 +232,7 @@ Both suites run in GitHub Actions on every push and pull request to `main`.
 
 Every change is tracked as a GitHub Issue, implemented on a short-lived feature branch, and merged into `main` through a pull request that includes evidence (screenshots, API responses, test results). Two CI checks are required to merge: `build-test` (backend) and `client`. Environments are separated by configuration, not by branches.
 
-Every merge to `main` is deployed automatically: once CI passes, `deploy.yml` builds both images, pushes them to GitHub Container Registry and updates both container apps.
+Every merge to `main` is deployed automatically: once CI passes, `deploy.yml` builds both images, pushes them to GitHub Container Registry and updates both container apps. See [docs/deployment.md](docs/deployment.md) for how the Azure environment is set up, rollbacks and troubleshooting.
 
 ## Roadmap
 

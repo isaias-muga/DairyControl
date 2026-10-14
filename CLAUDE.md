@@ -83,6 +83,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Forms are reactive forms. Client validation mirrors the domain limits in `models/limits.ts`; it exists for user feedback only, and the API remains the source of truth.
 - API errors are turned into user messages with `getApiErrorMessage` in `utils/api-error.ts`.
 - Authentication: only `AuthService` reads or writes the token. `authInterceptor` adds the `Authorization` header; never add it manually. Protected routes use `authGuard`.
+- `slowRequestInterceptor` and `ServerStatusService` show the global "waking up" banner when any request takes more than 3 seconds; pages don't add their own cold-start messages.
 - The API base URL comes from `environments/`; never hardcode it.
 - User-facing text is in Spanish.
 - Styling: each component's styles live in its own CSS file; global styles and theme in `styles.scss`.
