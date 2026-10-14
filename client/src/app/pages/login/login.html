@@ -5,10 +5,34 @@
     </mat-card-header>
 
     <mat-card-content>
+      <p class="description">
+        Demo de un sistema de recepción y control de calidad de leche para una planta láctea.
+      </p>
+
+      @if (demoCredentials; as creds) {
+        <div class="demo-credentials">
+          <p>
+            Usuario: <strong>{{ creds.username }}</strong>
+          </p>
+          <p>
+            Contraseña: <strong>{{ creds.password }}</strong>
+          </p>
+          <button mat-stroked-button type="button" (click)="useDemoCredentials()">
+            Usar credenciales de demo
+          </button>
+        </div>
+      }
+
       <form [formGroup]="form" (ngSubmit)="submit()">
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Usuario</mat-label>
-          <input matInput id="username" type="text" formControlName="username" autocomplete="username" />
+          <input
+            matInput
+            id="username"
+            type="text"
+            formControlName="username"
+            autocomplete="username"
+          />
           @if (form.controls.username.touched && form.controls.username.invalid) {
             <mat-error>Ingresá el usuario.</mat-error>
           }
@@ -36,6 +60,14 @@
           {{ loading() ? 'Ingresando...' : 'Ingresar' }}
         </button>
       </form>
+
+      <a
+        class="repo-link"
+        href="https://github.com/isaias-muga/DairyControl"
+        target="_blank"
+        rel="noopener"
+        >Ver el código en GitHub</a
+      >
     </mat-card-content>
   </mat-card>
 </div>

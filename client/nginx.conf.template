@@ -17,6 +17,8 @@ server {
 
     # SPA fallback
     location / {
+        # Revalidate on every load so a new deploy is picked up (bundles are hashed).
+        add_header Cache-Control "no-cache";
         try_files $uri $uri/ /index.html;
     }
 }
