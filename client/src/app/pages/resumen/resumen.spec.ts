@@ -6,7 +6,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Resumen } from './resumen';
 import { ResumenRecepciones } from '../../models/resumen';
-import { hoyEnPlanta, rangoDePeriodo } from '../../utils/periodos';
+import { diasEnRango, hoyEnPlanta, rangoDePeriodo } from '../../utils/periodos';
 
 registerLocaleData(localeEsAr);
 
@@ -98,6 +98,15 @@ describe('Resumen', () => {
     pendienteProveedores().flush([]);
   });
 
+  it('shows "Todos" selected in the supplier select by default', async () => {
+    const { desde, hasta } = rangoDePeriodo('mes', hoyEnPlanta());
+    resumenPendiente().flush(resumenVacio(desde, hasta));
+    pendienteProveedores().flush([]);
+    await fixture.whenStable();
+
+    expect(el().querySelector('mat-select')?.textContent).toContain('Todos');
+  });
+
   it('shows the empty state when the period has no deliveries', async () => {
     const { desde, hasta } = rangoDePeriodo('mes', hoyEnPlanta());
     resumenPendiente().flush(resumenVacio(desde, hasta));
@@ -146,7 +155,7 @@ describe('Resumen', () => {
     filtrada.flush(resumenVacio(desde, hasta));
     expect(component['subtitulo']()).toContain('Tambo Norte');
 
-    component['proveedorControl'].setValue(null);
+    component['proveedorControl'].setValue('todos');
     component['proveedorCambiado']();
     const todos = resumenPendiente();
     expect(todos.request.params.has('proveedorId')).toBe(false);
@@ -224,7 +233,8 @@ describe('Resumen', () => {
 
       expect(grafico.getAttribute('aria-label')).toContain('Litros por día');
       const barras = el().querySelectorAll('.barra');
-      expect(barras.length).toBeGreaterThan(27);
+      const { desde, hasta } = rangoDePeriodo('mes', hoyEnPlanta());
+      expect(barras.length).toBe(diasEnRango(desde, hasta)); // only the days elapsed so far
       expect(barras[0].getAttribute('title')).toMatch(/^\d{2}\/\d{2}\/\d{4}: /);
     });
   });
@@ -244,9 +254,9 @@ describe('Resumen', () => {
     resumenPendiente().flush(resumenVacio(desde, hasta));
     pendienteProveedores().flush([]);
 
-    component['seleccionarPeriodo']('anio');
-    const anio = rangoDePeriodo('anio', hoyEnPlanta());
-    resumenPendiente().flush(resumenConDatos(anio.desde, anio.hasta));
+    component['rangoForm'].setValue({ inicio: new Date(2025, 0, 1), fin: new Date(2025, 11, 31) });
+    component['rangoPersonalizadoCambiado']();
+    resumenPendiente().flush(resumenConDatos('2025-01-01', '2025-12-31'));
     await fixture.whenStable();
 
     expect(el().textContent).toContain('Litros por mes');

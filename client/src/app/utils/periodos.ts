@@ -26,7 +26,10 @@ export function diasEnRango(desde: string, hasta: string): number {
   return Math.round((aUtc(hasta) - aUtc(desde)) / MS_POR_DIA) + 1;
 }
 
-/** Current day, week (Monday to Sunday), month or year around `hoy`. */
+/**
+ * The current day, week (from Monday), month or year, always ending today (`hoy`) so that
+ * comparisons and daily averages only cover days that have already happened.
+ */
 export function rangoDePeriodo(preset: PeriodoPreset, hoy: string): RangoFechas {
   const [anio, mes] = hoy.split('-').map(Number);
   switch (preset) {
@@ -35,15 +38,12 @@ export function rangoDePeriodo(preset: PeriodoPreset, hoy: string): RangoFechas 
     case 'semana': {
       const lunesPrimero = (new Date(aUtc(hoy)).getUTCDay() + 6) % 7; // 0 = Monday
       const lunes = sumarDias(hoy, -lunesPrimero);
-      return { desde: lunes, hasta: sumarDias(lunes, 6) };
+      return { desde: lunes, hasta: hoy };
     }
     case 'mes':
-      return {
-        desde: aIso(Date.UTC(anio, mes - 1, 1)),
-        hasta: aIso(Date.UTC(anio, mes, 0)), // day 0 = last day of the month
-      };
+      return { desde: aIso(Date.UTC(anio, mes - 1, 1)), hasta: hoy };
     case 'anio':
-      return { desde: `${anio}-01-01`, hasta: `${anio}-12-31` };
+      return { desde: `${anio}-01-01`, hasta: hoy };
   }
 }
 

@@ -27,53 +27,70 @@ describe('periodos', () => {
       });
     });
 
-    it('semana goes from Monday to Sunday', () => {
+    it('semana goes from Monday to today', () => {
       // 2026-10-14 is a Wednesday
       expect(rangoDePeriodo('semana', '2026-10-14')).toEqual({
         desde: '2026-10-12',
-        hasta: '2026-10-18',
+        hasta: '2026-10-14',
       });
     });
 
-    it('semana on a Monday starts that same day', () => {
+    it('semana on a Monday is just that day', () => {
       expect(rangoDePeriodo('semana', '2026-10-12')).toEqual({
         desde: '2026-10-12',
-        hasta: '2026-10-18',
+        hasta: '2026-10-12',
       });
     });
 
-    it('semana on a Sunday ends that same day', () => {
+    it('semana on a Sunday covers the whole week', () => {
       expect(rangoDePeriodo('semana', '2026-10-18')).toEqual({
         desde: '2026-10-12',
         hasta: '2026-10-18',
       });
     });
 
-    it('semana can cross a month and year boundary', () => {
+    it('semana can start in the previous month and year', () => {
       // 2026-01-01 is a Thursday
       expect(rangoDePeriodo('semana', '2026-01-01')).toEqual({
         desde: '2025-12-29',
-        hasta: '2026-01-04',
+        hasta: '2026-01-01',
       });
     });
 
-    it('mes covers the whole current month', () => {
-      expect(rangoDePeriodo('mes', '2026-09-14')).toEqual({
+    it('mes goes from day 1 to today', () => {
+      expect(rangoDePeriodo('mes', '2026-10-14')).toEqual({
+        desde: '2026-10-01',
+        hasta: '2026-10-14',
+      });
+    });
+
+    it('mes on the last day of the month covers the whole month', () => {
+      expect(rangoDePeriodo('mes', '2026-09-30')).toEqual({
         desde: '2026-09-01',
         hasta: '2026-09-30',
       });
     });
 
-    it('mes handles leap-year February and 31-day months', () => {
-      expect(rangoDePeriodo('mes', '2028-02-10').hasta).toBe('2028-02-29');
-      expect(rangoDePeriodo('mes', '2026-10-14').hasta).toBe('2026-10-31');
-    });
-
-    it('anio covers January 1 to December 31', () => {
+    it('anio goes from January 1 to today', () => {
       expect(rangoDePeriodo('anio', '2026-10-14')).toEqual({
         desde: '2026-01-01',
-        hasta: '2026-12-31',
+        hasta: '2026-10-14',
       });
+    });
+
+    it('never ends after today, whatever the period', () => {
+      for (const hoy of ['2026-01-01', '2026-02-28', '2028-02-10', '2026-12-31']) {
+        for (const preset of ['dia', 'semana', 'mes', 'anio'] as const) {
+          const { desde, hasta } = rangoDePeriodo(preset, hoy);
+          expect(hasta).toBe(hoy);
+          expect(desde <= hasta).toBe(true);
+        }
+      }
+    });
+
+    it('the number of days counted is the days elapsed so far', () => {
+      const { desde, hasta } = rangoDePeriodo('mes', '2026-10-14');
+      expect(diasEnRango(desde, hasta)).toBe(14);
     });
   });
 
@@ -90,7 +107,7 @@ describe('periodos', () => {
       expect(etiquetaPeriodo(r('mes'), 'mes')).toBe('Septiembre 2026');
       expect(etiquetaPeriodo(r('anio'), 'anio')).toBe('2026');
       expect(etiquetaPeriodo(r('dia'), 'dia')).toBe('16/09/2026');
-      expect(etiquetaPeriodo(r('semana'), 'semana')).toBe('Semana del 14/09/2026 al 20/09/2026');
+      expect(etiquetaPeriodo(r('semana'), 'semana')).toBe('Semana del 14/09/2026 al 16/09/2026');
     });
 
     it('shows the dates for a custom range', () => {

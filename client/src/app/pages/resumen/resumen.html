@@ -40,7 +40,7 @@
     <mat-form-field class="campo-proveedor" subscriptSizing="dynamic">
       <mat-label>Proveedor</mat-label>
       <mat-select [formControl]="proveedorControl" (selectionChange)="proveedorCambiado()">
-        <mat-option [value]="null">Todos</mat-option>
+        <mat-option [value]="TODOS">Todos</mat-option>
         @for (p of proveedores(); track p.id) {
           <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
         }

@@ -37,9 +37,27 @@
 
 .tarjetas {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: 1fr; /* mobile: 1 per row */
   gap: 12px;
   margin-bottom: 16px;
+}
+
+@media (min-width: 600px) {
+  .tarjetas {
+    grid-template-columns: repeat(2, 1fr); /* tablet: 2 + 2 + 2 */
+  }
+}
+
+@media (min-width: 900px) {
+  .tarjetas {
+    grid-template-columns: repeat(3, 1fr); /* laptop: 3 + 3 */
+  }
+}
+
+@media (min-width: 1200px) {
+  .tarjetas {
+    grid-template-columns: repeat(6, 1fr); /* wide: 6 in one row */
+  }
 }
 
 .tarjetas mat-card-content {

@@ -68,7 +68,8 @@ export class Resumen {
   errorRango = signal<string | null>(null);
   proveedorId = signal<string | null>(null); // mirrors proveedorControl so computed() can react to it
 
-  protected proveedorControl = this.fb.control<string | null>(null);
+  protected readonly TODOS = 'todos'; // value of the "Todos" option (mat-select ignores null as a selection)
+  protected proveedorControl = this.fb.control<string>(this.TODOS);
   protected rangoForm = this.fb.group({
     inicio: this.fb.control<Date | null>(isoADate(this.rango().desde)),
     fin: this.fb.control<Date | null>(isoADate(this.rango().hasta)),
@@ -146,8 +147,13 @@ export class Resumen {
   }
 
   protected proveedorCambiado(): void {
-    this.proveedorId.set(this.proveedorControl.value);
+    this.proveedorId.set(this.proveedorSeleccionado());
     this.cargar();
+  }
+
+  private proveedorSeleccionado(): string | null {
+    const id = this.proveedorControl.value;
+    return id === this.TODOS ? null : id;
   }
 
   private cargar(): void {
@@ -157,7 +163,7 @@ export class Resumen {
 
     const { desde, hasta } = this.rango();
     this.request = this.recepcionesService
-      .getResumen(desde, hasta, this.proveedorControl.value)
+      .getResumen(desde, hasta, this.proveedorSeleccionado())
       .subscribe({
         next: (data) => {
           this.resumen.set(data);

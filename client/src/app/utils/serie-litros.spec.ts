@@ -22,6 +22,16 @@ describe('serie-litros', () => {
       expect(serie.promedioDiario).toBe(100);
     });
 
+    it('divides the daily average by the days of the range up to today, not by the whole month', () => {
+      // 14 elapsed days of October: 1.400 L / 14 = 100 L per day (not / 31)
+      const serie = construirSerie('2026-10-01', '2026-10-14', [
+        { fecha: '2026-10-02', litros: 1400, cantidadRecepciones: 1 },
+      ]);
+
+      expect(serie.barras.length).toBe(14);
+      expect(serie.promedioDiario).toBe(100);
+    });
+
     it('only labels some bars when there are many', () => {
       const serie = construirSerie('2026-09-01', '2026-09-30', []);
       const conEtiqueta = serie.barras.filter((b) => b.mostrarEtiqueta).length;
