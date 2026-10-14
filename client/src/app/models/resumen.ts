@@ -1,10 +1,17 @@
 export interface TotalesResumen {
   litros: number;
   cantidadRecepciones: number;
+  litrosPromedioPorRecepcion: number;
   temperaturaPromedio: number;
+  temperaturaMinima: number;
+  temperaturaMaxima: number;
   acidezPromedio: number;
+  acidezMinima: number;
+  acidezMaxima: number;
   grasaPromedio: number | null;
-  cantidadAcidezAlta: number;
+  cantidadConGrasa: number;
+  cantidadFueraDeRango: number;
+  litrosPeriodoAnterior: number;
 }
 
 export interface ResumenProveedor {
@@ -13,6 +20,7 @@ export interface ResumenProveedor {
   litros: number;
   cantidadRecepciones: number;
   acidezPromedio: number;
+  cantidadFueraDeRango: number;
 }
 
 export interface ResumenDia {
@@ -24,6 +32,8 @@ export interface ResumenDia {
 export interface ResumenRecepciones {
   desde: string;
   hasta: string;
+  desdeAnterior: string;
+  hastaAnterior: string;
   totales: TotalesResumen;
   proveedores: ResumenProveedor[];
   dias: ResumenDia[];

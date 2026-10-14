@@ -50,6 +50,12 @@ builder.Services.AddScoped<AuthService>();
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<AdminUserSettings>(builder.Configuration.GetSection("AdminUser"));
+builder.Services.AddOptions<CalidadLimitesSettings>()
+    .Bind(builder.Configuration.GetSection("CalidadLimites"))
+    .Validate(
+        s => s.AcidezMaxima > 0 && s.TemperaturaMaxima > 0,
+        "CalidadLimites:AcidezMaxima and CalidadLimites:TemperaturaMaxima must be greater than zero.")
+    .ValidateOnStart();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

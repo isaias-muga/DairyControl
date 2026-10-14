@@ -1,14 +1,24 @@
 import { Routes } from '@angular/router';
-import { Login } from './pages/login/login';
-import { ProveedoresList } from './pages/proveedores-list/proveedores-list';
-import { ProveedorDetail } from './pages/proveedor-detail/proveedor-detail';
-import { Resumen } from './pages/resumen/resumen';
 import { authGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
-  { path: 'login', component: Login },
-  { path: 'proveedores', component: ProveedoresList, canActivate: [authGuard] },
-  { path: 'proveedores/:id', component: ProveedorDetail, canActivate: [authGuard] },
-  { path: 'resumen', component: Resumen, canActivate: [authGuard] },
-  { path: '', redirectTo: '/proveedores', pathMatch: 'full' },
+  { path: 'login', loadComponent: () => import('./pages/login/login').then((m) => m.Login) },
+  {
+    path: 'proveedores',
+    loadComponent: () =>
+      import('./pages/proveedores-list/proveedores-list').then((m) => m.ProveedoresList),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'proveedores/:id',
+    loadComponent: () =>
+      import('./pages/proveedor-detail/proveedor-detail').then((m) => m.ProveedorDetail),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'resumen',
+    loadComponent: () => import('./pages/resumen/resumen').then((m) => m.Resumen),
+    canActivate: [authGuard],
+  },
+  { path: '', redirectTo: '/resumen', pathMatch: 'full' },
 ];

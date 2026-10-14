@@ -21,6 +21,10 @@ html {
   );
 }
 
+:root {
+  --app-success: #1b6e2d; /* Material has no "success" token */
+}
+
 body {
   margin: 0;
   background: var(--mat-sys-surface-container-low);
@@ -33,6 +37,10 @@ body {
   max-width: 960px;
   margin: 0 auto;
   padding: 16px;
+}
+
+.page:has(app-resumen) {
+  max-width: 1280px; /* the dashboard needs more room than the other pages */
 }
 
 .page-header {

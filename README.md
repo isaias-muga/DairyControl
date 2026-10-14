@@ -2,7 +2,7 @@
 
 Milk reception and quality-control system for a small dairy plant: a **.NET 10** REST API built with **Clean Architecture** and **Domain-Driven Design**, an **Angular** client, and a containerized stack with **Docker Compose**.
 
-> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, Angular Material UI. Full stack runs with Docker Compose; CI builds and tests both backend and client. Demo data is seeded on startup. **Live on Azure Container Apps**, deployed automatically on every merge to `main`.
+> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, reception dashboard with configurable quality limits, Angular Material UI. Full stack runs with Docker Compose; CI builds and tests both backend and client. Demo data is seeded on startup. **Live on Azure Container Apps**, deployed automatically on every merge to `main`.
 
 ## Live demo
 
@@ -16,9 +16,17 @@ The demo scales to zero when nobody is using it and its database pauses, so the 
 
 DairyControl registers milk suppliers (_proveedores_) and every delivery received at the plant (_recepción_): volume in liters, temperature, acidity, optional fat content, destination silo, timestamp and free-text notes.
 
+On top of the records, a **Resumen** dashboard answers the plant's key question for any period: how much milk came in, compared with the previous period, from which suppliers, and how many deliveries were out of range. Quality limits (acidity and temperature) are configurable per plant.
+
 The domain model is based on real reception logs from a dairy plant. All data in this repository is synthetic.
 
 ## Screenshots
+
+**Resumen**: liters, quality, liters per day and supplier ranking for any period, compared with the previous period.
+
+![Resumen dashboard](docs/screenshots/resumen.png)
+
+![Resumen: supplier ranking with participation and out-of-range deliveries](docs/screenshots/resumen-2.png)
 
 | Proveedores                                           | Recepciones                                       |
 | ----------------------------------------------------- | ------------------------------------------------- |
@@ -161,7 +169,7 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 | `POST` | `/api/Proveedores`                  | JWT    | Creates a proveedor                                 |
 | `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor with its recepciones, newest first |
 | `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor      |
-| `GET`  | `/api/Recepciones/resumen`          | JWT    | Summary for `desde`/`hasta` (`YYYY-MM-DD`, max 366 days): totals, proveedor ranking by liters, liters per day |
+| `GET`  | `/api/Recepciones/resumen`          | JWT    | Summary for `desde`/`hasta` (`YYYY-MM-DD`, max 366 days) and optional `proveedorId`: totals (min/max, out-of-range count, liters of the previous period of the same length), proveedor ranking by liters, liters per day |
 
 ## Local development (without Docker)
 
@@ -249,7 +257,8 @@ Every merge to `main` is deployed automatically: once CI passes, `deploy.yml` bu
 - [x] Deployment to Azure Container Apps with a public URL and continuous deployment
 - [ ] Recepciones by period: filter by date range and proveedor (`GET /api/Recepciones`)
 - [x] Summary by period: total liters, quality averages, proveedor ranking and liters per day (`GET /api/Recepciones/resumen`)
-- [x] Angular client: summary page with period presets and custom range
+- [x] Angular client: summary dashboard (Día/Semana/Mes/Año, custom range, proveedor filter, daily chart, ranking)
+- [x] Configurable quality limits (`CalidadLimites`) and out-of-range count
 - [ ] Summaries grouped by week, month or year, and a period filter on the proveedor detail
 - [ ] Chart and quality alerts: out-of-range limits as a domain rule, highlighted in the UI
 - [ ] Integration tests with a real database (`WebApplicationFactory`)

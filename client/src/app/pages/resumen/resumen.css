@@ -1,30 +1,66 @@
-.periodos {
+:host {
+  display: block;
+}
+
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
-.rango {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 16px;
+.titulo h2 {
+  margin: 0;
 }
 
-.rango mat-form-field {
-  flex: 1 1 160px;
-}
-
-.periodo-actual {
-  margin: 8px 0 16px;
+.subtitulo {
+  margin: 4px 0 0;
   color: var(--mat-sys-on-surface-variant);
 }
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
 }
 
-.cards mat-card-content {
+.campo-periodo {
+  width: 260px;
+}
+
+.campo-proveedor {
+  width: 220px;
+}
+
+.tarjetas {
+  display: grid;
+  grid-template-columns: 1fr; /* mobile: 1 per row */
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 600px) {
+  .tarjetas {
+    grid-template-columns: repeat(2, 1fr); /* tablet: 2 + 2 + 2 */
+  }
+}
+
+@media (min-width: 900px) {
+  .tarjetas {
+    grid-template-columns: repeat(3, 1fr); /* laptop: 3 + 3 */
+  }
+}
+
+@media (min-width: 1200px) {
+  .tarjetas {
+    grid-template-columns: repeat(6, 1fr); /* wide: 6 in one row */
+  }
+}
+
+.tarjetas mat-card-content {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -32,18 +68,131 @@
   padding-bottom: 16px;
 }
 
-.card-label {
+.etiqueta {
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.875rem;
 }
 
-.card-value {
-  font-size: 1.5rem;
+.valor {
+  font-size: 1.75rem;
   font-weight: 500;
+  line-height: 1.2;
+}
+
+.detalle {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.variacion.sube {
+  color: var(--app-success);
+}
+
+.variacion.baja {
+  color: var(--mat-sys-error);
+}
+
+.fuera-de-rango {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  --mat-card-outlined-outline-color: var(--mat-sys-error);
+}
+
+.fuera-de-rango .etiqueta,
+.fuera-de-rango .detalle {
+  color: inherit;
+}
+
+.grafico,
+.ranking {
+  margin-bottom: 16px;
+}
+
+.grafico-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 8px 0 16px;
 }
 
 h3 {
-  margin: 24px 0 12px;
+  margin: 8px 0 16px;
+  font-weight: 500;
+}
+
+.grafico-encabezado h3 {
+  margin: 0;
+}
+
+.promedio {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.grafico-cuerpo {
+  display: flex;
+  gap: 8px;
+}
+
+.eje-y {
+  position: relative;
+  flex: 0 0 48px;
+  height: 220px;
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.eje-y span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+}
+
+.area {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.barras {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 220px;
+}
+
+.linea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.barra {
+  position: relative; /* above the grid lines */
+  flex: 1 1 0;
+  min-width: 2px;
+  background: var(--mat-sys-primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.eje-x {
+  display: flex;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.eje-x span {
+  flex: 1 1 0;
+  min-width: 2px;
+  display: flex;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .table-wrapper {
@@ -55,8 +204,39 @@ td.mat-mdc-cell {
   white-space: nowrap;
 }
 
+.numero {
+  text-align: right;
+}
+
+.alerta {
+  color: var(--mat-sys-error);
+  font-weight: 500;
+}
+
+.participacion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.participacion mat-progress-bar {
+  width: 140px;
+}
+
+.porcentaje {
+  min-width: 52px;
+  text-align: right;
+}
+
 @media (max-width: 599px) {
-  .rango button {
+  .filtros,
+  .campo-periodo,
+  .campo-proveedor,
+  mat-button-toggle-group {
     width: 100%;
+  }
+
+  .eje-y {
+    flex-basis: 40px;
   }
 }

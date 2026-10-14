@@ -7,5 +7,6 @@ namespace DairyControl.Application.DTOs
         public decimal Litros { get; set; }
         public int CantidadRecepciones { get; set; }
         public decimal AcidezPromedio { get; set; }
+        public int CantidadFueraDeRango { get; set; }
     }
 }

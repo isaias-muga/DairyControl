@@ -7,7 +7,6 @@
         public const int Scale = 2;
         public const int ScaleLitros = 3;
         public const int PrecisionLitros = 8;
-        public const decimal AcidezAltaUmbral = 19m;
         private static readonly decimal MaxValue = (decimal)Math.Pow(10, Precision - Scale);
 
         private static readonly decimal MaxValueLitros = (decimal)Math.Pow(10, PrecisionLitros - ScaleLitros);

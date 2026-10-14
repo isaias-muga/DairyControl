@@ -9,8 +9,11 @@ export class RecepcionesService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/Recepciones`;
 
-  getResumen(desde: string, hasta: string): Observable<ResumenRecepciones> {
-    const params = new HttpParams().set('desde', desde).set('hasta', hasta);
+  getResumen(desde: string, hasta: string, proveedorId?: string | null): Observable<ResumenRecepciones> {
+    let params = new HttpParams().set('desde', desde).set('hasta', hasta);
+    if (proveedorId) {
+      params = params.set('proveedorId', proveedorId);
+    }
     return this.http.get<ResumenRecepciones>(`${this.apiUrl}/resumen`, { params });
   }
 }
