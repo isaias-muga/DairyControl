@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth';
+import { DEMO_CREDENTIALS } from '../../demo-credentials';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -19,6 +20,8 @@ export class Login {
   private router = inject(Router);
   private fb = inject(FormBuilder);
 
+  readonly demoCredentials = inject(DEMO_CREDENTIALS);
+
   form = this.fb.nonNullable.group({
     username: ['', Validators.required],
     password: ['', Validators.required],
@@ -26,6 +29,16 @@ export class Login {
 
   loading = signal(false);
   error = signal<string | null>(null);
+
+  useDemoCredentials(): void {
+    if (!this.demoCredentials) {
+      return;
+    }
+    this.form.setValue({
+      username: this.demoCredentials.username,
+      password: this.demoCredentials.password,
+    });
+  }
 
   submit(): void {
     if (this.form.invalid) {

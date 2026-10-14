@@ -6,11 +6,14 @@ import { routes } from './app.routes';
 import { authInterceptor } from './interceptors/auth-interceptor';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { slowRequestInterceptor } from './interceptors/slow-request-interceptor';
+import { DEMO_CREDENTIALS } from './demo-credentials';
+import { environment } from '../environments/environment';
 registerLocaleData(localeEsAr);
 
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'es-AR' },
+    { provide: DEMO_CREDENTIALS, useValue: environment.demoCredentials },
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([authInterceptor, slowRequestInterceptor])),
