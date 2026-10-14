@@ -161,6 +161,7 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 | `POST` | `/api/Proveedores`                  | JWT    | Creates a proveedor                                 |
 | `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor with its recepciones, newest first |
 | `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor      |
+| `GET`  | `/api/Recepciones/resumen`          | JWT    | Summary for `desde`/`hasta` (`YYYY-MM-DD`, max 366 days): totals, proveedor ranking by liters, liters per day |
 
 ## Local development (without Docker)
 
@@ -247,8 +248,9 @@ Every merge to `main` is deployed automatically: once CI passes, `deploy.yml` bu
 - [x] Synthetic demo data seeded on startup
 - [x] Deployment to Azure Container Apps with a public URL and continuous deployment
 - [ ] Recepciones by period: filter by date range and proveedor (`GET /api/Recepciones`)
-- [ ] Automatic summaries by day, week, month or year: total liters, quality averages and proveedor ranking (`GET /api/Recepciones/resumen`)
-- [ ] Angular client: summaries page and period filter on the proveedor detail
+- [x] Summary by period: total liters, quality averages, proveedor ranking and liters per day (`GET /api/Recepciones/resumen`)
+- [x] Angular client: summary page with period presets and custom range
+- [ ] Summaries grouped by week, month or year, and a period filter on the proveedor detail
 - [ ] Chart and quality alerts: out-of-range limits as a domain rule, highlighted in the UI
 - [ ] Integration tests with a real database (`WebApplicationFactory`)
 - [ ] Health check endpoint

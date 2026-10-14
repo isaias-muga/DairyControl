@@ -1,8 +1,10 @@
 using DairyControl.Api.Middleware;
+using DairyControl.Application.Queries;
 using DairyControl.Application.Services;
 using DairyControl.Application.Settings;
 using DairyControl.Domain.Interfaces;
 using DairyControl.Infrastructure.Persistence;
+using DairyControl.Infrastructure.Persistence.Queries;
 using DairyControl.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +44,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IProveedorRepository, ProveedorRepository>();
 builder.Services.AddScoped<ProveedorAppService>();
+builder.Services.AddScoped<IRecepcionQueries, RecepcionQueries>();
+builder.Services.AddScoped<ResumenRecepcionesAppService>();
 builder.Services.AddScoped<AuthService>();
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));

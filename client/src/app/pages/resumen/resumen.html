@@ -1,0 +1,140 @@
+<div class="page-header">
+  <h2>Resumen de recepciones</h2>
+</div>
+
+<mat-chip-listbox
+  class="periodos"
+  aria-label="Período"
+  [value]="periodo()"
+  (change)="seleccionar($event.value)"
+>
+  @for (p of presets; track p.valor) {
+    <mat-chip-option [value]="p.valor">{{ p.etiqueta }}</mat-chip-option>
+  }
+  <mat-chip-option value="personalizado">Personalizado</mat-chip-option>
+</mat-chip-listbox>
+
+@if (periodo() === 'personalizado') {
+  <form class="rango" [formGroup]="form" (ngSubmit)="aplicarPersonalizado()">
+    <mat-form-field>
+      <mat-label>Desde</mat-label>
+      <input matInput type="date" formControlName="desde" />
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>Hasta</mat-label>
+      <input matInput type="date" formControlName="hasta" />
+    </mat-form-field>
+    <button mat-flat-button type="submit">Aplicar</button>
+  </form>
+  @if (form.touched && errorRango(); as mensaje) {
+    <p class="form-error" role="alert">{{ mensaje }}</p>
+  }
+}
+
+@if (loading()) {
+  <div class="state-message">
+    <mat-spinner diameter="32" />
+    <span>Cargando...</span>
+  </div>
+} @else if (error()) {
+  <p class="form-error" role="alert">{{ error() }}</p>
+} @else if (resumen(); as r) {
+  <p class="periodo-actual">
+    Del {{ r.desde | date: 'dd/MM/yyyy' }} al {{ r.hasta | date: 'dd/MM/yyyy' }}
+  </p>
+
+  @if (r.totales.cantidadRecepciones === 0) {
+    <p class="state-message">No hay recepciones en este período.</p>
+  } @else {
+    <div class="cards">
+      <mat-card>
+        <mat-card-content>
+          <span class="card-label">Litros recibidos</span>
+          <span class="card-value">{{ r.totales.litros | number: '1.0-2' }}</span>
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <span class="card-label">Recepciones</span>
+          <span class="card-value">{{ r.totales.cantidadRecepciones | number: '1.0-0' }}</span>
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <span class="card-label">Temperatura prom. (°C)</span>
+          <span class="card-value">{{ r.totales.temperaturaPromedio | number: '1.1-2' }}</span>
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <span class="card-label">Acidez prom. (°D)</span>
+          <span class="card-value">{{ r.totales.acidezPromedio | number: '1.2-2' }}</span>
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <span class="card-label">Grasa prom. (%)</span>
+          <span class="card-value">
+            {{ r.totales.grasaPromedio !== null ? (r.totales.grasaPromedio | number: '1.2-2') : '—' }}
+          </span>
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <span class="card-label">Recepciones con acidez alta</span>
+          <span class="card-value">{{ r.totales.cantidadAcidezAlta | number: '1.0-0' }}</span>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <h3>Ranking de proveedores</h3>
+    <mat-card>
+      <div class="table-wrapper">
+        <table mat-table [dataSource]="r.proveedores" class="full-width">
+          <ng-container matColumnDef="nombre">
+            <th mat-header-cell *matHeaderCellDef>Proveedor</th>
+            <td mat-cell *matCellDef="let p">{{ p.nombre }}</td>
+          </ng-container>
+          <ng-container matColumnDef="litros">
+            <th mat-header-cell *matHeaderCellDef>Litros</th>
+            <td mat-cell *matCellDef="let p">{{ p.litros | number: '1.0-2' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="recepciones">
+            <th mat-header-cell *matHeaderCellDef>Recepciones</th>
+            <td mat-cell *matCellDef="let p">{{ p.cantidadRecepciones | number: '1.0-0' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="acidez">
+            <th mat-header-cell *matHeaderCellDef>Acidez prom.</th>
+            <td mat-cell *matCellDef="let p">{{ p.acidezPromedio | number: '1.2-2' }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columnasProveedores"></tr>
+          <tr mat-row *matRowDef="let row; columns: columnasProveedores"></tr>
+        </table>
+      </div>
+    </mat-card>
+
+    <h3>Litros por día</h3>
+    <mat-card>
+      <div class="table-wrapper">
+        <table mat-table [dataSource]="r.dias" class="full-width">
+          <ng-container matColumnDef="fecha">
+            <th mat-header-cell *matHeaderCellDef>Fecha</th>
+            <td mat-cell *matCellDef="let d">{{ d.fecha | date: 'dd/MM/yyyy' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="litros">
+            <th mat-header-cell *matHeaderCellDef>Litros</th>
+            <td mat-cell *matCellDef="let d">{{ d.litros | number: '1.0-2' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="recepciones">
+            <th mat-header-cell *matHeaderCellDef>Recepciones</th>
+            <td mat-cell *matCellDef="let d">{{ d.cantidadRecepciones | number: '1.0-0' }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columnasDias"></tr>
+          <tr mat-row *matRowDef="let row; columns: columnasDias"></tr>
+        </table>
+      </div>
+    </mat-card>
+  }
+}

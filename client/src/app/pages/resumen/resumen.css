@@ -1,0 +1,62 @@
+.periodos {
+  margin-bottom: 16px;
+}
+
+.rango {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 16px;
+}
+
+.rango mat-form-field {
+  flex: 1 1 160px;
+}
+
+.periodo-actual {
+  margin: 8px 0 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.cards mat-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.card-label {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.card-value {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+h3 {
+  margin: 24px 0 12px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+th.mat-mdc-header-cell,
+td.mat-mdc-cell {
+  white-space: nowrap;
+}
+
+@media (max-width: 599px) {
+  .rango button {
+    width: 100%;
+  }
+}
