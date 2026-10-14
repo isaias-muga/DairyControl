@@ -21,9 +21,10 @@ namespace DairyControl.Api.Controllers
         [HttpGet("resumen")]
         public async Task<ActionResult<ResumenRecepcionesDto>> GetResumenAsync(
             [FromQuery, BindRequired] DateOnly desde,
-            [FromQuery, BindRequired] DateOnly hasta)
+            [FromQuery, BindRequired] DateOnly hasta,
+            [FromQuery] Guid? proveedorId)
         {
-            var resumen = await _service.GetResumenAsync(desde, hasta);
+            var resumen = await _service.GetResumenAsync(desde, hasta, proveedorId);
             return Ok(resumen);
         }
     }

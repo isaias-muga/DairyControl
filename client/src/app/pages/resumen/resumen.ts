@@ -1,132 +1,173 @@
-import { Component, inject, signal } from '@angular/core';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { Subscription } from 'rxjs';
 import { RecepcionesService } from '../../services/recepciones';
+import { ProveedoresService } from '../../services/proveedores';
+import { Proveedor } from '../../models/proveedor';
 import { ResumenRecepciones } from '../../models/resumen';
 import { RESUMEN_MAX_DIAS } from '../../models/limits';
 import { getApiErrorMessage } from '../../utils/api-error';
 import {
   PeriodoPreset,
   RangoFechas,
+  dateAIso,
   diasEnRango,
+  etiquetaPeriodo,
+  formatearFecha,
   hoyEnPlanta,
+  isoADate,
   rangoDePeriodo,
 } from '../../utils/periodos';
-import { MatButtonModule } from '@angular/material/button';
+import { construirSerie } from '../../utils/serie-litros';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
-
-type Periodo = PeriodoPreset | 'personalizado';
-
-const PRESETS: { valor: PeriodoPreset; etiqueta: string }[] = [
-  { valor: 'hoy', etiqueta: 'Hoy' },
-  { valor: 'ultimos-7', etiqueta: 'Últimos 7 días' },
-  { valor: 'ultimos-30', etiqueta: 'Últimos 30 días' },
-  { valor: 'este-mes', etiqueta: 'Este mes' },
-  { valor: 'mes-anterior', etiqueta: 'Mes anterior' },
-];
-
-function rangoValido(group: AbstractControl): ValidationErrors | null {
-  const desde = group.get('desde')?.value as string;
-  const hasta = group.get('hasta')?.value as string;
-  if (!desde || !hasta) {
-    return { requerido: 'Completá las dos fechas.' };
-  }
-  if (desde > hasta) {
-    return { rango: 'La fecha desde no puede ser posterior a la fecha hasta.' };
-  }
-  if (diasEnRango(desde, hasta) > RESUMEN_MAX_DIAS) {
-    return { rango: `El período no puede superar los ${RESUMEN_MAX_DIAS} días.` };
-  }
-  return null;
-}
 
 @Component({
   selector: 'app-resumen',
   imports: [
-    DatePipe,
     DecimalPipe,
     ReactiveFormsModule,
-    MatButtonModule,
+    MatButtonToggleModule,
     MatCardModule,
-    MatChipsModule,
+    MatDatepickerModule,
     MatFormFieldModule,
-    MatInputModule,
+    MatProgressBarModule,
     MatProgressSpinnerModule,
+    MatSelectModule,
     MatTableModule,
   ],
+  providers: [provideNativeDateAdapter()],
   templateUrl: './resumen.html',
   styleUrl: './resumen.css',
 })
 export class Resumen {
   private recepcionesService = inject(RecepcionesService);
+  private proveedoresService = inject(ProveedoresService);
   private fb = inject(FormBuilder).nonNullable;
   private request?: Subscription;
 
-  protected presets = PRESETS;
-  protected columnasProveedores = ['nombre', 'litros', 'recepciones', 'acidez'];
-  protected columnasDias = ['fecha', 'litros', 'recepciones'];
+  protected columnasProveedores = ['nombre', 'litros', 'participacion', 'recepciones', 'fueraDeRango'];
+  protected formatearFecha = formatearFecha;
 
-  periodo = signal<Periodo>('ultimos-30');
+  // null = custom range typed or picked in the date range field
+  periodo = signal<PeriodoPreset | null>('mes');
+  rango = signal<RangoFechas>(rangoDePeriodo('mes', hoyEnPlanta()));
+  proveedores = signal<Proveedor[]>([]);
   resumen = signal<ResumenRecepciones | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
+  errorRango = signal<string | null>(null);
+  proveedorId = signal<string | null>(null); // mirrors proveedorControl so computed() can react to it
 
-  protected form = this.fb.group({ desde: [''], hasta: [''] }, { validators: rangoValido });
+  protected proveedorControl = this.fb.control<string | null>(null);
+  protected rangoForm = this.fb.group({
+    inicio: this.fb.control<Date | null>(isoADate(this.rango().desde)),
+    fin: this.fb.control<Date | null>(isoADate(this.rango().hasta)),
+  });
+
+  protected subtitulo = computed(() => {
+    const nombre = this.proveedores().find((p) => p.id === this.proveedorId())?.nombre;
+    return `${etiquetaPeriodo(this.rango(), this.periodo())} · ${nombre ?? 'todos los proveedores'}`;
+  });
+
+  protected serie = computed(() => {
+    const r = this.resumen();
+    return r ? construirSerie(r.desde, r.hasta, r.dias) : null;
+  });
+
+  /** Change of liters against the previous period, or null when there is nothing to compare with. */
+  protected variacion = computed(() => {
+    const t = this.resumen()?.totales;
+    if (!t || t.litrosPeriodoAnterior <= 0) {
+      return null;
+    }
+    const porcentaje = ((t.litros - t.litrosPeriodoAnterior) / t.litrosPeriodoAnterior) * 100;
+    const sentido = porcentaje > 0 ? 'sube' : porcentaje < 0 ? 'baja' : 'igual';
+    return { porcentaje: Math.abs(porcentaje), sentido };
+  });
+
+  protected filasProveedores = computed(() => {
+    const r = this.resumen();
+    if (!r) {
+      return [];
+    }
+    return r.proveedores.map((p) => ({
+      ...p,
+      participacion: r.totales.litros > 0 ? (p.litros / r.totales.litros) * 100 : 0,
+    }));
+  });
 
   constructor() {
-    this.cargar(rangoDePeriodo('ultimos-30', hoyEnPlanta()));
+    this.proveedoresService.getAll().subscribe({
+      next: (lista) => this.proveedores.set(lista),
+      error: () => this.proveedores.set([]), // the filter simply offers "Todos"
+    });
+    this.cargar();
   }
 
-  protected seleccionar(periodo: Periodo | undefined): void {
-    if (!periodo) {
-      return; // clicking the selected chip deselects it; keep the current period
-    }
-    this.periodo.set(periodo);
-    if (periodo === 'personalizado') {
-      const actual = this.resumen();
-      if (actual) {
-        this.form.setValue({ desde: actual.desde, hasta: actual.hasta });
-      }
+  protected seleccionarPeriodo(preset: PeriodoPreset | undefined): void {
+    if (!preset) {
       return;
     }
-    this.cargar(rangoDePeriodo(periodo, hoyEnPlanta()));
+    this.errorRango.set(null);
+    this.periodo.set(preset);
+    this.rango.set(rangoDePeriodo(preset, hoyEnPlanta()));
+    this.rangoForm.setValue({
+      inicio: isoADate(this.rango().desde),
+      fin: isoADate(this.rango().hasta),
+    });
+    this.cargar();
   }
 
-  protected aplicarPersonalizado(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+  /** Called when the end date of the range field changes (both ends are then set). */
+  protected rangoPersonalizadoCambiado(): void {
+    const { inicio, fin } = this.rangoForm.getRawValue();
+    if (!inicio || !fin) {
       return;
     }
-    this.cargar(this.form.getRawValue());
+    const nuevo = { desde: dateAIso(inicio), hasta: dateAIso(fin) };
+    if (diasEnRango(nuevo.desde, nuevo.hasta) > RESUMEN_MAX_DIAS) {
+      this.errorRango.set(`El período no puede superar los ${RESUMEN_MAX_DIAS} días.`);
+      return;
+    }
+    this.errorRango.set(null);
+    this.periodo.set(null);
+    this.rango.set(nuevo);
+    this.cargar();
   }
 
-  protected errorRango(): string | null {
-    const errors = this.form.errors;
-    return errors ? ((errors['rango'] ?? errors['requerido']) as string) : null;
+  protected proveedorCambiado(): void {
+    this.proveedorId.set(this.proveedorControl.value);
+    this.cargar();
   }
 
-  private cargar(rango: RangoFechas): void {
+  private cargar(): void {
     this.request?.unsubscribe();
     this.loading.set(true);
     this.error.set(null);
 
-    this.request = this.recepcionesService.getResumen(rango.desde, rango.hasta).subscribe({
-      next: (data) => {
-        this.resumen.set(data);
-        this.loading.set(false);
-      },
-      error: (err: HttpErrorResponse) => {
-        this.resumen.set(null);
-        this.error.set(getApiErrorMessage(err, 'No se pudo cargar el resumen.'));
-        this.loading.set(false);
-      },
-    });
+    const { desde, hasta } = this.rango();
+    this.request = this.recepcionesService
+      .getResumen(desde, hasta, this.proveedorControl.value)
+      .subscribe({
+        next: (data) => {
+          this.resumen.set(data);
+          this.loading.set(false);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.resumen.set(null);
+          this.error.set(getApiErrorMessage(err, 'No se pudo cargar el resumen.'));
+          this.loading.set(false);
+        },
+      });
   }
 }

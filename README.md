@@ -161,7 +161,7 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 | `POST` | `/api/Proveedores`                  | JWT    | Creates a proveedor                                 |
 | `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor with its recepciones, newest first |
 | `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor      |
-| `GET`  | `/api/Recepciones/resumen`          | JWT    | Summary for `desde`/`hasta` (`YYYY-MM-DD`, max 366 days): totals, proveedor ranking by liters, liters per day |
+| `GET`  | `/api/Recepciones/resumen`          | JWT    | Summary for `desde`/`hasta` (`YYYY-MM-DD`, max 366 days) and optional `proveedorId`: totals (min/max, out-of-range count, liters of the previous period of the same length), proveedor ranking by liters, liters per day |
 
 ## Local development (without Docker)
 
@@ -249,7 +249,8 @@ Every merge to `main` is deployed automatically: once CI passes, `deploy.yml` bu
 - [x] Deployment to Azure Container Apps with a public URL and continuous deployment
 - [ ] Recepciones by period: filter by date range and proveedor (`GET /api/Recepciones`)
 - [x] Summary by period: total liters, quality averages, proveedor ranking and liters per day (`GET /api/Recepciones/resumen`)
-- [x] Angular client: summary page with period presets and custom range
+- [x] Angular client: summary dashboard (Día/Semana/Mes/Año, custom range, proveedor filter, daily chart, ranking)
+- [x] Configurable quality limits (`CalidadLimites`) and out-of-range count
 - [ ] Summaries grouped by week, month or year, and a period filter on the proveedor detail
 - [ ] Chart and quality alerts: out-of-range limits as a domain rule, highlighted in the UI
 - [ ] Integration tests with a real database (`WebApplicationFactory`)

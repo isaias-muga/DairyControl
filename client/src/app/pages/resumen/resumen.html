@@ -1,34 +1,56 @@
-<div class="page-header">
-  <h2>Resumen de recepciones</h2>
-</div>
+<header class="encabezado">
+  <div class="titulo">
+    <h2>Resumen de recepciones</h2>
+    <p class="subtitulo">{{ subtitulo() }}</p>
+  </div>
 
-<mat-chip-listbox
-  class="periodos"
-  aria-label="Período"
-  [value]="periodo()"
-  (change)="seleccionar($event.value)"
->
-  @for (p of presets; track p.valor) {
-    <mat-chip-option [value]="p.valor">{{ p.etiqueta }}</mat-chip-option>
-  }
-  <mat-chip-option value="personalizado">Personalizado</mat-chip-option>
-</mat-chip-listbox>
+  <div class="filtros">
+    <mat-button-toggle-group
+      aria-label="Período"
+      hideSingleSelectionIndicator
+      [value]="periodo()"
+      (change)="seleccionarPeriodo($event.value)"
+    >
+      <mat-button-toggle value="dia">Día</mat-button-toggle>
+      <mat-button-toggle value="semana">Semana</mat-button-toggle>
+      <mat-button-toggle value="mes">Mes</mat-button-toggle>
+      <mat-button-toggle value="anio">Año</mat-button-toggle>
+    </mat-button-toggle-group>
 
-@if (periodo() === 'personalizado') {
-  <form class="rango" [formGroup]="form" (ngSubmit)="aplicarPersonalizado()">
-    <mat-form-field>
-      <mat-label>Desde</mat-label>
-      <input matInput type="date" formControlName="desde" />
+    <mat-form-field class="campo-periodo" subscriptSizing="dynamic">
+      <mat-label>Período</mat-label>
+      <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="selector">
+        <input
+          matStartDate
+          formControlName="inicio"
+          placeholder="Desde"
+          (dateChange)="rangoPersonalizadoCambiado()"
+        />
+        <input
+          matEndDate
+          formControlName="fin"
+          placeholder="Hasta"
+          (dateChange)="rangoPersonalizadoCambiado()"
+        />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="selector" />
+      <mat-date-range-picker #selector />
     </mat-form-field>
-    <mat-form-field>
-      <mat-label>Hasta</mat-label>
-      <input matInput type="date" formControlName="hasta" />
+
+    <mat-form-field class="campo-proveedor" subscriptSizing="dynamic">
+      <mat-label>Proveedor</mat-label>
+      <mat-select [formControl]="proveedorControl" (selectionChange)="proveedorCambiado()">
+        <mat-option [value]="null">Todos</mat-option>
+        @for (p of proveedores(); track p.id) {
+          <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
+        }
+      </mat-select>
     </mat-form-field>
-    <button mat-flat-button type="submit">Aplicar</button>
-  </form>
-  @if (form.touched && errorRango(); as mensaje) {
-    <p class="form-error" role="alert">{{ mensaje }}</p>
-  }
+  </div>
+</header>
+
+@if (errorRango(); as mensaje) {
+  <p class="form-error" role="alert">{{ mensaje }}</p>
 }
 
 @if (loading()) {
@@ -39,102 +61,183 @@
 } @else if (error()) {
   <p class="form-error" role="alert">{{ error() }}</p>
 } @else if (resumen(); as r) {
-  <p class="periodo-actual">
-    Del {{ r.desde | date: 'dd/MM/yyyy' }} al {{ r.hasta | date: 'dd/MM/yyyy' }}
-  </p>
-
   @if (r.totales.cantidadRecepciones === 0) {
     <p class="state-message">No hay recepciones en este período.</p>
   } @else {
-    <div class="cards">
-      <mat-card>
+    <section class="tarjetas" aria-label="Indicadores del período">
+      <mat-card appearance="outlined">
         <mat-card-content>
-          <span class="card-label">Litros recibidos</span>
-          <span class="card-value">{{ r.totales.litros | number: '1.0-2' }}</span>
+          <span class="etiqueta">Litros recibidos</span>
+          <span class="valor">{{ r.totales.litros | number: '1.0-0' }}</span>
+          @if (variacion(); as v) {
+            <span
+              class="detalle variacion"
+              [class.sube]="v.sentido === 'sube'"
+              [class.baja]="v.sentido === 'baja'"
+              [attr.title]="'Comparado con ' + formatearFecha(r.desdeAnterior) + ' – ' + formatearFecha(r.hastaAnterior)"
+            >
+              @if (v.sentido === 'sube') {
+                <span aria-hidden="true">▲</span>
+              } @else if (v.sentido === 'baja') {
+                <span aria-hidden="true">▼</span>
+              }
+              {{ v.porcentaje | number: '1.1-1' }} % vs. período anterior
+            </span>
+          } @else {
+            <span class="detalle">Sin datos en el período anterior</span>
+          }
         </mat-card-content>
       </mat-card>
-      <mat-card>
+
+      <mat-card appearance="outlined">
         <mat-card-content>
-          <span class="card-label">Recepciones</span>
-          <span class="card-value">{{ r.totales.cantidadRecepciones | number: '1.0-0' }}</span>
-        </mat-card-content>
-      </mat-card>
-      <mat-card>
-        <mat-card-content>
-          <span class="card-label">Temperatura prom. (°C)</span>
-          <span class="card-value">{{ r.totales.temperaturaPromedio | number: '1.1-2' }}</span>
-        </mat-card-content>
-      </mat-card>
-      <mat-card>
-        <mat-card-content>
-          <span class="card-label">Acidez prom. (°D)</span>
-          <span class="card-value">{{ r.totales.acidezPromedio | number: '1.2-2' }}</span>
-        </mat-card-content>
-      </mat-card>
-      <mat-card>
-        <mat-card-content>
-          <span class="card-label">Grasa prom. (%)</span>
-          <span class="card-value">
-            {{ r.totales.grasaPromedio !== null ? (r.totales.grasaPromedio | number: '1.2-2') : '—' }}
+          <span class="etiqueta">Recepciones</span>
+          <span class="valor">{{ r.totales.cantidadRecepciones | number: '1.0-0' }}</span>
+          <span class="detalle">
+            {{ r.totales.litrosPromedioPorRecepcion | number: '1.0-0' }} L promedio
           </span>
         </mat-card-content>
       </mat-card>
-      <mat-card>
+
+      <mat-card appearance="outlined">
         <mat-card-content>
-          <span class="card-label">Recepciones con acidez alta</span>
-          <span class="card-value">{{ r.totales.cantidadAcidezAlta | number: '1.0-0' }}</span>
+          <span class="etiqueta">Temperatura promedio</span>
+          <span class="valor">{{ r.totales.temperaturaPromedio | number: '1.1-1' }} °C</span>
+          <span class="detalle">
+            mín. {{ r.totales.temperaturaMinima | number: '1.0-1' }} · máx.
+            {{ r.totales.temperaturaMaxima | number: '1.0-1' }}
+          </span>
         </mat-card-content>
       </mat-card>
-    </div>
 
-    <h3>Ranking de proveedores</h3>
-    <mat-card>
-      <div class="table-wrapper">
-        <table mat-table [dataSource]="r.proveedores" class="full-width">
-          <ng-container matColumnDef="nombre">
-            <th mat-header-cell *matHeaderCellDef>Proveedor</th>
-            <td mat-cell *matCellDef="let p">{{ p.nombre }}</td>
-          </ng-container>
-          <ng-container matColumnDef="litros">
-            <th mat-header-cell *matHeaderCellDef>Litros</th>
-            <td mat-cell *matCellDef="let p">{{ p.litros | number: '1.0-2' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="recepciones">
-            <th mat-header-cell *matHeaderCellDef>Recepciones</th>
-            <td mat-cell *matCellDef="let p">{{ p.cantidadRecepciones | number: '1.0-0' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="acidez">
-            <th mat-header-cell *matHeaderCellDef>Acidez prom.</th>
-            <td mat-cell *matCellDef="let p">{{ p.acidezPromedio | number: '1.2-2' }}</td>
-          </ng-container>
+      <mat-card appearance="outlined">
+        <mat-card-content>
+          <span class="etiqueta">Acidez promedio</span>
+          <span class="valor">{{ r.totales.acidezPromedio | number: '1.1-1' }} °D</span>
+          <span class="detalle">
+            mín. {{ r.totales.acidezMinima | number: '1.0-1' }} · máx.
+            {{ r.totales.acidezMaxima | number: '1.0-1' }}
+          </span>
+        </mat-card-content>
+      </mat-card>
 
-          <tr mat-header-row *matHeaderRowDef="columnasProveedores"></tr>
-          <tr mat-row *matRowDef="let row; columns: columnasProveedores"></tr>
-        </table>
-      </div>
-    </mat-card>
+      <mat-card appearance="outlined">
+        <mat-card-content>
+          <span class="etiqueta">Grasa promedio</span>
+          <span class="valor">
+            {{ r.totales.grasaPromedio !== null ? (r.totales.grasaPromedio | number: '1.2-2') + ' %' : '—' }}
+          </span>
+          <span class="detalle">en {{ r.totales.cantidadConGrasa | number: '1.0-0' }} recepciones</span>
+        </mat-card-content>
+      </mat-card>
 
-    <h3>Litros por día</h3>
-    <mat-card>
-      <div class="table-wrapper">
-        <table mat-table [dataSource]="r.dias" class="full-width">
-          <ng-container matColumnDef="fecha">
-            <th mat-header-cell *matHeaderCellDef>Fecha</th>
-            <td mat-cell *matCellDef="let d">{{ d.fecha | date: 'dd/MM/yyyy' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="litros">
-            <th mat-header-cell *matHeaderCellDef>Litros</th>
-            <td mat-cell *matCellDef="let d">{{ d.litros | number: '1.0-2' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="recepciones">
-            <th mat-header-cell *matHeaderCellDef>Recepciones</th>
-            <td mat-cell *matCellDef="let d">{{ d.cantidadRecepciones | number: '1.0-0' }}</td>
-          </ng-container>
+      <mat-card appearance="outlined" [class.fuera-de-rango]="r.totales.cantidadFueraDeRango > 0">
+        <mat-card-content>
+          <span class="etiqueta">Fuera de rango</span>
+          <span class="valor">{{ r.totales.cantidadFueraDeRango | number: '1.0-0' }}</span>
+          <span class="detalle">acidez o temperatura sobre el límite</span>
+        </mat-card-content>
+      </mat-card>
+    </section>
 
-          <tr mat-header-row *matHeaderRowDef="columnasDias"></tr>
-          <tr mat-row *matRowDef="let row; columns: columnasDias"></tr>
-        </table>
-      </div>
+    @if (serie(); as s) {
+      <mat-card appearance="outlined" class="grafico">
+        <mat-card-content>
+          <div class="grafico-encabezado">
+            <h3>{{ s.agrupacion === 'mes' ? 'Litros por mes' : 'Litros por día' }}</h3>
+            <span class="promedio">
+              Promedio diario: {{ s.promedioDiario | number: '1.0-0' }} L
+            </span>
+          </div>
+
+          <div
+            class="grafico-cuerpo"
+            role="img"
+            [attr.aria-label]="
+              (s.agrupacion === 'mes' ? 'Litros por mes' : 'Litros por día') +
+              ': ' + s.barras.length + ' barras, máximo ' +
+              (s.maximoEje | number: '1.0-0') + ' L, promedio diario ' +
+              (s.promedioDiario | number: '1.0-0') + ' L'
+            "
+          >
+            <div class="eje-y" aria-hidden="true">
+              @for (t of s.ticks; track t) {
+                <span [style.bottom.%]="(t / s.maximoEje) * 100">{{ t | number: '1.0-0' }}</span>
+              }
+            </div>
+            <div class="area">
+              <div class="barras">
+                @for (t of s.ticks; track t) {
+                  <span class="linea" [style.bottom.%]="(t / s.maximoEje) * 100"></span>
+                }
+                @for (b of s.barras; track $index) {
+                  <span
+                    class="barra"
+                    [style.height.%]="(b.litros / s.maximoEje) * 100"
+                    [attr.title]="b.titulo"
+                  ></span>
+                }
+              </div>
+              <div class="eje-x" aria-hidden="true">
+                @for (b of s.barras; track $index) {
+                  <span>{{ b.mostrarEtiqueta ? b.etiqueta : '' }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <mat-card appearance="outlined" class="ranking">
+      <mat-card-content>
+        <h3>Ranking de proveedores</h3>
+        <div class="table-wrapper">
+          <table mat-table [dataSource]="filasProveedores()" class="full-width">
+            <ng-container matColumnDef="nombre">
+              <th mat-header-cell *matHeaderCellDef>Proveedor</th>
+              <td mat-cell *matCellDef="let p">{{ p.nombre }}</td>
+            </ng-container>
+            <ng-container matColumnDef="litros">
+              <th mat-header-cell *matHeaderCellDef class="numero">Litros</th>
+              <td mat-cell *matCellDef="let p" class="numero">{{ p.litros | number: '1.0-0' }}</td>
+            </ng-container>
+            <ng-container matColumnDef="participacion">
+              <th mat-header-cell *matHeaderCellDef>Participación</th>
+              <td mat-cell *matCellDef="let p">
+                <div class="participacion">
+                  <mat-progress-bar
+                    mode="determinate"
+                    [value]="p.participacion"
+                    [attr.aria-label]="'Participación de ' + p.nombre"
+                  />
+                  <span class="porcentaje">{{ p.participacion | number: '1.1-1' }} %</span>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="recepciones">
+              <th mat-header-cell *matHeaderCellDef class="numero">Recepciones</th>
+              <td mat-cell *matCellDef="let p" class="numero">
+                {{ p.cantidadRecepciones | number: '1.0-0' }}
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="fueraDeRango">
+              <th mat-header-cell *matHeaderCellDef class="numero">Fuera de rango</th>
+              <td
+                mat-cell
+                *matCellDef="let p"
+                class="numero"
+                [class.alerta]="p.cantidadFueraDeRango > 0"
+              >
+                {{ p.cantidadFueraDeRango | number: '1.0-0' }}
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="columnasProveedores"></tr>
+            <tr mat-row *matRowDef="let row; columns: columnasProveedores"></tr>
+          </table>
+        </div>
+      </mat-card-content>
     </mat-card>
   }
 }

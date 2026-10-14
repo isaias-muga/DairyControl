@@ -51,7 +51,7 @@ export class Login {
     this.error.set(null);
 
     this.auth.login(username, password).subscribe({
-      next: () => this.router.navigate(['/proveedores']),
+      next: () => this.router.navigate(['/resumen']),
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
         this.error.set(

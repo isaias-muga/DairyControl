@@ -21,6 +21,10 @@ html {
   );
 }
 
+:root {
+  --app-success: #1b6e2d; /* Material has no "success" token */
+}
+
 body {
   margin: 0;
   background: var(--mat-sys-surface-container-low);
