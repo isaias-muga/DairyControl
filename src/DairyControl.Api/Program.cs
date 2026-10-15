@@ -1,4 +1,4 @@
-using DairyControl.Api.Health;
+﻿using DairyControl.Api.Health;
 using DairyControl.Api.Middleware;
 using DairyControl.Application.Queries;
 using DairyControl.Application.Services;
@@ -44,6 +44,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
             errorNumbersToAdd: null)));
 
 builder.Services.AddDairyControlHealthChecks();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IProveedorRepository, ProveedorRepository>();
 builder.Services.AddScoped<ProveedorAppService>();
 builder.Services.AddScoped<IRecepcionQueries, RecepcionQueries>();

@@ -11,10 +11,10 @@ namespace DairyControl.Domain.Entities
 
         private readonly List<RecepcionLeche> _recepciones = new();
         public IReadOnlyCollection<RecepcionLeche> Recepciones => _recepciones;
-        public void RegistrarRecepcion(ParametrosCalidad parametros, DateTime fechaHora, int? silo, string? observaciones, int? ticket = null)
+        public void RegistrarRecepcion(ParametrosCalidad parametros, DateTime fechaHora, DateTime ahoraPlanta, int? silo, string? observaciones, int? ticket = null)
         {
             ArgumentNullException.ThrowIfNull(parametros);
-            var recepcion = RecepcionLeche.Registrar(parametros, fechaHora, silo, observaciones, ticket);
+            var recepcion = RecepcionLeche.Registrar(parametros, fechaHora, ahoraPlanta, silo, observaciones, ticket);
             _recepciones.Add(recepcion);
         }
         public static Proveedor Crear(string nombre)

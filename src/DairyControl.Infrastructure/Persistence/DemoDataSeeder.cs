@@ -1,4 +1,5 @@
-﻿using DairyControl.Domain.Entities;
+﻿using DairyControl.Application;
+using DairyControl.Domain.Entities;
 using DairyControl.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -7,7 +8,6 @@ namespace DairyControl.Infrastructure.Persistence
 {
     public class DemoDataSeeder
     {
-        private const string ZonaHorariaPlanta = "America/Argentina/Buenos_Aires";
 
         private readonly AppDbContext _context;
         private readonly ILogger<DemoDataSeeder>? _logger;
@@ -81,7 +81,7 @@ namespace DairyControl.Infrastructure.Persistence
 
         private Task AddDemoDataAsync()
         {
-            var ahoraPlanta = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, ZonaHorariaPlanta);
+            var ahoraPlanta = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, HoraPlanta.ZonaHoraria);
             var desde = ahoraPlanta.Date.AddDays(-DemoDataGenerator.DiasHistorial);
 
             _context.Proveedores.AddRange(new DemoDataGenerator().Generar(desde));

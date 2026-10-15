@@ -11,10 +11,12 @@ namespace DairyControl.Application.Services
     public class ProveedorAppService
     {
         private readonly IProveedorRepository _repository;
+        private readonly TimeProvider _reloj;
 
-        public ProveedorAppService(IProveedorRepository repository)
+        public ProveedorAppService(IProveedorRepository repository, TimeProvider reloj)
         {
             _repository = repository;
+            _reloj = reloj;
         }
 
         public async Task<ProveedorDto> CrearAsync(CrearProveedorDto dto)
@@ -89,7 +91,8 @@ namespace DairyControl.Application.Services
                     throw new TicketDuplicadoException(MensajeTicketDuplicado(numeroTicket, existente));
             }
 
-            proveedor.RegistrarRecepcion(parametros, dto.FechaHora, dto.Silo, dto.Observaciones, dto.Ticket);
+            // A missing date becomes default(DateTime), which the domain rejects.
+            proveedor.RegistrarRecepcion(parametros, dto.FechaHora.GetValueOrDefault(), HoraPlanta.Ahora(_reloj), dto.Silo, dto.Observaciones, dto.Ticket);
 
             try
             {

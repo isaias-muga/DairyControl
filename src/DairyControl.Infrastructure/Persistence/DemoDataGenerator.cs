@@ -58,9 +58,10 @@ namespace DairyControl.Infrastructure.Persistence
 
             // One ticket sequence for the whole plant, in delivery order (OrderBy is stable, so ties stay deterministic).
             var ticket = TicketInicial;
+            var ahora = desde.AddDays(DiasHistorial); // after the last generated reception
             foreach (var r in recepciones.OrderBy(r => r.FechaHora))
             {
-                r.Proveedor.RegistrarRecepcion(r.Parametros, r.FechaHora, r.Silo, r.Observaciones, ticket++);
+                r.Proveedor.RegistrarRecepcion(r.Parametros, r.FechaHora, ahora, r.Silo, r.Observaciones, ticket++);
             }
 
             return proveedores;
