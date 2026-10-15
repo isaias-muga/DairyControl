@@ -37,7 +37,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `Proveedor` is the aggregate root. `RecepcionLeche` is only created and added through `Proveedor.RegistrarRecepcion`.
 - Collections are exposed as `IReadOnlyCollection<T>` backed by a private `List<T>`.
 - Limits (max lengths, decimal precision/scale) are `public const` fields on the type that owns them, and the EF Core mapping reuses those constants.
-- Plausible ranges reject typing errors and are validated in the domain (`ParametrosCalidad`, `RecepcionLeche`) and mirrored in `client/src/app/models/limits.ts`: litros > 0 and <= 30000, grasa 1-10 %, acidez 10-30 °D, temperatura 0-45 °C, agua 0-100 %, silo 1-20. They are different from the quality limits (`LimitesCalidad`): a plausible value outside the quality limits is accepted and flagged as out of range; an impossible value is rejected with a clear message.
+- Plausible ranges reject typing errors and are validated in the domain (`ParametrosCalidad`, `RecepcionLeche`) and mirrored in `client/src/app/models/limits.ts`: litros 0.001-30000 (positive; the column keeps 3 decimals), grasa 1-10 %, acidez 10-30 °D, temperatura 0-45 °C, agua 0-100 %, silo 1-20. They are different from the quality limits (`LimitesCalidad`): a plausible value outside the quality limits is accepted and flagged as out of range; an impossible value is rejected with a clear message.
 - IDs are `Guid`s generated in the domain with `Guid.NewGuid()`.
 - Use `= null!` only for properties that EF Core populates; never as a general way to silence nullable warnings.
 

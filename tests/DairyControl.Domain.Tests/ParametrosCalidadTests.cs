@@ -34,7 +34,7 @@ namespace DairyControl.Domain.Tests
             Assert.Null(parametrosCalidad.Grasa);
         }
 
-        // Litros: > 0 and <= 30000
+        // Litros: 0.001 to 30000 (a smaller positive value would be stored as 0)
 
         [Theory]
         [InlineData(0.001)]
@@ -52,6 +52,8 @@ namespace DairyControl.Domain.Tests
         [Theory]
         [InlineData(0)]
         [InlineData(-1)]
+        [InlineData(0.0004)]
+        [InlineData(0.0009)]
         [InlineData(30000.001)]
         [InlineData(100000)]
         public void Create_LitrosOutOfRange_ThrowsArgumentException(double litros)
@@ -61,7 +63,7 @@ namespace DairyControl.Domain.Tests
 
             // Assert
             Assert.Equal("litros", ex.ParamName);
-            Assert.Contains("litros", ex.Message);
+            Assert.Contains("Los litros deben estar entre 0.001 y 30000.", ex.Message);
         }
 
         // Grasa: 1 to 10 %

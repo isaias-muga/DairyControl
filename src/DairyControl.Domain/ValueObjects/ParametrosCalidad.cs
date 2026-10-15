@@ -10,7 +10,8 @@
 
         // Plausible ranges (inclusive): they reject typing errors. They are NOT the quality limits
         // (LimitesCalidad): a value outside those limits is accepted and flagged as out of range.
-        public const decimal LitrosMax = 30000m; // litros must be > 0 and <= LitrosMax
+        public const decimal LitrosMin = 0.001m; // the smallest positive value the column keeps (3 decimals); anything lower would be stored as 0
+        public const decimal LitrosMax = 30000m;
         public const decimal GrasaMin = 1m;
         public const decimal GrasaMax = 10m;
         public const decimal AcidezMin = 10m;
@@ -36,9 +37,9 @@
         }
         public static ParametrosCalidad Create(decimal? grasa, decimal acidez, decimal temperatura, decimal litros, decimal? aguaPorcentaje = null)
         {
-            if (litros <= 0 || litros > LitrosMax)
+            if (litros < LitrosMin || litros > LitrosMax)
             {
-                throw new ArgumentException($"Los litros deben ser mayores que 0 y no superar {LitrosMax:0}.", nameof(litros));
+                throw new ArgumentException(FormattableString.Invariant($"Los litros deben estar entre {LitrosMin} y {LitrosMax:0}."), nameof(litros));
             }
 
             if (grasa != null && (grasa < GrasaMin || grasa > GrasaMax))

@@ -91,7 +91,7 @@ describe('RecepcionForm', () => {
       ['aguaPorcentaje', 0], ['aguaPorcentaje', 100],
     ];
     const fuera: [Campo, number][] = [
-      ['litros', 0], ['litros', -1], ['litros', 30000.01],
+      ['litros', 0], ['litros', -1], ['litros', 0.0009], ['litros', 30000.01],
       ['grasa', 0.99], ['grasa', 10.01],
       ['acidez', 9.99], ['acidez', 30.01],
       ['temperatura', -0.01], ['temperatura', 45.01],
@@ -146,7 +146,7 @@ describe('RecepcionForm', () => {
 
       const texto = fixture.nativeElement.textContent as string;
 
-      expect(texto).toContain('Mayor que 0 y hasta 30.000.');
+      expect(texto).toContain('Entre 0,001 y 30.000.');
       expect(texto).toContain('Entre 1 y 10 %.');
       expect(texto).toContain('Requerido, entre 10 y 30 °D.');
       expect(texto).toContain('Requerido, entre 0 y 45 °C.');

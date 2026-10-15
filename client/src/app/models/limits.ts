@@ -3,7 +3,8 @@
 
 export const NOMBRE_MAX_LENGTH = 200; // Proveedor.NombreMaxLength
 export const OBSERVACIONES_MAX_LENGTH = 500; // RecepcionLeche.ObservacionesMaxLength
-// Plausible ranges (typing errors, not the quality limits below). Litros must also be > 0.
+// Plausible ranges (typing errors, not the quality limits below).
+export const LITROS_MIN = 0.001; // ParametrosCalidad.LitrosMin
 export const LITROS_MAX = 30000; // ParametrosCalidad.LitrosMax
 export const GRASA_MIN = 1; // ParametrosCalidad.GrasaMin
 export const GRASA_MAX = 10; // ParametrosCalidad.GrasaMax

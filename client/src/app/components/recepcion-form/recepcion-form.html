@@ -18,7 +18,7 @@
           <mat-label>Litros</mat-label>
           <input matInput id="litros" type="number" step="0.001" formControlName="litros" />
           @if (invalid('litros')) {
-            <mat-error>Mayor que 0 y hasta 30.000.</mat-error>
+            <mat-error>Entre 0,001 y 30.000.</mat-error>
           }
         </mat-form-field>
 

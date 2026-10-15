@@ -10,6 +10,7 @@ import {
   GRASA_MAX,
   GRASA_MIN,
   LITROS_MAX,
+  LITROS_MIN,
   OBSERVACIONES_MAX_LENGTH,
   SILO_MAX,
   SILO_MIN,
@@ -17,7 +18,6 @@ import {
   TEMPERATURA_MIN,
   TICKET_MIN,
 } from '../../models/limits';
-import { greaterThan } from '../../utils/validators';
 import { getApiErrorMessage } from '../../utils/api-error';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
@@ -57,7 +57,7 @@ export class RecepcionForm {
     fechaHora: [ahoraLocal(), Validators.required],
     litros: [
       null as number | null,
-      [Validators.required, greaterThan(0), Validators.max(LITROS_MAX)],
+      [Validators.required, Validators.min(LITROS_MIN), Validators.max(LITROS_MAX)],
     ],
     grasa: [null as number | null, [Validators.min(GRASA_MIN), Validators.max(GRASA_MAX)]],
     acidez: [
