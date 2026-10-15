@@ -10,7 +10,11 @@ Closes #
 
 ## Evidence
 
-<!-- Build and test results, and screenshots (artifacts/pr-<N>/). -->
+<!-- Build and test results, and screenshots embedded from the pr-evidence branch (see CLAUDE.md, Git workflow). -->
+
+## Self-review
+
+<!-- What the independent review found and how each finding was fixed (or why it was rejected). -->
 
 ## Notes
 
