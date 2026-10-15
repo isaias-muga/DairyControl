@@ -8,6 +8,10 @@ namespace DairyControl.Api.Validation
     public static class ApiErrors
     {
         public const string CuerpoObligatorio = "El cuerpo de la solicitud es obligatorio.";
+        public const string CuerpoInvalido = "El cuerpo de la solicitud no es un JSON válido.";
+
+        // DataAnnotations' [Required] (implicit on non-nullable properties) has an English text we cannot configure globally.
+        private static readonly System.Text.RegularExpressions.Regex RequeridoIngles = new(@"^The (?<campo>.+) field is required\.$");
 
         public static object Body(string error, string? field = null) =>
             field is null ? new { error } : new { error, field };
@@ -38,10 +42,15 @@ namespace DairyControl.Api.Validation
             {
                 if (EsCuerpo(key, bodyParameters))
                     return new BadRequestObjectResult(Body(CuerpoObligatorio));
+                if (key == "$") // the body is not parseable JSON at all
+                    return new BadRequestObjectResult(Body(CuerpoInvalido));
 
                 var field = FieldName(key);
                 // Errors keyed by a JSON path ($.x) come from the body deserializer, whose text is English.
-                var message = key.StartsWith('$') || modelError.Exception is JsonException or FormatException || string.IsNullOrWhiteSpace(modelError.ErrorMessage)
+                var requerido = RequeridoIngles.Match(modelError.ErrorMessage);
+                var message = requerido.Success
+                    ? $"El campo «{field}» es obligatorio."
+                    : key.StartsWith('$') || modelError.Exception is JsonException or FormatException || string.IsNullOrWhiteSpace(modelError.ErrorMessage)
                     ? $"El valor de «{field}» no es válido."
                     : modelError.ErrorMessage;
                 return new BadRequestObjectResult(Body(message, field));

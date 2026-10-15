@@ -78,6 +78,28 @@ namespace DairyControl.Api.Tests
         }
 
         [Fact]
+        public void InvalidModelState_EnglishRequiredMessageOnProperty_ReturnsSpanishMessage()
+        {
+            // Act
+            var (_, error, field) = Invoke(m => m.AddModelError("Nombre", "The Nombre field is required."));
+
+            // Assert
+            Assert.Equal("El campo «nombre» es obligatorio.", error);
+            Assert.Equal("nombre", field);
+        }
+
+        [Fact]
+        public void InvalidModelState_UnparseableJson_ReturnsBodyMessageWithoutField()
+        {
+            // Act
+            var (_, error, field) = Invoke(m => m.AddModelError("$", "'{' is invalid"));
+
+            // Assert
+            Assert.Equal(ApiErrors.CuerpoInvalido, error);
+            Assert.Null(field);
+        }
+
+        [Fact]
         public void InvalidModelState_BindingMessage_KeepsMessageAndNamesField()
         {
             // Act
