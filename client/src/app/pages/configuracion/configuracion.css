@@ -1,0 +1,50 @@
+:host {
+  display: block;
+}
+
+.encabezado {
+  margin-bottom: 16px;
+}
+
+.encabezado h2 {
+  margin: 0;
+}
+
+.subtitulo {
+  margin: 4px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.limites {
+  margin-bottom: 16px;
+}
+
+.nota {
+  margin: 8px 0 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 16px;
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.modificacion {
+  margin-right: auto;
+  color: var(--mat-sys-on-surface-variant);
+}

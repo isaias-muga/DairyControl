@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\DairyControl.Application\DairyControl.Application.csproj" />
     <ProjectReference Include="..\..\src\DairyControl.Domain\DairyControl.Domain.csproj" />
+    <ProjectReference Include="..\..\src\DairyControl.Infrastructure\DairyControl.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

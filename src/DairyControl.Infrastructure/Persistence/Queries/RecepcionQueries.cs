@@ -1,21 +1,17 @@
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Queries;
-using DairyControl.Application.Settings;
 using DairyControl.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace DairyControl.Infrastructure.Persistence.Queries
 {
     public class RecepcionQueries : IRecepcionQueries
     {
         private readonly AppDbContext _context;
-        private readonly LimitesCalidad _limites;
 
-        public RecepcionQueries(AppDbContext context, IOptions<CalidadLimitesSettings> limites)
+        public RecepcionQueries(AppDbContext context)
         {
             _context = context;
-            _limites = LimitesCalidad.Create(limites.Value.AcidezMaxima, limites.Value.TemperaturaMaxima);
         }
 
         public async Task<ResumenRecepcionesDto> GetResumenAsync(DateOnly desde, DateOnly hasta, Guid? proveedorId)
@@ -25,7 +21,12 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             var hastaAnterior = desde.AddDays(-1);
 
             var recepciones = Recepciones(desde, hasta, proveedorId);
-            var fueraDeRango = _limites.FueraDeRango<FilaRecepcion>(x => x.Acidez, x => x.Temperatura);
+            // The limits are editable at runtime, so they are read from the database on every request.
+            var limites = await _context.ConfiguracionesCalidad
+                .AsNoTracking()
+                .Select(c => c.Limites)
+                .SingleAsync();
+            var fueraDeRango = limites.FueraDeRango<FilaRecepcion>(x => x.Acidez, x => x.Temperatura, x => x.Agua);
 
             var totales = await recepciones
                 .GroupBy(x => 1)
@@ -125,7 +126,8 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                     Litros = r.Parametros.Litros,
                     Acidez = r.Parametros.Acidez,
                     Temperatura = r.Parametros.Temperatura,
-                    Grasa = r.Parametros.Grasa
+                    Grasa = r.Parametros.Grasa,
+                    Agua = r.Parametros.AguaPorcentaje ?? 0
                 }));
         }
 
@@ -138,6 +140,7 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             public decimal Acidez { get; set; }
             public decimal Temperatura { get; set; }
             public decimal? Grasa { get; set; }
+            public decimal Agua { get; set; }
         }
     }
 }

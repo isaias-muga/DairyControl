@@ -49,7 +49,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Return `null` when something is not found; the controller turns it into a 404.
 - Methods are `async` only when they await I/O.
 - Settings classes live in `Application/Settings` and are injected as `IOptions<T>`.
-- Quality limits come from the `CalidadLimites` section of `appsettings.json` (`AcidezMaxima` = 19 °D, `TemperaturaMaxima` = 20 °C; not secrets), bound to `CalidadLimitesSettings` and validated on startup (both > 0). Override with `CalidadLimites__AcidezMaxima` / `CalidadLimites__TemperaturaMaxima`. The rule "out of range = acidity > max OR temperature > max" lives only in the domain (`LimitesCalidad.FueraDeRango`, an expression so EF Core can translate it); never copy the thresholds or the rule elsewhere. Fat has no limit.
+- Quality limits are not configuration files: they are the single `ConfiguracionCalidad` row (aggregate root, own repository), seeded with 19 °D / 20 °C / 0 % water and editable at runtime through `GET/PUT /api/Configuracion/calidad` (`ConfiguracionCalidadAppService`). `RecepcionQueries` reads the current limits from the database on every request. The rule "out of range = acidity > max OR temperature > max OR water > max" lives only in the domain (`LimitesCalidad.FueraDeRango`, an expression so EF Core can translate it); never copy the thresholds or the rule elsewhere. Fat has no limit. Water null counts as 0.
 
 ## Infrastructure conventions
 

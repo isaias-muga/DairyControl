@@ -10,4 +10,7 @@ public class RecepcionDto
     public decimal Temperatura { get; set; }
     public int? Silo { get; set; }
     public string? Observaciones { get; set; }
+    public decimal? AguaPorcentaje { get; set; }
+    public int? Ticket { get; set; }
+    public decimal LitrosAPagar { get; set; }
 }

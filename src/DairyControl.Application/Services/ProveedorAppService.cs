@@ -49,7 +49,10 @@ namespace DairyControl.Application.Services
                         Acidez = r.Parametros.Acidez,
                         Temperatura = r.Parametros.Temperatura,
                         Silo = r.Silo,
-                        Observaciones = r.Observaciones
+                        Observaciones = r.Observaciones,
+                        AguaPorcentaje = r.Parametros.AguaPorcentaje,
+                        Ticket = r.Ticket,
+                        LitrosAPagar = r.LitrosAPagar
                     })
                     .ToList()
             };
@@ -73,9 +76,9 @@ namespace DairyControl.Application.Services
             if (proveedor == null)
                 return null;
 
-            var parametros = ParametrosCalidad.Create(dto.Grasa, dto.Acidez, dto.Temperatura, dto.Litros);
+            var parametros = ParametrosCalidad.Create(dto.Grasa, dto.Acidez, dto.Temperatura, dto.Litros, dto.AguaPorcentaje);
 
-            proveedor.RegistrarRecepcion(parametros, dto.FechaHora, dto.Silo, dto.Observaciones);
+            proveedor.RegistrarRecepcion(parametros, dto.FechaHora, dto.Silo, dto.Observaciones, dto.Ticket);
             await _repository.UpdateAsync(proveedor);
             return new ProveedorDto
             {

@@ -216,6 +216,7 @@ describe('Resumen', () => {
       expect(text).toContain('mín. 4,2 · máx. 22,1');
       expect(text).toContain('—');
       expect(el().querySelector('.fuera-de-rango')).toBeTruthy();
+      expect(text).toContain('temperatura, acidez o agua sobre el límite');
     });
 
     it('renders the ranking with shares and out-of-range counts', () => {

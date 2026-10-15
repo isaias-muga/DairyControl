@@ -4,22 +4,25 @@ namespace DairyControl.Domain.Tests
 {
     public class LimitesCalidadTests
     {
-        private static LimitesCalidad Limites() => LimitesCalidad.Create(19m, 20m);
+        private static LimitesCalidad Limites() => LimitesCalidad.Create(19m, 20m, 2m);
 
         [Theory]
-        [InlineData(19.01, 10, true)]
-        [InlineData(19, 10, false)]
-        [InlineData(15, 20.01, true)]
-        [InlineData(15, 20, false)]
-        [InlineData(25, 25, true)]
-        [InlineData(15, 4, false)]
-        public void EstaFueraDeRango_Values_FollowsOrRule(double acidez, double temperatura, bool esperado)
+        [InlineData(19.01, 10, 0, true)]
+        [InlineData(19, 10, 0, false)]
+        [InlineData(15, 20.01, 0, true)]
+        [InlineData(15, 20, 0, false)]
+        [InlineData(25, 25, 0, true)]
+        [InlineData(15, 4, 0, false)]
+        [InlineData(15, 4, 2.01, true)]
+        [InlineData(15, 4, 2, false)]
+        [InlineData(25, 25, 5, true)]
+        public void EstaFueraDeRango_Values_FollowsOrRule(double acidez, double temperatura, double agua, bool esperado)
         {
             // Arrange
             var limites = Limites();
 
             // Act
-            var result = limites.EstaFueraDeRango((decimal)acidez, (decimal)temperatura);
+            var result = limites.EstaFueraDeRango((decimal)acidez, (decimal)temperatura, (decimal)agua);
 
             // Assert
             Assert.Equal(esperado, result);
@@ -30,24 +33,43 @@ namespace DairyControl.Domain.Tests
         {
             // Arrange
             var limites = Limites();
-            var regla = limites.FueraDeRango<(decimal A, decimal T)>(x => x.A, x => x.T).Compile();
+            var regla = limites.FueraDeRango<(decimal A, decimal T, decimal W)>(x => x.A, x => x.T, x => x.W).Compile();
 
             // Act & Assert
-            foreach (var (a, t) in new[] { (18m, 10m), (19.5m, 10m), (15m, 21m), (30m, 30m), (19m, 20m) })
+            foreach (var (a, t, w) in new[] { (18m, 10m, 0m), (19.5m, 10m, 0m), (15m, 21m, 0m), (30m, 30m, 0m), (19m, 20m, 2m), (15m, 10m, 2.5m) })
             {
-                Assert.Equal(limites.EstaFueraDeRango(a, t), regla((a, t)));
+                Assert.Equal(limites.EstaFueraDeRango(a, t, w), regla((a, t, w)));
             }
         }
 
         [Theory]
-        [InlineData(0, 20)]
-        [InlineData(-1, 20)]
-        [InlineData(19, 0)]
-        [InlineData(19, -5)]
-        public void Create_NonPositiveLimit_ThrowsArgumentException(double acidez, double temperatura)
+        [InlineData(10, 0, 0)]
+        [InlineData(30, 40, 10)]
+        [InlineData(19, 20, 0)]
+        public void Create_LimitsOnBoundaries_ReturnsInstance(double acidez, double temperatura, double agua)
         {
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => LimitesCalidad.Create((decimal)acidez, (decimal)temperatura));
+            // Act
+            var limites = LimitesCalidad.Create((decimal)acidez, (decimal)temperatura, (decimal)agua);
+
+            // Assert
+            Assert.NotNull(limites);
+        }
+
+        [Theory]
+        [InlineData(9.99, 20, 0, "acidezMaxima")]
+        [InlineData(30.01, 20, 0, "acidezMaxima")]
+        [InlineData(19, -0.01, 0, "temperaturaMaxima")]
+        [InlineData(19, 40.01, 0, "temperaturaMaxima")]
+        [InlineData(19, 20, -0.01, "aguaMaxima")]
+        [InlineData(19, 20, 10.01, "aguaMaxima")]
+        public void Create_LimitOutOfRange_ThrowsArgumentException(double acidez, double temperatura, double agua, string parametro)
+        {
+            // Act
+            var ex = Assert.Throws<ArgumentException>(() =>
+                LimitesCalidad.Create((decimal)acidez, (decimal)temperatura, (decimal)agua));
+
+            // Assert
+            Assert.Equal(parametro, ex.ParamName);
         }
     }
 }
