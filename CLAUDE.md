@@ -9,7 +9,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `src/DairyControl.Application`: services, DTOs, settings
 - `src/DairyControl.Infrastructure`: `AppDbContext`, EF Core configurations, migrations, repositories
 - `src/DairyControl.Api`: controllers, middleware, `Program.cs`
-- `tests/DairyControl.Domain.Tests` and `tests/DairyControl.Application.Tests`
+- `tests/DairyControl.Domain.Tests`, `tests/DairyControl.Application.Tests`, `tests/DairyControl.Api.Tests` and `tests/DairyControl.Infrastructure.Tests`
 - `client/`: Angular client (see "Client conventions")
 - `global.json`: opts `dotnet test` into Microsoft.Testing.Platform. Required on the .NET 10 SDK; do not delete it or pin an SDK version in it.
 
@@ -104,7 +104,9 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - xUnit with Moq. Arrange-Act-Assert, with the three sections commented.
 - Test names: `Method_Scenario_ExpectedResult`.
 - Domain tests use real objects and no mocks.
-- Application tests mock `IProveedorRepository`, created inside each test (`var mockRepo = new Mock<IProveedorRepository>();`). No test touches a database.
+- Application tests mock `IProveedorRepository`, created inside each test (`var mockRepo = new Mock<IProveedorRepository>();`). Domain, Application and Api tests never touch a database.
+- Only `DairyControl.Infrastructure.Tests` may use a database, and only an in-memory SQLite one (schema from `EnsureCreated`, since the migrations are SQL Server-specific), for the reset/seeder logic.
+- SQLite tests don't cover SQL Server-specific behavior (migrations, unique-violation error codes, query translation); those are verified manually against SQL Server until we add Testcontainers integration tests.
 - Verify persistence calls with `Verify(..., Times.Once)` or `Times.Never`, not just the returned data.
 - Call `Assert.NotNull(result)` before asserting on properties of a nullable result.
 
@@ -131,6 +133,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `Database:ApplyMigrationsOnStartup` (default `false`): when `true`, the API runs `Database.Migrate()` at startup. Enabled only in `compose.yaml`.
 - `HttpsRedirection:Enabled` (default `true`): when `false`, `UseHttpsRedirection` is skipped. Set to `false` only in `compose.yaml`, where the API listens on plain HTTP behind nginx.
 - `DemoData:SeedOnStartup` (default `false`): when `true` and the database has no proveedores, `DemoDataSeeder` creates demo data at startup. Enabled only in `compose.yaml`.
+- `DemoData:ResetOnStartup` (default `false`): when `true`, at startup (after migrations, before seeding) the API deletes all recepciones and proveedores, restores the default quality limits (`LimitesCalidad.Predeterminados`) and reseeds the demo data, in one transaction inside the execution strategy; it logs a warning with the deleted counts and never touches the admin user. It reseeds even if `SeedOnStartup` is `false`. Only for the demo environment (Azure); not enabled in `compose.yaml`.
 - `API_UPSTREAM` (client image, default `http://api:8080`): where nginx proxies `/api`. `client/nginx.conf.template` is filled from environment variables when the container starts. On Azure it points to the API's internal ingress.
 
 ## How to work in this repo

@@ -61,6 +61,24 @@ describe('Login', () => {
     expect(loginSpy).not.toHaveBeenCalled();
   });
 
+  it('demoNote_WithCredentials_IsShownBelowTheDemoCredentials', async () => {
+    // Arrange / Act
+    await setup(demoCredentials);
+
+    // Assert
+    const nota = fixture.nativeElement.querySelector('.demo-credentials .demo-note');
+    expect(nota).toBeTruthy();
+    expect(nota.textContent.trim()).toBe('Demo: los datos se restablecen automáticamente.');
+  });
+
+  it('demoNote_WithoutCredentials_IsNotShown', async () => {
+    // Arrange / Act
+    await setup(null);
+
+    // Assert
+    expect(fixture.nativeElement.textContent).not.toContain('se restablecen automáticamente');
+  });
+
   it('credentialsBlock_NullToken_IsNotRendered', async () => {
     // Arrange / Act
     await setup(null);

@@ -11,6 +11,9 @@ namespace DairyControl.Domain.ValueObjects
         public const decimal AguaMinimaPermitida = 0m;
         public const decimal AguaMaximaPermitida = 10m;
 
+        // The limits a plant starts with (and the demo reset restores): 19 °D, 20 °C, 0 % water.
+        public static LimitesCalidad Predeterminados { get; } = new(19m, 20m, 0m);
+
         public decimal AcidezMaxima { get; init; }
         public decimal TemperaturaMaxima { get; init; }
         public decimal AguaMaxima { get; init; }

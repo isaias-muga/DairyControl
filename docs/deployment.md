@@ -65,7 +65,10 @@ The tables are not created by hand: the API applies the EF Core migrations and s
    | `AdminUser__Password`                | secret `admin-password`        |
    | `Database__ApplyMigrationsOnStartup` | `true`                         |
    | `DemoData__SeedOnStartup`            | `true`                         |
+   | `DemoData__ResetOnStartup`           | `true`                         |
    | `HttpsRedirection__Enabled`          | `false` (Azure terminates TLS) |
+
+   `DemoData__ResetOnStartup` wipes all proveedores and recepciones, restores the default quality limits and reseeds the demo data every time the API starts (every cold start after scaling to zero). Use it only in the demo environment; the admin user is not touched.
 
 4. Create the **client app** in the same environment:
    - Image: `ghcr.io/isaias-muga/dairycontrol-client:<tag>`.
