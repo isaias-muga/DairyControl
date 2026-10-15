@@ -18,6 +18,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:8080',
     locale: 'es-AR',
+    // The plant works in Buenos Aires time (Resumen ranges); the CI runner is UTC
+    timezoneId: 'America/Argentina/Buenos_Aires',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
