@@ -1,7 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
-import { crearProveedor, loginYEsperarResumen, registrarRecepcion, rellenar } from '../helpers';
+import {
+  crearProveedor,
+  guardarLimites,
+  loginYEsperarResumen,
+  registrarRecepcion,
+  rellenar,
+  restaurarAcidezMaxima,
+} from '../helpers';
 
-// The limits row is global: the second test changes it and always restores it.
+// The limits row is global: the tests that change it always restore the default (restaurarAcidezMaxima).
 
 async function fueraDeRangoEn(page: Page, nombre: string): Promise<string> {
   await page.getByRole('link', { name: 'Resumen' }).click();
@@ -24,27 +31,34 @@ test('calidad: a value outside the limits is saved and flagged as out of range',
   expect(await fueraDeRangoEn(page, nombre)).toBe('1');
 });
 
-test('calidad: changing a limit in Configuración changes what is flagged', async ({ page }) => {
-  const nombre = await crearProveedor(page);
-  await registrarRecepcion(page, { litros: 1000, acidez: 22, temperatura: 5 });
-  await expect(page.getByRole('heading', { name: 'Recepciones (1)' })).toBeVisible();
-  expect(await fueraDeRangoEn(page, nombre)).toBe('1');
+// demoraMs > 0 holds the save request back, like a slow connection: Resumen must still see the new limit.
+for (const demoraMs of [0, 500]) {
+  const titulo = 'calidad: changing a limit in Configuración changes what is flagged';
+  test(demoraMs ? `${titulo} (slow save)` : titulo, async ({ page, request }) => {
+    if (demoraMs) {
+      await page.route('**/api/Configuracion/calidad', async (route) => {
+        if (route.request().method() === 'PUT') {
+          await new Promise((resolve) => setTimeout(resolve, demoraMs));
+        }
+        await route.continue();
+      });
+    }
+    const nombre = await crearProveedor(page);
+    await registrarRecepcion(page, { litros: 1000, acidez: 22, temperatura: 5 });
+    await expect(page.getByRole('heading', { name: 'Recepciones (1)' })).toBeVisible();
+    expect(await fueraDeRangoEn(page, nombre)).toBe('1');
 
-  await page.getByRole('link', { name: 'Configuración' }).click();
-  const acidezMaxima = page.getByLabel(/^Acidez máxima/);
-  await expect(acidezMaxima).toBeVisible();
-  const original = await acidezMaxima.inputValue();
-
-  try {
-    await rellenar(acidezMaxima, '25');
-    await page.getByRole('button', { name: 'Guardar' }).click();
-    await expect(page.getByText('Última modificación')).toBeVisible();
-
-    expect(await fueraDeRangoEn(page, nombre)).toBe('0');
-  } finally {
     await page.getByRole('link', { name: 'Configuración' }).click();
-    await rellenar(page.getByLabel(/^Acidez máxima/), original);
-    await page.getByRole('button', { name: 'Guardar' }).click();
-    await expect(page.getByLabel(/^Acidez máxima/)).toHaveValue(original);
-  }
-});
+    await expect(page.getByLabel(/^Acidez máxima/)).toBeVisible();
+
+    try {
+      await rellenar(page.getByLabel(/^Acidez máxima/), '25');
+      await guardarLimites(page);
+
+      expect(await fueraDeRangoEn(page, nombre)).toBe('0');
+    } finally {
+      // Always restore the documented default through the API: it works even after a timeout or a closed page.
+      await restaurarAcidezMaxima(request);
+    }
+  });
+}
