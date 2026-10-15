@@ -18,4 +18,4 @@ Closes #
 
 ## Notes
 
-<!-- Risks, follow-ups, and things to check while reviewing. -->
+<!-- Risks, follow-ups, and things to check while reviewing. Process: lead time (issue opened to PR ready); what the independent review, the E2E tests and the exploratory checks caught; review rounds. -->
