@@ -1,4 +1,5 @@
-﻿using DairyControl.Domain.Exceptions;
+﻿using DairyControl.Api.Validation;
+using DairyControl.Domain.Exceptions;
 using System.Text.Json;
 namespace DairyControl.Api.Middleware
 {
@@ -21,24 +22,21 @@ namespace DairyControl.Api.Middleware
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 context.Response.ContentType = "application/json";
-                var errorResponse = new { error = ex.Message };
-                var json = JsonSerializer.Serialize(errorResponse);
+                var json = JsonSerializer.Serialize(ApiErrors.Body(ApiErrors.Message(ex), ex.ParamName));
                 await context.Response.WriteAsync(json);
             }
             catch (TicketDuplicadoException ex)
             {
                 context.Response.StatusCode = StatusCodes.Status409Conflict;
                 context.Response.ContentType = "application/json";
-                var errorResponse = new { error = ex.Message };
-                var json = JsonSerializer.Serialize(errorResponse);
+                var json = JsonSerializer.Serialize(ApiErrors.Body(ex.Message));
                 await context.Response.WriteAsync(json);
             }
             catch (Exception ex)
             {
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 context.Response.ContentType = "application/json";
-                var errorResponse = new { error = "An unexpected error occurred" };
-                var json = JsonSerializer.Serialize(errorResponse); //loggin gap here
+                var json = JsonSerializer.Serialize(ApiErrors.Body("Ocurrió un error inesperado.")); //loggin gap here
                 await context.Response.WriteAsync(json);
             }
         }

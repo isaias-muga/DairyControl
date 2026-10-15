@@ -7,6 +7,7 @@ using DairyControl.Domain.Interfaces;
 using DairyControl.Infrastructure.Persistence;
 using DairyControl.Infrastructure.Persistence.Queries;
 using DairyControl.Infrastructure.Persistence.Repositories;
+using DairyControl.Api.Validation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -16,7 +17,8 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Registering services — telling the DI container what exists
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => ApiErrors.UseSpanishBindingMessages(options))
+    .ConfigureApiBehaviorOptions(options => options.InvalidModelStateResponseFactory = ApiErrors.InvalidModelState);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
