@@ -1,0 +1,18 @@
+<h2 mat-dialog-title>Observaciones</h2>
+
+<mat-dialog-content>
+  <dl class="contexto">
+    <dt>Ticket</dt>
+    <dd>{{ data.ticket ?? '—' }}</dd>
+    <dt>Proveedor</dt>
+    <dd>{{ data.proveedor }}</dd>
+    <dt>Fecha y hora</dt>
+    <dd>{{ data.fechaHora | date: 'dd/MM/yyyy HH:mm' }}</dd>
+  </dl>
+
+  <p class="texto">{{ data.observaciones }}</p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Cerrar</button>
+</mat-dialog-actions>

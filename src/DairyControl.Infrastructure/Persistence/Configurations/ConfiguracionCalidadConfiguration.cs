@@ -1,14 +1,12 @@
 using DairyControl.Domain.Entities;
+using DairyControl.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace DairyControl.Infrastructure.Persistence.Configurations
 {
     internal class ConfiguracionCalidadConfiguration : IEntityTypeConfiguration<ConfiguracionCalidad>
     {
-        // Initial limits (acidity °D, temperature °C, water %) and a fixed timestamp so the seed is deterministic.
-        private const decimal AcidezInicial = 19m;
-        private const decimal TemperaturaInicial = 20m;
-        private const decimal AguaInicial = 0m;
+        // Initial limits come from LimitesCalidad.Predeterminados; the fixed timestamp keeps the seed deterministic.
         private static readonly DateTime ActualizadoEnInicial = new(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
 
         public void Configure(EntityTypeBuilder<ConfiguracionCalidad> builder)
@@ -24,9 +22,9 @@ namespace DairyControl.Infrastructure.Persistence.Configurations
                 l.HasData(new
                 {
                     ConfiguracionCalidadId = ConfiguracionCalidad.IdUnico,
-                    AcidezMaxima = AcidezInicial,
-                    TemperaturaMaxima = TemperaturaInicial,
-                    AguaMaxima = AguaInicial
+                    LimitesCalidad.Predeterminados.AcidezMaxima,
+                    LimitesCalidad.Predeterminados.TemperaturaMaxima,
+                    LimitesCalidad.Predeterminados.AguaMaxima
                 });
             });
             builder.HasData(new

@@ -92,7 +92,7 @@ namespace DairyControl.Application.Tests
         {
             // Arrange
             var proveedor = Proveedor.Crear("Proveedor Test");
-            proveedor.RegistrarRecepcion(ParametrosCalidad.Create(3.5m, 6.5m, 4.0m, 1000m), DateTime.Now, 1, null);
+            proveedor.RegistrarRecepcion(ParametrosCalidad.Create(3.5m, 17m, 4.0m, 1000m), DateTime.Now, 1, null);
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor> { proveedor });
 
@@ -113,7 +113,7 @@ namespace DairyControl.Application.Tests
             var service = new ProveedorAppService(mockRepo.Object);
 
             var proveedor = Proveedor.Crear("Tambo La Esperanza");
-            var parametros = ParametrosCalidad.Create(3.5m, 6.5m, 4.0m, 1500m);
+            var parametros = ParametrosCalidad.Create(3.5m, 17m, 4.0m, 1500m);
             var anterior = new DateTime(2026, 10, 1, 6, 0, 0);
             var reciente = new DateTime(2026, 10, 2, 6, 0, 0);
             proveedor.RegistrarRecepcion(parametros, anterior, 1, null);
@@ -177,7 +177,7 @@ namespace DairyControl.Application.Tests
             var RegistrarRecepcionDto = new RegistrarRecepcionDto
             {
                 Grasa = 3.5m,
-                Acidez = 6.5m,
+                Acidez = 17m,
                 Temperatura = 4.0m,
                 Litros = 1000m,
                 FechaHora = DateTime.Now,
@@ -253,6 +253,54 @@ namespace DairyControl.Application.Tests
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData("grasa")]
+        [InlineData("acidez")]
+        [InlineData("temperatura")]
+        [InlineData("litros")]
+        [InlineData("silo")]
+        public async Task RegistrarRecepcionAsync_ImpossibleValue_ThrowsAndNeverCallsUpdate(string campo)
+        {
+            // Arrange
+            var proveedor = Proveedor.Crear("Proveedor Test");
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            var dto = new RegistrarRecepcionDto { Grasa = 3.5m, Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = DateTime.Now, Silo = 2 };
+            switch (campo)
+            {
+                case "grasa": dto.Grasa = 12m; break;
+                case "acidez": dto.Acidez = 5m; break;
+                case "temperatura": dto.Temperatura = 60m; break;
+                case "litros": dto.Litros = 45000m; break;
+                case "silo": dto.Silo = 99; break;
+            }
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+            Assert.Empty(proveedor.Recepciones);
+            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_ValueOutsideQualityLimitsButPlausible_IsAccepted()
+        {
+            // Arrange: acidity 28 °D and 35 °C are far above the default quality limits but plausible
+            var proveedor = Proveedor.Crear("Proveedor Test");
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object);
+            var dto = new RegistrarRecepcionDto { Acidez = 28m, Temperatura = 35m, Litros = 1000m, FechaHora = DateTime.Now };
+
+            // Act
+            var result = await service.RegistrarRecepcionAsync(proveedor.Id, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
         }
 
         private static RegistrarRecepcionDto DtoConTicket(int? ticket) => new()

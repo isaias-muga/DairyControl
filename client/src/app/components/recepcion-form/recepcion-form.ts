@@ -4,14 +4,20 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ProveedoresService } from '../../services/proveedores';
 import { RegistrarRecepcion } from '../../models/proveedor';
 import {
+  ACIDEZ_MAX,
+  ACIDEZ_MIN,
   AGUA_MAX_PORCENTAJE,
-  LITROS_MAX_EXCLUSIVE,
+  GRASA_MAX,
+  GRASA_MIN,
+  LITROS_MAX,
   LITROS_MIN,
   OBSERVACIONES_MAX_LENGTH,
-  PARAMETRO_MAX_EXCLUSIVE,
+  SILO_MAX,
+  SILO_MIN,
+  TEMPERATURA_MAX,
+  TEMPERATURA_MIN,
   TICKET_MIN,
 } from '../../models/limits';
-import { lessThan } from '../../utils/validators';
 import { getApiErrorMessage } from '../../utils/api-error';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
@@ -51,18 +57,21 @@ export class RecepcionForm {
     fechaHora: [ahoraLocal(), Validators.required],
     litros: [
       null as number | null,
-      [Validators.required, Validators.min(LITROS_MIN), lessThan(LITROS_MAX_EXCLUSIVE)],
+      [Validators.required, Validators.min(LITROS_MIN), Validators.max(LITROS_MAX)],
     ],
-    grasa: [null as number | null, [Validators.min(0), lessThan(PARAMETRO_MAX_EXCLUSIVE)]],
+    grasa: [null as number | null, [Validators.min(GRASA_MIN), Validators.max(GRASA_MAX)]],
     acidez: [
       null as number | null,
-      [Validators.required, Validators.min(0), lessThan(PARAMETRO_MAX_EXCLUSIVE)],
+      [Validators.required, Validators.min(ACIDEZ_MIN), Validators.max(ACIDEZ_MAX)],
     ],
     temperatura: [
       null as number | null,
-      [Validators.required, Validators.min(0), lessThan(PARAMETRO_MAX_EXCLUSIVE)],
+      [Validators.required, Validators.min(TEMPERATURA_MIN), Validators.max(TEMPERATURA_MAX)],
     ],
-    silo: [null as number | null, [Validators.min(1), Validators.pattern(/^\d+$/)]],
+    silo: [
+      null as number | null,
+      [Validators.min(SILO_MIN), Validators.max(SILO_MAX), Validators.pattern(/^\d+$/)],
+    ],
     aguaPorcentaje: [
       null as number | null,
       [Validators.min(0), Validators.max(AGUA_MAX_PORCENTAJE)],

@@ -4,6 +4,8 @@ namespace DairyControl.Domain.Entities
     public class RecepcionLeche
     {
         public const int ObservacionesMaxLength = 500;
+        public const int SiloMin = 1; // plausible silo numbers (a typing-error check, not a quality limit)
+        public const int SiloMax = 20;
         public ParametrosCalidad Parametros { get; private set; } = null!;
         public Guid Id { get; private set; }
         public DateTime FechaHora { get; private set; }
@@ -22,6 +24,10 @@ namespace DairyControl.Domain.Entities
             if (ticket != null && ticket < 1)
             {
                 throw new ArgumentException("El número de ticket debe ser un entero positivo.", nameof(ticket));
+            }
+            if (silo != null && (silo < SiloMin || silo > SiloMax))
+            {
+                throw new ArgumentException($"El silo debe estar entre {SiloMin} y {SiloMax}.", nameof(silo));
             }
             var observacionesTrim = observaciones?.Trim();
             if (observacionesTrim != null && observacionesTrim.Length > ObservacionesMaxLength)

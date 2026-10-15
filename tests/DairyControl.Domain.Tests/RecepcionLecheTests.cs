@@ -72,5 +72,55 @@ namespace DairyControl.Domain.Tests
             // Assert
             Assert.Equal("ticket", ex.ParamName);
         }
+
+        // Silo: 1 to 20
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(7)]
+        [InlineData(20)]
+        public void Registrar_SiloWithinRange_StoresSilo(int silo)
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var recepcion = RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), silo, null);
+
+            // Assert
+            Assert.Equal(silo, recepcion.Silo);
+        }
+
+        [Fact]
+        public void Registrar_NoSilo_SiloIsNull()
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var recepcion = RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), null, null);
+
+            // Assert
+            Assert.Null(recepcion.Silo);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(21)]
+        [InlineData(99)]
+        public void Registrar_SiloOutOfRange_ThrowsArgumentException(int silo)
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var ex = Assert.Throws<ArgumentException>(() =>
+                RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), silo, null));
+
+            // Assert
+            Assert.Equal("silo", ex.ParamName);
+            Assert.Contains("El silo debe estar entre 1 y 20.", ex.Message);
+        }
     }
 }

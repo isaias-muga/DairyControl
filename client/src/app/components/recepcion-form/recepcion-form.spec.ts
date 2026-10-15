@@ -76,6 +76,85 @@ describe('RecepcionForm', () => {
     });
   });
 
+  describe('plausible ranges (typing errors, not quality limits)', () => {
+    type Campo = 'litros' | 'grasa' | 'acidez' | 'temperatura' | 'silo' | 'aguaPorcentaje';
+
+    const control = (campo: Campo) => component.form.controls[campo];
+
+    // [field, value just inside / on the edge, value just outside]
+    const dentro: [Campo, number][] = [
+      ['litros', 0.001], ['litros', 30000],
+      ['grasa', 1], ['grasa', 10],
+      ['acidez', 10], ['acidez', 30],
+      ['temperatura', 0], ['temperatura', 45],
+      ['silo', 1], ['silo', 20],
+      ['aguaPorcentaje', 0], ['aguaPorcentaje', 100],
+    ];
+    const fuera: [Campo, number][] = [
+      ['litros', 0], ['litros', -1], ['litros', 0.0009], ['litros', 30000.01],
+      ['grasa', 0.99], ['grasa', 10.01],
+      ['acidez', 9.99], ['acidez', 30.01],
+      ['temperatura', -0.01], ['temperatura', 45.01],
+      ['silo', 0], ['silo', 21],
+      ['aguaPorcentaje', -0.01], ['aguaPorcentaje', 100.01],
+    ];
+
+    it.each(dentro)('accepts %s = %s', (campo, valor) => {
+      completarObligatorios();
+      control(campo).setValue(valor);
+
+      expect(control(campo).valid).toBe(true);
+    });
+
+    it.each(fuera)('rejects %s = %s', (campo, valor) => {
+      completarObligatorios();
+      control(campo).setValue(valor);
+
+      expect(control(campo).invalid).toBe(true);
+      expect(component.form.invalid).toBe(true);
+    });
+
+    it('does not require the optional grasa and silo', () => {
+      completarObligatorios();
+
+      expect(control('grasa').valid).toBe(true);
+      expect(control('silo').valid).toBe(true);
+    });
+
+    it('rejects a non-integer silo', () => {
+      completarObligatorios();
+      control('silo').setValue(2.5);
+
+      expect(control('silo').invalid).toBe(true);
+    });
+
+    it('does not submit an impossible value', () => {
+      completarObligatorios();
+      control('grasa').setValue(12);
+
+      component.submit();
+
+      http.expectNone((r) => r.url.endsWith('/recepciones'));
+    });
+
+    it('shows a clear message next to each field with an impossible value', () => {
+      component.form.patchValue({
+        litros: 40000, grasa: 12, acidez: 5, temperatura: 60, silo: 99, aguaPorcentaje: 150,
+      });
+      component.form.markAllAsTouched();
+      fixture.detectChanges();
+
+      const texto = fixture.nativeElement.textContent as string;
+
+      expect(texto).toContain('Entre 0,001 y 30.000.');
+      expect(texto).toContain('Entre 1 y 10 %.');
+      expect(texto).toContain('Requerido, entre 10 y 30 °D.');
+      expect(texto).toContain('Requerido, entre 0 y 45 °C.');
+      expect(texto).toContain('Número entero entre 1 y 20.');
+      expect(texto).toContain('Entre 0 y 100.');
+    });
+  });
+
   it('is valid without water and ticket', () => {
     completarObligatorios();
 

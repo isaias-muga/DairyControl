@@ -68,15 +68,15 @@ td.mat-mdc-cell {
 }
 
 .mat-column-fechaHora { width: 17%; }
-.mat-column-ticket { width: 7%; }
+.mat-column-ticket { width: 6%; }
 .mat-column-litros { width: 9%; }
 .mat-column-aguaPorcentaje { width: 8%; }
 .mat-column-litrosAPagar { width: 11%; }
 .mat-column-grasa { width: 9%; }
 .mat-column-acidez { width: 10%; }
 .mat-column-temperatura { width: 10%; }
-.mat-column-silo { width: 6%; }
-/* .mat-column-observaciones: no width, it takes the rest (13%) */
+.mat-column-silo { width: 4.5%; }
+/* .mat-column-observaciones: no width, it takes the rest (15.5%) */
 
 /* Same padding on both outer edges, header included */
 th.mat-mdc-header-cell:first-of-type,
@@ -89,15 +89,17 @@ td.mat-mdc-cell:last-of-type {
   padding-right: var(--tabla-padding-borde);
 }
 
-th.numero,
-td.numero {
+/* Quantities (liters, percentages, measurements) right-aligned; identifiers (ticket, silo) centered.
+   Each header is aligned like its column. */
+th.cantidad,
+td.cantidad {
   text-align: right;
 }
 
-/* Long text: one line with ellipsis (full text in a tooltip) */
-.truncado {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+th.identificador,
+td.identificador {
+  text-align: center;
+  padding-left: 4px; /* narrow columns: more room for the content */
+  padding-right: 4px;
 }
+

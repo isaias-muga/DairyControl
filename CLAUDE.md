@@ -9,7 +9,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `src/DairyControl.Application`: services, DTOs, settings
 - `src/DairyControl.Infrastructure`: `AppDbContext`, EF Core configurations, migrations, repositories
 - `src/DairyControl.Api`: controllers, middleware, `Program.cs`
-- `tests/DairyControl.Domain.Tests` and `tests/DairyControl.Application.Tests`
+- `tests/DairyControl.Domain.Tests`, `tests/DairyControl.Application.Tests`, `tests/DairyControl.Api.Tests` and `tests/DairyControl.Infrastructure.Tests`
 - `client/`: Angular client (see "Client conventions")
 - `global.json`: opts `dotnet test` into Microsoft.Testing.Platform. Required on the .NET 10 SDK; do not delete it or pin an SDK version in it.
 
@@ -37,6 +37,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `Proveedor` is the aggregate root. `RecepcionLeche` is only created and added through `Proveedor.RegistrarRecepcion`.
 - Collections are exposed as `IReadOnlyCollection<T>` backed by a private `List<T>`.
 - Limits (max lengths, decimal precision/scale) are `public const` fields on the type that owns them, and the EF Core mapping reuses those constants.
+- Plausible ranges reject typing errors and are validated in the domain (`ParametrosCalidad`, `RecepcionLeche`) and mirrored in `client/src/app/models/limits.ts`: litros 0.001-30000 (positive; the column keeps 3 decimals), grasa 1-10 %, acidez 10-30 °D, temperatura 0-45 °C, agua 0-100 %, silo 1-20. They are different from the quality limits (`LimitesCalidad`): a plausible value outside the quality limits is accepted and flagged as out of range; an impossible value is rejected with a clear message.
 - IDs are `Guid`s generated in the domain with `Guid.NewGuid()`.
 - Use `= null!` only for properties that EF Core populates; never as a general way to silence nullable warnings.
 
@@ -74,7 +75,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Standalone components only (no NgModules). Use signals for component state and the built-in control flow (`@if`, `@for`, `@empty`).
 - Folders under `client/src/app`:
   - `pages/`: routed components (`login`, `resumen`, `proveedores-list`, `proveedor-detail`, `configuracion`)
-  - `components/`: reusable components and dialogs (`recepcion-form`, `registrar-recepcion-dialog`, `crear-proveedor-dialog`)
+  - `components/`: reusable components and dialogs (`recepcion-form`, `registrar-recepcion-dialog`, `crear-proveedor-dialog`, `observacion-celda`, `observaciones-dialog`)
   - `services/`: the only place that uses `HttpClient` (`ProveedoresService`, `RecepcionesService`, `ConfiguracionService`, `AuthService`)
   - `models/`: TypeScript interfaces mirroring the API DTOs, plus `limits.ts`
   - `guards/`, `interceptors/`, `utils/`
@@ -95,16 +96,18 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Tables:
   - Layout: fixed layout with percentage column widths (one column takes the rest), inside an `overflow-x: auto` container. The table fits its card on desktop without horizontal scroll. Below its `min-width` (860px) it scrolls horizontally with a visible, styled scrollbar, only on narrow screens.
   - Headers: short, one line, with the full name in a `matTooltip` and `aria-label`. Never let headers wrap or truncate.
-  - Cells: single line; long text is truncated with an ellipsis and its full text in a `matTooltip`.
-  - Alignment and padding: headers and cells are vertically centered with the same vertical padding; the first and last cells have the same horizontal padding, so text never touches a border or the card edge; numeric columns are right-aligned (header included), text columns left-aligned.
-- Visual check: for any UI change, before reporting back, run the app and take Playwright screenshots of every changed page at 1366px and 390px wide. Check them yourself (no clipped or truncated text, no unexpected scroll, nothing touching the edges, consistent alignment), fix what is wrong, and include the screenshots in your report. Launch Chromium with `ignoreDefaultArgs: ['--hide-scrollbars']`, otherwise scrollbars are invisible in the screenshots.
+  - Cells: single line; long text is truncated with an ellipsis and its full text in a `matTooltip`. Text that matters but does not fit (observaciones) is a real button (keyboard accessible, with a "ver más" affordance only when it is truncated) that opens a dialog with the full text and its context.
+  - Alignment and padding: headers and cells are vertically centered with the same vertical padding; the first and last cells have the same horizontal padding, so text never touches a border or the card edge; quantities (liters, percentages, measurements) are right-aligned, identifiers (ticket, silo, codes) are centered and text is left-aligned; each header is aligned like its column.
+- Visual check: for any UI change, before reporting back, run the app and take Playwright screenshots of every changed page at 1366px and 390px wide. Check them yourself (no clipped or truncated text, no unexpected scroll, nothing touching the edges, consistent alignment), fix what is wrong, and include the screenshots in your report (in a PR, see PR evidence in the Git workflow). Launch Chromium with `ignoreDefaultArgs: ['--hide-scrollbars']`, otherwise scrollbars are invisible in the screenshots.
 
 ## Testing
 
 - xUnit with Moq. Arrange-Act-Assert, with the three sections commented.
 - Test names: `Method_Scenario_ExpectedResult`.
 - Domain tests use real objects and no mocks.
-- Application tests mock `IProveedorRepository`, created inside each test (`var mockRepo = new Mock<IProveedorRepository>();`). No test touches a database.
+- Application tests mock `IProveedorRepository`, created inside each test (`var mockRepo = new Mock<IProveedorRepository>();`). Domain, Application and Api tests never touch a database.
+- Only `DairyControl.Infrastructure.Tests` may use a database, and only an in-memory SQLite one (schema from `EnsureCreated`, since the migrations are SQL Server-specific), for the reset/seeder logic.
+- SQLite tests don't cover SQL Server-specific behavior (migrations, unique-violation error codes, query translation); those are verified manually against SQL Server until we add Testcontainers integration tests.
 - Verify persistence calls with `Verify(..., Times.Once)` or `Times.Never`, not just the returned data.
 - Call `Assert.NotNull(result)` before asserting on properties of a nullable result.
 
@@ -131,6 +134,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `Database:ApplyMigrationsOnStartup` (default `false`): when `true`, the API runs `Database.Migrate()` at startup. Enabled only in `compose.yaml`.
 - `HttpsRedirection:Enabled` (default `true`): when `false`, `UseHttpsRedirection` is skipped. Set to `false` only in `compose.yaml`, where the API listens on plain HTTP behind nginx.
 - `DemoData:SeedOnStartup` (default `false`): when `true` and the database has no proveedores, `DemoDataSeeder` creates demo data at startup. Enabled only in `compose.yaml`.
+- `DemoData:ResetOnStartup` (default `false`): when `true`, at startup (after migrations, before seeding) the API deletes all recepciones and proveedores, restores the default quality limits (`LimitesCalidad.Predeterminados`) and reseeds the demo data, in one transaction inside the execution strategy; it logs a warning with the deleted counts and never touches the admin user. It reseeds even if `SeedOnStartup` is `false`. It runs on every API start (cold start, new revision, restart), not only after scaling to zero. Only for the demo environment (Azure); not enabled in `compose.yaml`.
 - `API_UPSTREAM` (client image, default `http://api:8080`): where nginx proxies `/api`. `client/nginx.conf.template` is filled from environment variables when the container starts. On Azure it points to the API's internal ingress.
 
 ## How to work in this repo
@@ -140,7 +144,22 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - After making changes, run the build and the tests (and `ng build` for client changes), and report the results.
 - For UI changes, also do the visual check described in Client conventions > UI conventions.
 - If a request conflicts with a rule in this file, stop and ask.
-- Do not run Git commands that change history or the remote (commit, push, branch, merge). The developer handles Git.
+- Git: follow the Git workflow below.
+
+## Git workflow
+
+Claude handles branches, commits, pushes and pull requests; the developer reviews on GitHub and merges.
+
+- Before starting an issue: `git switch main`, `git pull`, then create `feature/<issue>-<short-desc>` (e.g. `feature/53-reset-demo-data`). If the developer already created the branch, use it.
+- Commit in small logical units, one concern per commit, with imperative English messages ("Add demo reset flag"). Never commit secrets, `.env` or real plant data.
+- Self-review before every commit: read the full staged diff (`git diff --cached`) and check it against the issue's acceptance criteria, the CLAUDE.md conventions, tests for new behavior, leftover debug code or TODOs, and secrets. Fix what you find before committing.
+- Independent review before the PR: run a fresh subagent that has not seen the implementation conversation. Give it only the issue text, `CLAUDE.md` and `git diff main...HEAD`, and ask for bugs, risks, missing tests and convention breaks, ranked by severity. Fix every real finding (as new commits), then rerun the build, the tests and the visual check.
+- Open the PR when the build, tests, visual check and independent review are done: push the branch (`git push -u origin <branch>`) and open it with `gh pr create`. Title `Feature <N>/<issue title>` (N is the issue number); body with Summary / Changes / Evidence / Self-review / Notes (`.github/pull_request_template.md`) and `Closes #<N>`.
+- PR evidence: screenshots (demo app, synthetic data only; never real plant data) go to the `pr-evidence` branch, folder `pr-<N>/` (here N is the PR number, so publish them after the PR exists). Use a git worktree outside the repo so the feature branch is not touched. If `pr-evidence` does not exist, create it as an orphan branch (`git worktree add --orphan -b pr-evidence <dir>`) with a short README saying it is never merged. Embed each image in the PR body by commit SHA: `![<name>](https://raw.githubusercontent.com/isaias-muga/DairyControl/<sha>/pr-<N>/<file>.png)`, then update the body with `gh pr edit <N> --body-file <file>`.
+- The PR body has a Self-review section: what the independent review found and how each finding was fixed (or why it was rejected).
+- Review changes: the developer comments on the PR or tells Claude. Fix them on the same branch, push, and reply with what changed.
+- Never: merge PRs, push to `main`, force push, rebase or reset shared branches, delete remote branches, change GitHub settings. `.claude/settings.json` denies the riskiest commands as a safety net (its rules match the command text anywhere, so avoid quoting a denied command in a commit message), but the rule holds even where no deny rule matches (for example a bare `git push` while on `main`).
+- After the developer merges: `git switch main`, `git pull`, delete the local branch (`git branch -d <branch>`).
 
 ## Never do
 

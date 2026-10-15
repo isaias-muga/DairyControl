@@ -86,11 +86,15 @@ if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
 }
 
-if (app.Configuration.GetValue<bool>("DemoData:SeedOnStartup"))
+var resetDemoData = app.Configuration.GetValue<bool>("DemoData:ResetOnStartup");
+var seedDemoData = app.Configuration.GetValue<bool>("DemoData:SeedOnStartup");
+if (resetDemoData || seedDemoData)
 {
     using var scope = app.Services.CreateScope();
-    var seeder = new DemoDataSeeder(scope.ServiceProvider.GetRequiredService<AppDbContext>());
-    await seeder.SeedAsync();
+    var seeder = new DemoDataSeeder(
+        scope.ServiceProvider.GetRequiredService<AppDbContext>(),
+        scope.ServiceProvider.GetRequiredService<ILogger<DemoDataSeeder>>());
+    await seeder.InitializeAsync(resetDemoData, seedDemoData);
 }
 
 // 2. The pipeline — what happens to every incoming request, in order

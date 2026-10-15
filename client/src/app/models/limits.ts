@@ -3,9 +3,17 @@
 
 export const NOMBRE_MAX_LENGTH = 200; // Proveedor.NombreMaxLength
 export const OBSERVACIONES_MAX_LENGTH = 500; // RecepcionLeche.ObservacionesMaxLength
-export const PARAMETRO_MAX_EXCLUSIVE = 1000; // ParametrosCalidad.MaxValue (precision 5, scale 2)
-export const LITROS_MIN = 0.1; // ParametrosCalidad minimum volume
-export const LITROS_MAX_EXCLUSIVE = 100000; // ParametrosCalidad.MaxValueLitros (precision 8, scale 3)
+// Plausible ranges (typing errors, not the quality limits below).
+export const LITROS_MIN = 0.001; // ParametrosCalidad.LitrosMin
+export const LITROS_MAX = 30000; // ParametrosCalidad.LitrosMax
+export const GRASA_MIN = 1; // ParametrosCalidad.GrasaMin
+export const GRASA_MAX = 10; // ParametrosCalidad.GrasaMax
+export const ACIDEZ_MIN = 10; // ParametrosCalidad.AcidezMin
+export const ACIDEZ_MAX = 30; // ParametrosCalidad.AcidezMax
+export const TEMPERATURA_MIN = 0; // ParametrosCalidad.TemperaturaMin
+export const TEMPERATURA_MAX = 45; // ParametrosCalidad.TemperaturaMax
+export const SILO_MIN = 1; // RecepcionLeche.SiloMin
+export const SILO_MAX = 20; // RecepcionLeche.SiloMax
 export const RESUMEN_MAX_DIAS = 366; // ResumenRecepcionesAppService.MaxDias
 export const AGUA_MAX_PORCENTAJE = 100; // ParametrosCalidad.AguaMaxPorcentaje
 export const TICKET_MIN = 1; // RecepcionLeche ticket must be a positive integer

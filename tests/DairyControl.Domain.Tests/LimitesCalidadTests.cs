@@ -71,5 +71,17 @@ namespace DairyControl.Domain.Tests
             // Assert
             Assert.Equal(parametro, ex.ParamName);
         }
+
+        [Fact]
+        public void Predeterminados_DefaultLimits_Are19Dornic20Celsius0Water()
+        {
+            // Act
+            var limites = LimitesCalidad.Predeterminados;
+
+            // Assert
+            Assert.Equal(19m, limites.AcidezMaxima);
+            Assert.Equal(20m, limites.TemperaturaMaxima);
+            Assert.Equal(0m, limites.AguaMaxima);
+        }
     }
 }
