@@ -144,7 +144,18 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - After making changes, run the build and the tests (and `ng build` for client changes), and report the results.
 - For UI changes, also do the visual check described in Client conventions > UI conventions.
 - If a request conflicts with a rule in this file, stop and ask.
-- Do not run Git commands that change history or the remote (commit, push, branch, merge). The developer handles Git.
+- Git: follow the Git workflow below.
+
+## Git workflow
+
+Claude handles branches, commits, pushes and pull requests; the developer reviews on GitHub and merges.
+
+- Before starting an issue: `git switch main`, `git pull`, then create `feature/<issue>-<short-desc>` (e.g. `feature/53-reset-demo-data`). If the developer already created the branch, use it.
+- Commit in small logical units, one concern per commit, with imperative English messages ("Add demo reset flag"). Never commit secrets, `.env` or real plant data.
+- When the build, tests and visual check pass: push the branch (`git push -u origin <branch>`) and open the PR with `gh pr create`. Title `Feature <N>/<issue title>` (N is the issue number); body with Summary / Changes / Evidence / Notes (`.github/pull_request_template.md`) and `Closes #<N>`. Save the Playwright screenshots under `artifacts/pr-<N>/` (git-ignored) and list their paths in Evidence so the developer can drag them into the PR.
+- Review changes: the developer comments on the PR or tells Claude. Fix them on the same branch, push, and reply with what changed.
+- Never: merge PRs, push to `main`, force push, rebase or reset shared branches, delete remote branches, change GitHub settings. `.claude/settings.json` denies the riskiest commands as a safety net, but the rule holds even where no deny rule matches (for example a bare `git push` while on `main`).
+- After the developer merges: `git switch main`, `git pull`, delete the local branch (`git branch -d <branch>`).
 
 ## Never do
 
