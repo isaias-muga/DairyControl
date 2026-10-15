@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { RecepcionForm } from './recepcion-form';
+import { ahoraEnPlanta } from '../../utils/periodos';
 
 describe('RecepcionForm', () => {
   let component: RecepcionForm;
@@ -256,6 +257,68 @@ describe('RecepcionForm', () => {
       component.form.controls.ticket.setValue(6312);
 
       expect(component.form.controls.ticket.errors).toBeNull();
+    });
+  });
+
+  describe('fechaHora', () => {
+    it('defaults to the plant time even when the browser is in another time zone', () => {
+      vi.useFakeTimers();
+      try {
+        // 01:30 UTC on the 14th is 22:30 on the 13th in Buenos Aires
+        vi.setSystemTime(new Date('2026-10-14T01:30:00Z'));
+        const otro = TestBed.createComponent(RecepcionForm);
+        otro.componentRef.setInput('proveedorId', 'test-id');
+
+        expect(otro.componentInstance.form.controls.fechaHora.value).toBe('2026-10-13T22:30');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it.each([
+      ['1999-12-31T23:59', 'fechaMin'],
+      ['1900-01-01T00:00', 'fechaMin'],
+      ['2099-01-01T00:00', 'fechaMax'],
+      ['9999-12-31T23:59', 'fechaMax'],
+    ])('rejects %s before sending', (valor, error) => {
+      completarObligatorios();
+      component.form.controls.fechaHora.setValue(valor);
+
+      component.submit();
+
+      expect(component.form.controls.fechaHora.errors).toEqual({ [error]: true });
+      http.expectNone((r) => r.url.endsWith('/Proveedores/test-id/recepciones'));
+    });
+
+    it('accepts 2000-01-01 and a time within the next hour', () => {
+      completarObligatorios();
+      component.form.controls.fechaHora.setValue('2000-01-01T00:00');
+      expect(component.form.controls.fechaHora.valid).toBe(true);
+
+      component.form.controls.fechaHora.setValue(ahoraEnPlanta(new Date(Date.now() + 30 * 60_000)));
+      expect(component.form.controls.fechaHora.valid).toBe(true);
+    });
+
+    it('rejects a time more than an hour ahead', () => {
+      component.form.controls.fechaHora.setValue(ahoraEnPlanta(new Date(Date.now() + 90 * 60_000)));
+
+      expect(component.form.controls.fechaHora.errors).toEqual({ fechaMax: true });
+    });
+
+    it('shows a 400 that names the field next to it, not as a generic error', () => {
+      completarObligatorios();
+      component.submit();
+      http
+        .expectOne((r) => r.url.endsWith('/Proveedores/test-id/recepciones'))
+        .flush(
+          { error: 'La fecha y hora es obligatoria.', field: 'fechaHora' },
+          { status: 400, statusText: 'Bad Request' },
+        );
+      fixture.detectChanges();
+
+      const campo = fixture.nativeElement.querySelector('#fechaHora').closest('mat-form-field');
+      expect(campo.textContent).toContain('La fecha y hora es obligatoria.');
+      expect(component.saveError()).toBeNull();
     });
   });
 

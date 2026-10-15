@@ -1,5 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
+/** The field an API 400 refers to ({ error, field }), if any. */
+export function getApiErrorField(err: HttpErrorResponse): string | null {
+  return err.status === 400 && typeof err.error?.field === 'string' ? err.error.field : null;
+}
+
 export function getApiErrorMessage(err: HttpErrorResponse, fallback: string): string {
   if (err.status === 0) {
     return 'No se pudo conectar con el servidor.';

@@ -14,6 +14,8 @@ export const TEMPERATURA_MIN = 0; // ParametrosCalidad.TemperaturaMin
 export const TEMPERATURA_MAX = 45; // ParametrosCalidad.TemperaturaMax
 export const SILO_MIN = 1; // RecepcionLeche.SiloMin
 export const SILO_MAX = 20; // RecepcionLeche.SiloMax
+export const FECHA_MIN = '2000-01-01T00:00'; // RecepcionLeche.FechaMinima (plant time)
+export const FECHA_ADELANTO_MINUTOS = 60; // RecepcionLeche.AdelantoMaximoHoras = 1
 export const RESUMEN_MAX_DIAS = 366; // ResumenRecepcionesAppService.MaxDias
 export const AGUA_MAX_PORCENTAJE = 100; // ParametrosCalidad.AguaMaxPorcentaje
 export const TICKET_MIN = 1; // RecepcionLeche ticket must be a positive integer

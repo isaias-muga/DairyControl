@@ -1,4 +1,5 @@
 import {
+  ahoraEnPlanta,
   dateAIso,
   diasEnRango,
   etiquetaPeriodo,
@@ -17,6 +18,56 @@ describe('periodos', () => {
     it('returns the same day when UTC and plant date agree', () => {
       expect(hoyEnPlanta(new Date('2026-10-14T15:00:00Z'))).toBe('2026-10-14');
     });
+  });
+
+  describe('ahoraEnPlanta', () => {
+    it('is the plant wall-clock time as a datetime-local value', () => {
+      // 15:30 UTC is 12:30 in Buenos Aires (UTC-3)
+      expect(ahoraEnPlanta(new Date('2026-10-14T15:30:00Z'))).toBe('2026-10-14T12:30');
+    });
+
+    it('rolls back to the previous day and shows midnight as 00, not 24', () => {
+      expect(ahoraEnPlanta(new Date('2026-10-14T02:05:00Z'))).toBe('2026-10-13T23:05');
+      expect(ahoraEnPlanta(new Date('2026-10-14T03:00:00Z'))).toBe('2026-10-14T00:00');
+    });
+  });
+
+  describe('in any browser time zone', () => {
+    const proceso = (globalThis as unknown as { process: { env: Record<string, string | undefined> } })
+      .process;
+    const tzOriginal = proceso.env['TZ'];
+    afterEach(() => {
+      if (tzOriginal === undefined) {
+        delete proceso.env['TZ'];
+      } else {
+        proceso.env['TZ'] = tzOriginal;
+      }
+    });
+
+    // 2026-10-14T01:30Z is already the 14th in UTC, still the 13th at 22:30 in the plant and 21:30 in New York.
+    const instante = new Date('2026-10-14T01:30:00Z');
+
+    it.each(['UTC', 'America/New_York', 'Asia/Tokyo', 'America/Argentina/Buenos_Aires'])(
+      'gives the plant date, time and ranges when the browser is in %s',
+      (tz) => {
+        proceso.env['TZ'] = tz;
+        // the browser's own clock really differs between zones
+        expect(new Date(instante).getHours()).toBe(
+          Number(new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hourCycle: 'h23' }).format(instante)),
+        );
+
+        expect(hoyEnPlanta(instante)).toBe('2026-10-13');
+        expect(ahoraEnPlanta(instante)).toBe('2026-10-13T22:30');
+        expect(rangoDePeriodo('semana', hoyEnPlanta(instante))).toEqual({
+          desde: '2026-10-12',
+          hasta: '2026-10-13',
+        });
+        expect(rangoDePeriodo('mes', hoyEnPlanta(instante))).toEqual({
+          desde: '2026-10-01',
+          hasta: '2026-10-13',
+        });
+      },
+    );
   });
 
   describe('rangoDePeriodo', () => {
