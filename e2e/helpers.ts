@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
 let counter = 0;
 
@@ -79,4 +79,30 @@ export async function registrarRecepcion(page: Page, valores: ValoresRecepcion):
     await rellenar(dialog.getByLabel(/^Ticket/), String(valores.ticket));
   }
   await dialog.getByRole('button', { name: 'Registrar', exact: true }).click();
+}
+
+/** Default acidez máxima (LimitesCalidad.Predeterminados). Tests that change it restore this value. */
+export const ACIDEZ_MAXIMA_PREDETERMINADA = 19;
+
+/**
+ * Presses "Guardar" on Configuración and waits until the save really finished: the PUT answered 200 and the
+ * snackbar is shown. The "Última modificación" text is visible from the first load, so it proves nothing.
+ */
+export async function guardarLimites(page: Page): Promise<void> {
+  const respuesta = page.waitForResponse(
+    (r) => r.url().endsWith('/api/Configuracion/calidad') && r.request().method() === 'PUT',
+  );
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  expect((await respuesta).status()).toBe(200);
+  await expect(page.getByText('Configuración guardada.').first()).toBeVisible();
+}
+
+/** The acidez máxima stored by the API right now (not what the form shows). */
+export async function acidezMaximaEnApi(page: Page, request: APIRequestContext): Promise<number> {
+  const token = await page.evaluate(() => localStorage.getItem('dairycontrol_token'));
+  const respuesta = await request.get('/api/Configuracion/calidad', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(respuesta.status()).toBe(200);
+  return (await respuesta.json()).acidezMaxima;
 }
