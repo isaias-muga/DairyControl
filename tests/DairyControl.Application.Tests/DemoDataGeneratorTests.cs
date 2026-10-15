@@ -1,4 +1,5 @@
 using DairyControl.Domain.Entities;
+using DairyControl.Domain.ValueObjects;
 using DairyControl.Infrastructure.Persistence;
 
 namespace DairyControl.Application.Tests
@@ -75,6 +76,29 @@ namespace DairyControl.Application.Tests
             Assert.Equal(
                 primera.Select(r => (r.FechaHora, r.Ticket, r.Parametros)),
                 segunda.Select(r => (r.FechaHora, r.Ticket, r.Parametros)));
+        }
+
+        [Fact]
+        public void Generar_AllValues_AreInsideThePlausibleRanges()
+        {
+            // Arrange
+            var generator = new DemoDataGenerator();
+
+            // Act
+            var recepciones = Recepciones(generator.Generar(Desde));
+
+            // Assert
+            Assert.NotEmpty(recepciones);
+            Assert.All(recepciones, r =>
+            {
+                Assert.InRange(r.Parametros.Litros, 0.001m, ParametrosCalidad.LitrosMax);
+                if (r.Parametros.Grasa is decimal grasa)
+                    Assert.InRange(grasa, ParametrosCalidad.GrasaMin, ParametrosCalidad.GrasaMax);
+                Assert.InRange(r.Parametros.Acidez, ParametrosCalidad.AcidezMin, ParametrosCalidad.AcidezMax);
+                Assert.InRange(r.Parametros.Temperatura, ParametrosCalidad.TemperaturaMin, ParametrosCalidad.TemperaturaMax);
+                Assert.InRange(r.Parametros.AguaPorcentaje!.Value, ParametrosCalidad.AguaMinPorcentaje, ParametrosCalidad.AguaMaxPorcentaje);
+                Assert.InRange(r.Silo!.Value, RecepcionLeche.SiloMin, RecepcionLeche.SiloMax);
+            });
         }
     }
 }
