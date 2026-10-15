@@ -68,7 +68,7 @@ The tables are not created by hand: the API applies the EF Core migrations and s
    | `DemoData__ResetOnStartup`           | `true`                         |
    | `HttpsRedirection__Enabled`          | `false` (Azure terminates TLS) |
 
-   `DemoData__ResetOnStartup` wipes all proveedores and recepciones, restores the default quality limits and reseeds the demo data every time the API starts (every cold start after scaling to zero). Use it only in the demo environment; the admin user is not touched.
+   `DemoData__ResetOnStartup` wipes all proveedores and recepciones, restores the default quality limits and reseeds the demo data every time the API starts: every cold start after scaling to zero, but also every deploy of a new revision and every container restart, so someone using the demo during a deploy can lose their data. Use it only in the demo environment; the admin user is not touched.
 
 4. Create the **client app** in the same environment:
    - Image: `ghcr.io/isaias-muga/dairycontrol-client:<tag>`.
