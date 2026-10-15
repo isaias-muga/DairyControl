@@ -175,11 +175,18 @@ describe('RecepcionForm', () => {
     expect(component.form.controls.aguaPorcentaje.valid).toBe(true);
   });
 
-  it.each([0, -1, 1.5])('rejects ticket %s', (valor) => {
+  it.each([0, -1, 1.5, 2147483648])('rejects ticket %s', (valor) => {
     completarObligatorios();
     component.form.controls.ticket.setValue(valor);
 
     expect(component.form.controls.ticket.invalid).toBe(true);
+  });
+
+  it('accepts the largest int as ticket', () => {
+    completarObligatorios();
+    component.form.controls.ticket.setValue(2147483647);
+
+    expect(component.form.controls.ticket.valid).toBe(true);
   });
 
   it('sends only one request when submitted twice before the response arrives', () => {
