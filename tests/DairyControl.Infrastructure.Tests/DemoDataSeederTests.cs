@@ -39,6 +39,13 @@ namespace DairyControl.Infrastructure.Tests
                 Entradas.Add((logLevel, formatter(state, exception)));
         }
 
+        // Fails on save: the deletes have already run inside the transaction by then
+        private sealed class ContextoQueFallaAlGuardar(DbContextOptions<AppDbContext> options) : AppDbContext(options)
+        {
+            public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) =>
+                throw new InvalidOperationException("Fallo simulado al guardar.");
+        }
+
         // Existing data that a reset must wipe: an old proveedor with one recepción, and custom limits
         private void CargarDatosViejos()
         {
@@ -82,6 +89,67 @@ namespace DairyControl.Infrastructure.Tests
             Assert.NotEmpty(datos.Tickets);
             Assert.Equal(Enumerable.Range(4900, datos.Recepciones), datos.Tickets); // unique and consecutive
             Assert.Equal(LimitesCalidad.Predeterminados, datos.Limites);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_ResetOn_SeededDatesEndYesterdayInPlantTime()
+        {
+            // Arrange
+            using var context = NuevoContexto();
+            var seeder = new DemoDataSeeder(context);
+            var ayer = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "America/Argentina/Buenos_Aires").Date.AddDays(-1);
+
+            // Act
+            await seeder.InitializeAsync(resetOnStartup: true, seedOnStartup: false);
+
+            // Assert
+            using var lectura = NuevoContexto();
+            var fechas = lectura.Proveedores.AsNoTracking().ToList()
+                .SelectMany(p => p.Recepciones)
+                .Select(r => r.FechaHora)
+                .ToList();
+            Assert.Equal(ayer, fechas.Max().Date);
+            Assert.True(fechas.Min().Date >= ayer.AddDays(-DemoDataGenerator.DiasHistorial));
+        }
+
+        [Fact]
+        public async Task InitializeAsync_ResetOn_SeededDataIncludesWaterValues()
+        {
+            // Arrange
+            using var context = NuevoContexto();
+            var seeder = new DemoDataSeeder(context);
+
+            // Act
+            await seeder.InitializeAsync(resetOnStartup: true, seedOnStartup: false);
+
+            // Assert
+            using var lectura = NuevoContexto();
+            var agua = lectura.Proveedores.AsNoTracking().ToList()
+                .SelectMany(p => p.Recepciones)
+                .Select(r => r.Parametros.AguaPorcentaje)
+                .ToList();
+            Assert.All(agua, a => Assert.NotNull(a));
+            Assert.Contains(agua, a => a == 0m);
+            Assert.Contains(agua, a => a > 0m);
+        }
+
+        [Fact]
+        public async Task ResetAndSeedAsync_SeedingFails_RollsBackAndKeepsTheExistingData()
+        {
+            // Arrange
+            CargarDatosViejos();
+            using var contexto = new ContextoQueFallaAlGuardar(
+                new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
+            var seeder = new DemoDataSeeder(contexto);
+
+            // Act
+            await Assert.ThrowsAsync<InvalidOperationException>(() => seeder.ResetAndSeedAsync());
+
+            // Assert: the deletes happened inside the transaction, so nothing changed
+            var datos = Leer();
+            Assert.Equal(["Tambo Viejo"], datos.Nombres);
+            Assert.Equal([1], datos.Tickets);
+            Assert.Equal(LimitesCalidad.Create(25m, 30m, 5m), datos.Limites);
         }
 
         [Fact]
