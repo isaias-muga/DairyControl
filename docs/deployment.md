@@ -106,6 +106,14 @@ With these settings, normal demo use stays inside the Azure SQL free offer and t
 
 Each update creates a new **revision**. On startup, the API applies pending migrations; the seeder does nothing when data already exists.
 
+## Health check
+
+`GET /health` on the API is anonymous and returns `200 Healthy` when the API is running and can reach the database, and `503 Unhealthy` otherwise (the check is `AddDbContextCheck<AppDbContext>`). The client's nginx forwards `/health` to the API, so in Docker Compose it is `http://localhost:8080/health`. The CI `e2e` job and the Playwright global setup wait for it before running the tests.
+
+The API only starts listening after migrations and seeding finish, so a `200` also means the database is ready. The database check gives up after 10 seconds and answers `503`, so the probe never hangs while the database is down or resuming from auto-pause (EF Core's retries can take up to a minute). A probe should therefore retry for a while after a cold start.
+
+Planned: use `/health` as the Container Apps health probe of the production instance.
+
 ## Rollback
 
 Every image is tagged with its commit SHA, so a rollback is a redeploy of an earlier tag:
