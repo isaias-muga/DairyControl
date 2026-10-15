@@ -1,5 +1,11 @@
 import { Component, inject, input, output, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ProveedoresService } from '../../services/proveedores';
 import { RegistrarRecepcion } from '../../models/proveedor';
@@ -7,6 +13,8 @@ import {
   ACIDEZ_MAX,
   ACIDEZ_MIN,
   AGUA_MAX_PORCENTAJE,
+  FECHA_ADELANTO_MINUTOS,
+  FECHA_MIN,
   GRASA_MAX,
   GRASA_MIN,
   LITROS_MAX,
@@ -19,17 +27,27 @@ import {
   TICKET_MAX,
   TICKET_MIN,
 } from '../../models/limits';
-import { getApiErrorMessage } from '../../utils/api-error';
+import { getApiErrorField, getApiErrorMessage } from '../../utils/api-error';
+import { ahoraEnPlanta } from '../../utils/periodos';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 
-function ahoraLocal(): string {
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  return now.toISOString().slice(0, 16);
+/** fechaHora must be between FECHA_MIN and the plant's now + FECHA_ADELANTO_MINUTOS (YYYY-MM-DDTHH:mm strings compare in order). */
+function fechaHoraEnRango(control: AbstractControl): ValidationErrors | null {
+  const valor = typeof control.value === 'string' ? control.value.slice(0, 16) : '';
+  if (!valor) {
+    return null; // `required` reports the empty case
+  }
+  if (valor < FECHA_MIN) {
+    return { fechaMin: true };
+  }
+  if (valor > ahoraEnPlanta(new Date(Date.now() + FECHA_ADELANTO_MINUTOS * 60_000))) {
+    return { fechaMax: true };
+  }
+  return null;
 }
 
 @Component({
@@ -55,7 +73,7 @@ export class RecepcionForm {
   readonly observacionesMaxLength = OBSERVACIONES_MAX_LENGTH;
 
   form = this.fb.group({
-    fechaHora: [ahoraLocal(), Validators.required],
+    fechaHora: [ahoraEnPlanta(), [Validators.required, fechaHoraEnRango]],
     litros: [
       null as number | null,
       [Validators.required, Validators.min(LITROS_MIN), Validators.max(LITROS_MAX)],
@@ -120,7 +138,7 @@ export class RecepcionForm {
 
     this.proveedoresService.registrarRecepcion(this.proveedorId(), recepcion).subscribe({
       next: () => {
-        this.form.reset({ fechaHora: ahoraLocal(), observaciones: '' });
+        this.form.reset({ fechaHora: ahoraEnPlanta(), observaciones: '' });
         this.saving.set(false);
         this.snackBar.open('Recepción registrada.', 'Cerrar', { duration: 4000 });
         this.registrada.emit();
@@ -131,11 +149,39 @@ export class RecepcionForm {
           // Duplicate ticket: show it next to the ticket field (cleared when the user edits it)
           this.form.controls.ticket.setErrors({ duplicado: mensaje });
           this.form.controls.ticket.markAsTouched();
+        } else if (this.mostrarEnCampo(getApiErrorField(err), mensaje)) {
+          // Field-level 400 (e.g. fechaHora): shown next to the field
         } else {
           this.saveError.set(mensaje);
         }
         this.saving.set(false);
       },
     });
+  }
+
+  protected mensajeFechaHora(): string {
+    const errores = this.form.controls.fechaHora.errors;
+    if (errores?.['servidor']) {
+      return errores['servidor'];
+    }
+    if (errores?.['fechaMin']) {
+      return 'No puede ser anterior al 01/01/2000.';
+    }
+    if (errores?.['fechaMax']) {
+      return 'No puede superar la hora actual en más de 1 hora.';
+    }
+    return 'Requerido.';
+  }
+
+  /** Puts an API message on the control it names (cleared when the user edits it); false if there is none. */
+  private mostrarEnCampo(campo: string | null, mensaje: string): boolean {
+    // Only fechaHora renders the server's text next to the field; any other field goes to the generic error.
+    const control = campo === 'fechaHora' ? this.form.controls.fechaHora : null;
+    if (!control) {
+      return false;
+    }
+    control.setErrors({ servidor: mensaje });
+    control.markAsTouched();
+    return true;
   }
 }

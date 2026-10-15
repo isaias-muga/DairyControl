@@ -5,10 +5,13 @@ namespace DairyControl.Domain.Tests
 {
     public class RecepcionLecheTests
     {
+        private static readonly DateTime Ahora = new(2026, 10, 15, 12, 0, 0);
+        private static readonly DateTime Fecha = new(2026, 10, 1, 6, 0, 0);
+
         private static RecepcionLeche Registrar(decimal litros, decimal? agua, int? ticket = null)
         {
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, litros, agua);
-            return RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), 1, null, ticket);
+            return RecepcionLeche.Registrar(parametros, Fecha, Ahora, 1, null, ticket);
         }
 
         [Theory]
@@ -20,7 +23,7 @@ namespace DairyControl.Domain.Tests
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m, null);
 
             // Act
-            var recepcion = RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), 1, observaciones);
+            var recepcion = RecepcionLeche.Registrar(parametros, Fecha, Ahora, 1, observaciones);
 
             // Assert
             Assert.Null(recepcion.Observaciones);
@@ -100,7 +103,7 @@ namespace DairyControl.Domain.Tests
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
 
             // Act
-            var recepcion = RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), silo, null);
+            var recepcion = RecepcionLeche.Registrar(parametros, Fecha, Ahora, silo, null);
 
             // Assert
             Assert.Equal(silo, recepcion.Silo);
@@ -113,7 +116,7 @@ namespace DairyControl.Domain.Tests
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
 
             // Act
-            var recepcion = RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), null, null);
+            var recepcion = RecepcionLeche.Registrar(parametros, Fecha, Ahora, null, null);
 
             // Assert
             Assert.Null(recepcion.Silo);
@@ -131,11 +134,100 @@ namespace DairyControl.Domain.Tests
 
             // Act
             var ex = Assert.Throws<ArgumentException>(() =>
-                RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), silo, null));
+                RecepcionLeche.Registrar(parametros, Fecha, Ahora, silo, null));
 
             // Assert
             Assert.Equal("silo", ex.ParamName);
             Assert.Contains("El silo debe estar entre 1 y 20.", ex.Message);
+        }
+
+        [Fact]
+        public void Registrar_FechaHoraOneSecondOverTheLimit_ThrowsArgumentException()
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var ex = Assert.Throws<ArgumentException>(() =>
+                RecepcionLeche.Registrar(parametros, Ahora.AddHours(1).AddSeconds(1), Ahora, 1, null));
+
+            // Assert
+            Assert.Equal("fechaHora", ex.ParamName);
+        }
+
+        // FechaHora: required, from 2000-01-01 to now + 1 hour (plant time)
+
+        [Fact]
+        public void Registrar_DefaultFechaHora_ThrowsArgumentException()
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var ex = Assert.Throws<ArgumentException>(() =>
+                RecepcionLeche.Registrar(parametros, default, Ahora, 1, null));
+
+            // Assert
+            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Contains("obligatoria", ex.Message);
+        }
+
+        [Fact]
+        public void Registrar_FechaHoraBeforeYear2000_ThrowsArgumentException()
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var ex = Assert.Throws<ArgumentException>(() =>
+                RecepcionLeche.Registrar(parametros, new DateTime(1999, 12, 31, 23, 59, 0), Ahora, 1, null));
+
+            // Assert
+            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Contains("01/01/2000", ex.Message);
+        }
+
+        [Fact]
+        public void Registrar_FechaHoraOnMinimum_StoresFechaHora()
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var recepcion = RecepcionLeche.Registrar(parametros, new DateTime(2000, 1, 1), Ahora, 1, null);
+
+            // Assert
+            Assert.Equal(new DateTime(2000, 1, 1), recepcion.FechaHora);
+        }
+
+        [Fact]
+        public void Registrar_FechaHoraWithinTheNextHour_StoresFechaHora()
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var recepcion = RecepcionLeche.Registrar(parametros, Ahora.AddHours(1), Ahora, 1, null);
+
+            // Assert
+            Assert.Equal(Ahora.AddHours(1), recepcion.FechaHora);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(60 * 24 * 365 * 70)]
+        public void Registrar_FechaHoraMoreThanOneHourAhead_ThrowsArgumentException(int minutosExtra)
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var ex = Assert.Throws<ArgumentException>(() =>
+                RecepcionLeche.Registrar(parametros, Ahora.AddHours(1).AddMinutes(minutosExtra), Ahora, 1, null));
+
+            // Assert
+            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Contains("hora actual", ex.Message);
         }
     }
 }

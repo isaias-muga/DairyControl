@@ -8,7 +8,7 @@ import { RecepcionesService } from '../../services/recepciones';
 import { ProveedoresService } from '../../services/proveedores';
 import { Proveedor } from '../../models/proveedor';
 import { ResumenRecepciones } from '../../models/resumen';
-import { RESUMEN_MAX_DIAS } from '../../models/limits';
+import { FECHA_MIN, RESUMEN_MAX_DIAS } from '../../models/limits';
 import { getApiErrorMessage } from '../../utils/api-error';
 import {
   PeriodoPreset,
@@ -136,6 +136,10 @@ export class Resumen {
       return;
     }
     const nuevo = { desde: dateAIso(inicio), hasta: dateAIso(fin) };
+    if (nuevo.desde < FECHA_MIN.slice(0, 10)) {
+      this.errorRango.set('La fecha desde no puede ser anterior al 01/01/2000.');
+      return;
+    }
     if (diasEnRango(nuevo.desde, nuevo.hasta) > RESUMEN_MAX_DIAS) {
       this.errorRango.set(`El período no puede superar los ${RESUMEN_MAX_DIAS} días.`);
       return;

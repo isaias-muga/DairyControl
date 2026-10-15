@@ -51,7 +51,7 @@ namespace DairyControl.Infrastructure.Tests
         {
             using var context = NuevoContexto();
             var viejo = Proveedor.Crear("Tambo Viejo");
-            viejo.RegistrarRecepcion(ParametrosCalidad.Create(null, 17m, 5m, 1000m), new DateTime(2026, 1, 1, 6, 0, 0), 1, null, 1);
+            viejo.RegistrarRecepcion(ParametrosCalidad.Create(null, 17m, 5m, 1000m), new DateTime(2026, 1, 1, 6, 0, 0), new DateTime(2026, 1, 2), 1, null, 1);
             context.Proveedores.Add(viejo);
             context.ConfiguracionesCalidad.Single().CambiarLimites(LimitesCalidad.Create(25m, 30m, 5m), DateTime.UtcNow);
             context.SaveChanges();

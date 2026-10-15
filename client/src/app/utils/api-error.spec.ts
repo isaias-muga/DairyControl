@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { getApiErrorMessage } from './api-error';
+import { getApiErrorField, getApiErrorMessage } from './api-error';
 
 const error = (status: number, body: unknown) => new HttpErrorResponse({ status, error: body });
 
@@ -32,5 +32,20 @@ describe('getApiErrorMessage', () => {
 
   it('returns the fallback for other errors', () => {
     expect(getApiErrorMessage(error(500, { error: 'x' }), 'fallback')).toBe('fallback');
+  });
+
+  it('returns the field a 400 refers to, if any', () => {
+    const err = new HttpErrorResponse({
+      status: 400,
+      error: { error: 'La fecha y hora es obligatoria.', field: 'fechaHora' },
+    });
+
+    expect(getApiErrorField(err)).toBe('fechaHora');
+    expect(getApiErrorMessage(err, 'x')).toBe('La fecha y hora es obligatoria.');
+  });
+
+  it('returns no field when the error has none', () => {
+    expect(getApiErrorField(new HttpErrorResponse({ status: 400, error: { error: 'x' } }))).toBeNull();
+    expect(getApiErrorField(new HttpErrorResponse({ status: 500 }))).toBeNull();
   });
 });

@@ -10,6 +10,16 @@ namespace DairyControl.Application.Tests
 {
     public class ProveedorAppServiceTests
     {
+        // Plant time is UTC-3: 15:00 UTC is 12:00 in Buenos Aires.
+        private static readonly DateTime AhoraPlanta = new(2026, 10, 15, 12, 0, 0);
+        private static readonly DateTime FechaValida = new(2026, 10, 15, 11, 0, 0);
+        private static readonly TimeProvider Reloj = new RelojFijo(new DateTimeOffset(2026, 10, 15, 15, 0, 0, TimeSpan.Zero));
+
+        private sealed class RelojFijo(DateTimeOffset ahora) : TimeProvider
+        {
+            public override DateTimeOffset GetUtcNow() => ahora;
+        }
+
         [Fact]
         public async Task GetByIdAsync_ProveedorDoesNotExist_ReturnsNull()
         {
@@ -17,7 +27,7 @@ namespace DairyControl.Application.Tests
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Proveedor?)null);
 
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.GetByIdAsync(Guid.NewGuid());
@@ -33,7 +43,7 @@ namespace DairyControl.Application.Tests
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(Proveedor.Crear("Proveedor Test"));
 
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.GetByIdAsync(Guid.NewGuid());
@@ -52,7 +62,7 @@ namespace DairyControl.Application.Tests
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor>());
 
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.GetAllAsync();
@@ -73,7 +83,7 @@ namespace DairyControl.Application.Tests
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor> { proveedorA, proveedorB });
 
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.GetAllAsync();
@@ -92,11 +102,11 @@ namespace DairyControl.Application.Tests
         {
             // Arrange
             var proveedor = Proveedor.Crear("Proveedor Test");
-            proveedor.RegistrarRecepcion(ParametrosCalidad.Create(3.5m, 17m, 4.0m, 1000m), DateTime.Now, 1, null);
+            proveedor.RegistrarRecepcion(ParametrosCalidad.Create(3.5m, 17m, 4.0m, 1000m), FechaValida, AhoraPlanta, 1, null);
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor> { proveedor });
 
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.GetAllAsync();
@@ -110,14 +120,14 @@ namespace DairyControl.Application.Tests
         {
             // Arrange
             var mockRepo = new Mock<IProveedorRepository>();
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             var proveedor = Proveedor.Crear("Tambo La Esperanza");
             var parametros = ParametrosCalidad.Create(3.5m, 17m, 4.0m, 1500m);
             var anterior = new DateTime(2026, 10, 1, 6, 0, 0);
             var reciente = new DateTime(2026, 10, 2, 6, 0, 0);
-            proveedor.RegistrarRecepcion(parametros, anterior, 1, null);
-            proveedor.RegistrarRecepcion(parametros, reciente, 2, "Sin novedades");
+            proveedor.RegistrarRecepcion(parametros, anterior, AhoraPlanta, 1, null);
+            proveedor.RegistrarRecepcion(parametros, reciente, AhoraPlanta, 2, "Sin novedades");
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
 
             // Act
@@ -136,7 +146,7 @@ namespace DairyControl.Application.Tests
         {
             // Arrange
             var mockRepo = new Mock<IProveedorRepository>();
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             var dto = new CrearProveedorDto { Nombre = "Proveedor Test" };
 
@@ -156,7 +166,7 @@ namespace DairyControl.Application.Tests
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Proveedor?)null);
 
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.RegistrarRecepcionAsync(Guid.NewGuid(), new RegistrarRecepcionDto());
@@ -172,7 +182,7 @@ namespace DairyControl.Application.Tests
             // Arrange
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(Proveedor.Crear("Proveedor Test"));
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             var RegistrarRecepcionDto = new RegistrarRecepcionDto
             {
@@ -180,7 +190,7 @@ namespace DairyControl.Application.Tests
                 Acidez = 17m,
                 Temperatura = 4.0m,
                 Litros = 1000m,
-                FechaHora = DateTime.Now,
+                FechaHora = FechaValida,
                 Silo = 1,
                 Observaciones = "Observación de prueba"
             };
@@ -201,14 +211,14 @@ namespace DairyControl.Application.Tests
             var proveedor = Proveedor.Crear("Proveedor Test");
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             var dto = new RegistrarRecepcionDto
             {
                 Acidez = 17m,
                 Temperatura = 5m,
                 Litros = 1000m,
-                FechaHora = DateTime.Now,
+                FechaHora = FechaValida,
                 AguaPorcentaje = 2m,
                 Ticket = 4501
             };
@@ -230,7 +240,7 @@ namespace DairyControl.Application.Tests
             var proveedor = Proveedor.Crear("Proveedor Test");
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, AguaPorcentaje = 120m };
 
@@ -246,7 +256,7 @@ namespace DairyControl.Application.Tests
             var proveedor = Proveedor.Crear("Proveedor Test");
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, Ticket = 0 };
 
@@ -267,9 +277,9 @@ namespace DairyControl.Application.Tests
             var proveedor = Proveedor.Crear("Proveedor Test");
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
-            var dto = new RegistrarRecepcionDto { Grasa = 3.5m, Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = DateTime.Now, Silo = 2 };
+            var dto = new RegistrarRecepcionDto { Grasa = 3.5m, Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = FechaValida, Silo = 2 };
             switch (campo)
             {
                 case "grasa": dto.Grasa = 12m; break;
@@ -292,8 +302,8 @@ namespace DairyControl.Application.Tests
             var proveedor = Proveedor.Crear("Proveedor Test");
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object);
-            var dto = new RegistrarRecepcionDto { Acidez = 28m, Temperatura = 35m, Litros = 1000m, FechaHora = DateTime.Now };
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var dto = new RegistrarRecepcionDto { Acidez = 28m, Temperatura = 35m, Litros = 1000m, FechaHora = FechaValida };
 
             // Act
             var result = await service.RegistrarRecepcionAsync(proveedor.Id, dto);
@@ -308,7 +318,7 @@ namespace DairyControl.Application.Tests
             Acidez = 17m,
             Temperatura = 5m,
             Litros = 1000m,
-            FechaHora = DateTime.Now,
+            FechaHora = FechaValida,
             Ticket = ticket
         };
 
@@ -321,7 +331,7 @@ namespace DairyControl.Application.Tests
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
             mockRepo.Setup(r => r.GetTicketRegistradoAsync(6311))
                 .ReturnsAsync(new TicketRegistrado("Tambo Las Acacias", new DateTime(2026, 10, 11, 11, 6, 0)));
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var ex = await Assert.ThrowsAsync<TicketDuplicadoException>(() =>
@@ -341,7 +351,7 @@ namespace DairyControl.Application.Tests
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
             mockRepo.Setup(r => r.GetTicketRegistradoAsync(7000)).ReturnsAsync((TicketRegistrado?)null);
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(7000));
@@ -360,7 +370,7 @@ namespace DairyControl.Application.Tests
             var proveedor = Proveedor.Crear("Tambo Nuevo");
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             await service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(null));
@@ -377,7 +387,7 @@ namespace DairyControl.Application.Tests
             var proveedor = Proveedor.Crear("Tambo Nuevo");
             var mockRepo = new Mock<IProveedorRepository>();
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -397,7 +407,7 @@ namespace DairyControl.Application.Tests
                 .ReturnsAsync((TicketRegistrado?)null)
                 .ReturnsAsync(new TicketRegistrado("Tambo Las Acacias", new DateTime(2026, 10, 15, 11, 50, 0)));
             mockRepo.Setup(r => r.UpdateAsync(proveedor)).ThrowsAsync(new TicketDuplicadoException("El ticket ya está registrado."));
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var ex = await Assert.ThrowsAsync<TicketDuplicadoException>(() =>
@@ -413,10 +423,10 @@ namespace DairyControl.Application.Tests
         {
             // Arrange
             var mockRepo = new Mock<IProveedorRepository>();
-            var service = new ProveedorAppService(mockRepo.Object);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
             var proveedor = Proveedor.Crear("Tambo La Esperanza");
             var parametros = ParametrosCalidad.Create(null, 17m, 4m, 1000m, 10m);
-            proveedor.RegistrarRecepcion(parametros, new DateTime(2026, 10, 1, 6, 0, 0), 1, null, 77);
+            proveedor.RegistrarRecepcion(parametros, new DateTime(2026, 10, 1, 6, 0, 0), AhoraPlanta, 1, null, 77);
             mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
 
             // Act
@@ -428,6 +438,84 @@ namespace DairyControl.Application.Tests
             Assert.Equal(10m, recepcion.AguaPorcentaje);
             Assert.Equal(77, recepcion.Ticket);
             Assert.Equal(900m, recepcion.LitrosAPagar);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_FechaHoraMissing_ThrowsArgumentExceptionAndDoesNotSave()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            var proveedor = Proveedor.Crear("Tambo Test");
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = null };
+
+            // Act
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+
+            // Assert
+            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Empty(proveedor.Recepciones);
+            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData("1999-12-31T23:59:00")]
+        [InlineData("2026-10-15T13:01:00")] // plant now is 12:00: more than 1 hour ahead
+        public async Task RegistrarRecepcionAsync_FechaHoraOutOfRange_ThrowsArgumentExceptionAndDoesNotSave(string fechaHora)
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            var proveedor = Proveedor.Crear("Tambo Test");
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = DateTime.Parse(fechaHora) };
+
+            // Act
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+
+            // Assert
+            Assert.Equal("fechaHora", ex.ParamName);
+            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_FechaHoraWithinTheNextHourOfPlantTime_Registers()
+        {
+            // Arrange
+            var mockRepo = new Mock<IProveedorRepository>();
+            var proveedor = Proveedor.Crear("Tambo Test");
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = new DateTime(2026, 10, 15, 13, 0, 0) };
+
+            // Act
+            var result = await service.RegistrarRecepcionAsync(proveedor.Id, dto);
+
+            // Assert
+            Assert.NotNull(result);
+            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_FechaHoraInUtc_IsConvertedToPlantTimeBeforeValidating()
+        {
+            // Arrange: 15:30 UTC is 12:30 plant time, within the next hour of the 12:00 plant now
+            var mockRepo = new Mock<IProveedorRepository>();
+            var proveedor = Proveedor.Crear("Tambo Test");
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var dto = new RegistrarRecepcionDto
+            {
+                Acidez = 17m, Temperatura = 5m, Litros = 1000m,
+                FechaHora = new DateTime(2026, 10, 15, 15, 30, 0, DateTimeKind.Utc)
+            };
+
+            // Act
+            await service.RegistrarRecepcionAsync(proveedor.Id, dto);
+
+            // Assert
+            Assert.Equal(new DateTime(2026, 10, 15, 12, 30, 0), proveedor.Recepciones.Single().FechaHora);
         }
     }
 }

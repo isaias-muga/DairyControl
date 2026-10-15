@@ -9,16 +9,29 @@ export interface RangoFechas {
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
-/** Today's date in the plant time zone as YYYY-MM-DD, whatever the browser's zone is. */
-export function hoyEnPlanta(ahora: Date = new Date()): string {
+function partesEnPlanta(ahora: Date): (tipo: string) => string {
   const partes = new Intl.DateTimeFormat('en-CA', {
     timeZone: ZONA_PLANTA,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
   }).formatToParts(ahora);
-  const get = (tipo: string) => partes.find((p) => p.type === tipo)!.value;
+  return (tipo) => partes.find((p) => p.type === tipo)!.value;
+}
+
+/** Today's date in the plant time zone as YYYY-MM-DD, whatever the browser's zone is. */
+export function hoyEnPlanta(ahora: Date = new Date()): string {
+  const get = partesEnPlanta(ahora);
   return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Current plant date and time as YYYY-MM-DDTHH:mm (the value format of datetime-local). */
+export function ahoraEnPlanta(ahora: Date = new Date()): string {
+  const get = partesEnPlanta(ahora);
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
 }
 
 /** Days between two YYYY-MM-DD dates, inclusive of both ends. */

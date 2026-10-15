@@ -10,7 +10,7 @@
           <mat-label>Fecha y hora</mat-label>
           <input matInput id="fechaHora" type="datetime-local" formControlName="fechaHora" />
           @if (invalid('fechaHora')) {
-            <mat-error>Requerido.</mat-error>
+            <mat-error>{{ mensajeFechaHora() }}</mat-error>
           }
         </mat-form-field>
 
