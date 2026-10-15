@@ -85,8 +85,8 @@ export async function registrarRecepcion(page: Page, valores: ValoresRecepcion):
 export const ACIDEZ_MAXIMA_PREDETERMINADA = 19;
 
 /**
- * Presses "Guardar" on Configuración and waits until the save really finished: the PUT answered 200 and the
- * snackbar is shown. The "Última modificación" text is visible from the first load, so it proves nothing.
+ * Presses "Guardar" on Configuración and waits until the save really finished: the PUT answered 200 (the real
+ * signal; the snackbar is only a UI confirmation and may be left over from an earlier save). The "Última modificación" text is visible from the first load, so it proves nothing.
  */
 export async function guardarLimites(page: Page): Promise<void> {
   const respuesta = page.waitForResponse(
@@ -97,12 +97,24 @@ export async function guardarLimites(page: Page): Promise<void> {
   await expect(page.getByText('Configuración guardada.').first()).toBeVisible();
 }
 
-/** The acidez máxima stored by the API right now (not what the form shows). */
-export async function acidezMaximaEnApi(page: Page, request: APIRequestContext): Promise<number> {
-  const token = await page.evaluate(() => localStorage.getItem('dairycontrol_token'));
-  const respuesta = await request.get('/api/Configuracion/calidad', {
-    headers: { Authorization: `Bearer ${token}` },
+/**
+ * Puts acidez máxima back to its default through the API (own login, no page needed), so it also works when the
+ * test timed out or the page is gone, and checks the stored value. The other two limits are left as they are.
+ */
+export async function restaurarAcidezMaxima(request: APIRequestContext): Promise<void> {
+  const login = await request.post('/api/Auth/login', { data: { username: 'admin', password: adminPassword() } });
+  expect(login.status()).toBe(200);
+  const headers = { Authorization: `Bearer ${(await login.json()).token}` };
+
+  const actuales = await (await request.get('/api/Configuracion/calidad', { headers })).json();
+  const guardado = await request.put('/api/Configuracion/calidad', {
+    headers,
+    data: {
+      acidezMaxima: ACIDEZ_MAXIMA_PREDETERMINADA,
+      temperaturaMaxima: actuales.temperaturaMaxima,
+      aguaMaxima: actuales.aguaMaxima,
+    },
   });
-  expect(respuesta.status()).toBe(200);
-  return (await respuesta.json()).acidezMaxima;
+  expect(guardado.status()).toBe(200);
+  expect((await guardado.json()).acidezMaxima).toBe(ACIDEZ_MAXIMA_PREDETERMINADA);
 }

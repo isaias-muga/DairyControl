@@ -1,15 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
-  ACIDEZ_MAXIMA_PREDETERMINADA,
-  acidezMaximaEnApi,
   crearProveedor,
   guardarLimites,
   loginYEsperarResumen,
   registrarRecepcion,
   rellenar,
+  restaurarAcidezMaxima,
 } from '../helpers';
 
-// The limits row is global: the tests that change it always restore the default (see ACIDEZ_MAXIMA_PREDETERMINADA).
+// The limits row is global: the tests that change it always restore the default (restaurarAcidezMaxima).
 
 async function fueraDeRangoEn(page: Page, nombre: string): Promise<string> {
   await page.getByRole('link', { name: 'Resumen' }).click();
@@ -58,11 +57,8 @@ for (const demoraMs of [0, 500]) {
 
       expect(await fueraDeRangoEn(page, nombre)).toBe('0');
     } finally {
-      // Always restore the documented default (not whatever the form showed), and prove it in the API.
-      await page.getByRole('link', { name: 'Configuración' }).click();
-      await rellenar(page.getByLabel(/^Acidez máxima/), String(ACIDEZ_MAXIMA_PREDETERMINADA));
-      await guardarLimites(page);
-      expect(await acidezMaximaEnApi(page, request)).toBe(ACIDEZ_MAXIMA_PREDETERMINADA);
+      // Always restore the documented default through the API: it works even after a timeout or a closed page.
+      await restaurarAcidezMaxima(request);
     }
   });
 }
