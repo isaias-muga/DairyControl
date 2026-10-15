@@ -1,0 +1,24 @@
+.contexto {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+  margin: 0;
+}
+
+.contexto dt {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.contexto dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Full text: keeps line breaks and wraps very long words */
+.texto {
+  margin: 16px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

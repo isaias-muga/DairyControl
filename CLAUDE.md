@@ -75,7 +75,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Standalone components only (no NgModules). Use signals for component state and the built-in control flow (`@if`, `@for`, `@empty`).
 - Folders under `client/src/app`:
   - `pages/`: routed components (`login`, `resumen`, `proveedores-list`, `proveedor-detail`, `configuracion`)
-  - `components/`: reusable components and dialogs (`recepcion-form`, `registrar-recepcion-dialog`, `crear-proveedor-dialog`)
+  - `components/`: reusable components and dialogs (`recepcion-form`, `registrar-recepcion-dialog`, `crear-proveedor-dialog`, `observacion-celda`, `observaciones-dialog`)
   - `services/`: the only place that uses `HttpClient` (`ProveedoresService`, `RecepcionesService`, `ConfiguracionService`, `AuthService`)
   - `models/`: TypeScript interfaces mirroring the API DTOs, plus `limits.ts`
   - `guards/`, `interceptors/`, `utils/`
@@ -96,8 +96,8 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Tables:
   - Layout: fixed layout with percentage column widths (one column takes the rest), inside an `overflow-x: auto` container. The table fits its card on desktop without horizontal scroll. Below its `min-width` (860px) it scrolls horizontally with a visible, styled scrollbar, only on narrow screens.
   - Headers: short, one line, with the full name in a `matTooltip` and `aria-label`. Never let headers wrap or truncate.
-  - Cells: single line; long text is truncated with an ellipsis and its full text in a `matTooltip`.
-  - Alignment and padding: headers and cells are vertically centered with the same vertical padding; the first and last cells have the same horizontal padding, so text never touches a border or the card edge; numeric columns are right-aligned (header included), text columns left-aligned.
+  - Cells: single line; long text is truncated with an ellipsis and its full text in a `matTooltip`. Text that matters but does not fit (observaciones) is a real button (keyboard accessible, with a "ver más" affordance only when it is truncated) that opens a dialog with the full text and its context.
+  - Alignment and padding: headers and cells are vertically centered with the same vertical padding; the first and last cells have the same horizontal padding, so text never touches a border or the card edge; quantities (liters, percentages, measurements) are right-aligned, identifiers (ticket, silo, codes) are centered and text is left-aligned; each header is aligned like its column.
 - Visual check: for any UI change, before reporting back, run the app and take Playwright screenshots of every changed page at 1366px and 390px wide. Check them yourself (no clipped or truncated text, no unexpected scroll, nothing touching the edges, consistent alignment), fix what is wrong, and include the screenshots in your report. Launch Chromium with `ignoreDefaultArgs: ['--hide-scrollbars']`, otherwise scrollbars are invisible in the screenshots.
 
 ## Testing

@@ -1,0 +1,15 @@
+@if (texto(); as t) {
+  <button
+    type="button"
+    class="observacion"
+    [class.truncada]="truncada()"
+    [matTooltip]="t"
+    aria-haspopup="dialog"
+    (click)="abrir.emit()"
+  >
+    <span #texto class="texto">{{ t }}</span>
+    @if (truncada()) {
+      <span class="mas" aria-hidden="true">ver más</span>
+    }
+  </button>
+}

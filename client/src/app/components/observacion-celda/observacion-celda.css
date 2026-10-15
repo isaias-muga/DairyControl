@@ -1,0 +1,46 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.observacion {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Inside the cell (which clips its overflow), so the focus ring stays visible */
+.observacion:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: -2px;
+}
+
+.texto {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Subtle, but always visible when the text is cut (there is no hover on touch screens) */
+.mas {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--mat-sys-primary);
+}
+
+.observacion:hover .mas,
+.observacion:focus-visible .mas {
+  text-decoration: underline;
+}

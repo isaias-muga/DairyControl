@@ -4,11 +4,16 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ProveedoresService } from '../../services/proveedores';
-import { ProveedorDetalle } from '../../models/proveedor';
+import { ProveedorDetalle, Recepcion } from '../../models/proveedor';
 import {
   RegistrarRecepcionDialog,
   RegistrarRecepcionDialogData,
 } from '../../components/registrar-recepcion-dialog/registrar-recepcion-dialog';
+import { ObservacionCelda } from '../../components/observacion-celda/observacion-celda';
+import {
+  ObservacionesDialog,
+  ObservacionesDialogData,
+} from '../../components/observaciones-dialog/observaciones-dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
@@ -27,6 +32,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatProgressSpinnerModule,
     MatTableModule,
     MatTooltipModule,
+    ObservacionCelda,
   ],
   templateUrl: './proveedor-detail.html',
   styleUrl: './proveedor-detail.css',
@@ -47,6 +53,19 @@ export class ProveedorDetail {
     effect(() => {
       this.id(); // re-run whenever the route id changes
       untracked(() => this.load());
+    });
+  }
+
+  protected verObservaciones(recepcion: Recepcion, proveedor: ProveedorDetalle): void {
+    this.dialog.open<ObservacionesDialog, ObservacionesDialogData>(ObservacionesDialog, {
+      data: {
+        ticket: recepcion.ticket,
+        proveedor: proveedor.nombre,
+        fechaHora: recepcion.fechaHora,
+        observaciones: recepcion.observaciones ?? '',
+      },
+      width: '480px',
+      maxWidth: '95vw',
     });
   }
 

@@ -4,6 +4,7 @@ import localeEsAr from '@angular/common/locales/es-AR';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { MatTooltip } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -108,38 +109,73 @@ describe('ProveedorDetail', () => {
     expect(fixture.nativeElement.querySelector('.table-wrapper table.mat-mdc-table')).toBeTruthy();
   });
 
-  it('right-aligns the numeric columns (headers included) and leaves date and observaciones left', async () => {
-    await cargar([recepcion({ ticket: 4901 })]);
+  it('aligns quantities to the right and identifiers to the center, each header like its column', async () => {
+    await cargar([recepcion({ ticket: 4901, observaciones: 'Acidez alta' })]);
 
+    const alineacion = (el: Element) => {
+      const clase = el.classList.contains('cantidad')
+        ? 'cantidad'
+        : el.classList.contains('identificador')
+          ? 'identificador'
+          : 'texto';
+      return clase + ':' + getComputedStyle(el).textAlign;
+    };
     const encabezados = Array.from(
       fixture.nativeElement.querySelectorAll('th') as NodeListOf<HTMLElement>,
     );
     const [fila] = filas();
     const celdasFila = Array.from(fila.querySelectorAll('td'));
-    const esNumerica = (el: Element) => el.classList.contains('numero');
 
-    // Fecha y hora, 8 numeric columns, Observaciones
-    expect(encabezados.map(esNumerica)).toEqual([
-      false, true, true, true, true, true, true, true, true, false,
-    ]);
-    expect(celdasFila.map(esNumerica)).toEqual([
-      false, true, true, true, true, true, true, true, true, false,
-    ]);
+    // Fecha, Ticket, Litros, Agua %, L. reales, Grasa %, Acidez °D, Temp. °C, Silo, Obs.
+    const esperado = [
+      'texto:',
+      'identificador:center',
+      'cantidad:right',
+      'cantidad:right',
+      'cantidad:right',
+      'cantidad:right',
+      'cantidad:right',
+      'cantidad:right',
+      'identificador:center',
+      'texto:',
+    ];
+    expect(encabezados.map(alineacion).map((a) => a.replace(/:(left|start)$/, ':'))).toEqual(esperado);
+    expect(celdasFila.map(alineacion).map((a) => a.replace(/:(left|start)$/, ':'))).toEqual(esperado);
   });
 
-  it('truncates the observation on one line and keeps the full text in a tooltip', async () => {
+  it('shows the observation as a button with the full text as tooltip, and nothing when empty', async () => {
     const larga = 'Entrega con demora por lluvia; el camión llegó tarde y el silo estaba ocupado.';
     await cargar([
       recepcion({ id: 'a', observaciones: larga }),
       recepcion({ id: 'b', observaciones: null }),
     ]);
 
-    const spans = fixture.debugElement.queryAll(By.css('td .truncado'));
-    const mensajes = spans.map((s) => s.injector.get(MatTooltip).message);
+    const botones = fixture.debugElement.queryAll(By.css('td app-observacion-celda button'));
+    const celdasObs = fixture.debugElement.queryAll(By.css('td.mat-column-observaciones'));
 
-    expect(spans).toHaveLength(2);
-    expect(spans[0].nativeElement.textContent.trim()).toBe(larga);
-    expect(mensajes).toEqual([larga, '']);
+    expect(botones).toHaveLength(1);
+    expect(botones[0].nativeElement.textContent).toContain(larga);
+    expect(botones[0].injector.get(MatTooltip).message).toBe(larga);
+    expect(celdasObs).toHaveLength(2);
+    expect(celdasObs[1].nativeElement.querySelector('button')).toBeNull();
+  });
+
+  it('opens a dialog with the full text, ticket, proveedor and fecha y hora when the observation is clicked', async () => {
+    const larga = 'Entrega con demora por lluvia; el camión llegó tarde y el silo estaba ocupado.';
+    await cargar([recepcion({ ticket: 4901, observaciones: larga })]);
+
+    (fixture.nativeElement.querySelector('td app-observacion-celda button') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const dialogo = document.querySelector('mat-dialog-container') as HTMLElement;
+    expect(dialogo).toBeTruthy();
+    expect(dialogo.textContent).toContain(larga);
+    expect(dialogo.textContent).toContain('4901');
+    expect(dialogo.textContent).toContain('Tambo Test');
+    expect(dialogo.textContent).toContain('14/10/2026 08:18');
+
+    TestBed.inject(MatDialog).closeAll();
   });
 
   it('uses a fixed layout with percentage widths, so it does not depend on the loaded rows', async () => {
@@ -165,16 +201,16 @@ describe('ProveedorDetail', () => {
       silo: ancho('silo'),
     }).toEqual({
       fechaHora: '17%',
-      ticket: '7%',
+      ticket: '6%',
       litros: '9%',
       aguaPorcentaje: '8%',
       litrosAPagar: '11%',
       grasa: '9%',
       acidez: '10%',
       temperatura: '10%',
-      silo: '6%',
+      silo: '4.5%',
     });
-    // Observaciones has no explicit width: it takes the rest (13%)
+    // Observaciones has no explicit width: it takes the rest (15.5%)
     expect(ancho('observaciones')).toBe('auto');
   });
 
