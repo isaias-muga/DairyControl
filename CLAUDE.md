@@ -11,6 +11,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `src/DairyControl.Api`: controllers, middleware, `Program.cs`
 - `tests/DairyControl.Domain.Tests`, `tests/DairyControl.Application.Tests`, `tests/DairyControl.Api.Tests` and `tests/DairyControl.Infrastructure.Tests`
 - `client/`: Angular client (see "Client conventions")
+- `e2e/`: Playwright end-to-end tests (see "E2E tests")
 - `global.json`: opts `dotnet test` into Microsoft.Testing.Platform. Required on the .NET 10 SDK; do not delete it or pin an SDK version in it.
 
 ## Dependency rules (never break these)
@@ -111,6 +112,30 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Verify persistence calls with `Verify(..., Times.Once)` or `Times.Never`, not just the returned data.
 - Call `Assert.NotNull(result)` before asserting on properties of a nullable result.
 
+### E2E tests
+
+- `e2e/` holds Playwright tests (TypeScript) that run against the Docker Compose stack, in the CI job `e2e` (required check). `global-setup.ts` waits for `GET /health` (anonymous, 200 when the API and the database are reachable); never use fixed sleeps.
+- Each test creates its own proveedor and a unique ticket through the UI, so tests depend neither on each other nor on the seed. Tests that change the global quality limits restore them in `finally`; that is why they run with one worker.
+- Selectors are roles and labels (`getByRole`, `getByLabel`), never CSS classes.
+- A new critical flow gets an e2e test in the same PR.
+
+### Exploratory checks
+
+Before opening every PR, run these with Playwright against the running app (`docker compose up --build`) on every form, field and endpoint the PR adds or changes, and report the results in the PR's Self-review section (what was checked, what was found, what was fixed). The script is throwaway and is not committed; if a check finds a bug, add a regression test (unit or e2e) with the fix.
+
+- Empty and whitespace-only fields.
+- Negative, zero and huge numbers.
+- Letters in numeric fields.
+- "3,5" vs "3.5" for decimals.
+- 5,000-character text.
+- Accents and emojis.
+- HTML/script and SQL-like text: it must be shown as text and never executed.
+- Future and very old dates.
+- Double click on submit: exactly one record is created.
+- Expired or invalid session: redirect to login, no stuck state.
+
+Fix small findings in the same PR. For anything bigger, propose a separate issue to the developer and list it in the Self-review; do not open it without approval.
+
 ## Security
 
 - Secrets live in .NET User Secrets: `Jwt:SigningKey` and `AdminUser:Password`. Never write a secret into `appsettings.json` or any committed file.
@@ -124,9 +149,11 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Add a migration: `dotnet ef migrations add <Name> --project src/DairyControl.Infrastructure --startup-project src/DairyControl.Api`
 - Apply migrations: `dotnet ef database update --project src/DairyControl.Infrastructure --startup-project src/DairyControl.Api`
 - Client (from `client/`): `npm install`, `ng serve` (http://localhost:4200), `ng build`
+- E2E (from `e2e/`, with the stack running): `npm ci`, `npx playwright install chromium`, `npm test`
 - Full stack in Docker: `docker compose up --build` (http://localhost:8080; needs a `.env` copied from `.env.example`)
 - Deployment: `.github/workflows/deploy.yml` runs after CI passes on `main`: builds both images, pushes them to ghcr.io tagged with the short commit SHA, and updates both Azure container apps. Azure login uses OIDC; no credentials are stored in the repo or the workflow.
 - Stop the stack and reset the database: `docker compose down -v`
+- Health: `GET /health` on the API (through nginx at http://localhost:8080/health): 200 when the API and the database are reachable, 503 otherwise. See `docs/deployment.md`.
 
 ### Docker / configuration flags
 
@@ -143,6 +170,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Keep changes scoped to the task. Do not refactor unrelated code. If a new file is needed, justify it in the plan.
 - After making changes, run the build and the tests (and `ng build` for client changes), and report the results.
 - For UI changes, also do the visual check described in Client conventions > UI conventions.
+- Before every PR, run the Exploratory checks (Testing > Exploratory checks) and the e2e tests locally.
 - If a request conflicts with a rule in this file, stop and ask.
 - Git: follow the Git workflow below.
 
@@ -156,7 +184,7 @@ Claude handles branches, commits, pushes and pull requests; the developer review
 - Independent review before the PR: run a fresh subagent that has not seen the implementation conversation. Give it only the issue text, `CLAUDE.md` and `git diff main...HEAD`, and ask for bugs, risks, missing tests and convention breaks, ranked by severity. Fix every real finding (as new commits), then rerun the build, the tests and the visual check.
 - Open the PR when the build, tests, visual check and independent review are done: push the branch (`git push -u origin <branch>`) and open it with `gh pr create`. Title `Feature <N>/<issue title>` (N is the issue number); body with Summary / Changes / Evidence / Self-review / Notes (`.github/pull_request_template.md`) and `Closes #<N>`.
 - PR evidence: screenshots (demo app, synthetic data only; never real plant data) go to the `pr-evidence` branch, folder `pr-<N>/` (here N is the PR number, so publish them after the PR exists). Use a git worktree outside the repo so the feature branch is not touched. If `pr-evidence` does not exist, create it as an orphan branch (`git worktree add --orphan -b pr-evidence <dir>`) with a short README saying it is never merged. Embed each image in the PR body by commit SHA: `![<name>](https://raw.githubusercontent.com/isaias-muga/DairyControl/<sha>/pr-<N>/<file>.png)`, then update the body with `gh pr edit <N> --body-file <file>`.
-- The PR body has a Self-review section: what the independent review found and how each finding was fixed (or why it was rejected).
+- The PR body has a Self-review section: what the independent review found and how each finding was fixed (or why it was rejected), plus the Exploratory checks results.
 - Review changes: the developer comments on the PR or tells Claude. Fix them on the same branch, push, and reply with what changed.
 - Never: merge PRs, push to `main`, force push, rebase or reset shared branches, delete remote branches, change GitHub settings. `.claude/settings.json` denies the riskiest commands as a safety net (its rules match the command text anywhere, so avoid quoting a denied command in a commit message), but the rule holds even where no deny rule matches (for example a bare `git push` while on `main`).
 - After the developer merges: `git switch main`, `git pull`, delete the local branch (`git branch -d <branch>`).
