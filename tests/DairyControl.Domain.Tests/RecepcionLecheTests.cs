@@ -12,6 +12,21 @@ namespace DairyControl.Domain.Tests
         }
 
         [Theory]
+        [InlineData("")]
+        [InlineData("    ")]
+        public void Registrar_BlankObservaciones_StoresNull(string observaciones)
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m, null);
+
+            // Act
+            var recepcion = RecepcionLeche.Registrar(parametros, new DateTime(2026, 10, 1, 6, 0, 0), 1, observaciones);
+
+            // Assert
+            Assert.Null(recepcion.Observaciones);
+        }
+
+        [Theory]
         [InlineData(1000, 0, 1000)]
         [InlineData(1000, 10, 900)]
         [InlineData(1000, 2.5, 975)]
