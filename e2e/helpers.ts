@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 let counter = 0;
 
@@ -26,6 +26,17 @@ function adminPassword(): string {
   return password;
 }
 
+/**
+ * Fills a field and checks that the value stuck. With tracing on, a fill typed right after a Material dialog
+ * opens was lost now and then (a different field each time), so retry until the value is really there.
+ */
+export async function rellenar(campo: Locator, valor: string): Promise<void> {
+  await expect(async () => {
+    await campo.fill(valor);
+    await expect(campo).toHaveValue(valor, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+}
+
 export async function login(page: Page, password = adminPassword()): Promise<void> {
   await page.goto('/login');
   await page.getByLabel('Usuario').fill('admin');
@@ -43,7 +54,7 @@ export async function crearProveedor(page: Page): Promise<string> {
   const nombre = nombreUnico();
   await page.getByRole('link', { name: 'Proveedores' }).click();
   await page.getByRole('button', { name: 'Nuevo proveedor' }).click();
-  await page.getByRole('dialog').getByLabel('Nombre').fill(nombre);
+  await rellenar(page.getByRole('dialog').getByLabel('Nombre'), nombre);
   await page.getByRole('dialog').getByRole('button', { name: 'Crear' }).click();
   await page.getByRole('link', { name: new RegExp(nombre) }).click();
   await expect(page.getByRole('heading', { name: nombre })).toBeVisible();
@@ -61,11 +72,11 @@ export interface ValoresRecepcion {
 export async function registrarRecepcion(page: Page, valores: ValoresRecepcion): Promise<void> {
   await page.getByRole('button', { name: 'Registrar recepción' }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel(/^Litros/).fill(String(valores.litros));
-  await dialog.getByLabel(/^Acidez/).fill(String(valores.acidez));
-  await dialog.getByLabel(/^Temperatura/).fill(String(valores.temperatura));
+  await rellenar(dialog.getByLabel(/^Litros/), String(valores.litros));
+  await rellenar(dialog.getByLabel(/^Acidez/), String(valores.acidez));
+  await rellenar(dialog.getByLabel(/^Temperatura/), String(valores.temperatura));
   if (valores.ticket !== undefined) {
-    await dialog.getByLabel(/^Ticket/).fill(String(valores.ticket));
+    await rellenar(dialog.getByLabel(/^Ticket/), String(valores.ticket));
   }
   await dialog.getByRole('button', { name: 'Registrar', exact: true }).click();
 }

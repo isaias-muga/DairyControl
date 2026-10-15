@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { crearProveedor, loginYEsperarResumen, registrarRecepcion } from '../helpers';
+import { crearProveedor, loginYEsperarResumen, registrarRecepcion, rellenar } from '../helpers';
 
 // The limits row is global: the second test changes it and always restores it.
 
@@ -36,14 +36,14 @@ test('calidad: changing a limit in Configuración changes what is flagged', asyn
   const original = await acidezMaxima.inputValue();
 
   try {
-    await acidezMaxima.fill('25');
+    await rellenar(acidezMaxima, '25');
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText('Última modificación')).toBeVisible();
 
     expect(await fueraDeRangoEn(page, nombre)).toBe('0');
   } finally {
     await page.getByRole('link', { name: 'Configuración' }).click();
-    await page.getByLabel(/^Acidez máxima/).fill(original);
+    await rellenar(page.getByLabel(/^Acidez máxima/), original);
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByLabel(/^Acidez máxima/)).toHaveValue(original);
   }
