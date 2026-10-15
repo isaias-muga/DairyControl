@@ -15,6 +15,13 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Health probe of the API (200 when the API and its database are reachable, 503 otherwise).
+    location = /health {
+        proxy_pass ${API_UPSTREAM}/health;
+        proxy_set_header Host $proxy_host;
+        proxy_ssl_server_name on;
+    }
+
     # SPA fallback
     location / {
         # Revalidate on every load so a new deploy is picked up (bundles are hashed).

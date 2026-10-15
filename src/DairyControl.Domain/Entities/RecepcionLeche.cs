@@ -30,6 +30,10 @@ namespace DairyControl.Domain.Entities
                 throw new ArgumentException($"El silo debe estar entre {SiloMin} y {SiloMax}.", nameof(silo));
             }
             var observacionesTrim = observaciones?.Trim();
+            if (observacionesTrim?.Length == 0)
+            {
+                observacionesTrim = null; // blank text counts as no observaciones
+            }
             if (observacionesTrim != null && observacionesTrim.Length > ObservacionesMaxLength)
             {
                 throw new ArgumentException($"Las observaciones no pueden superar los {ObservacionesMaxLength} caracteres.");

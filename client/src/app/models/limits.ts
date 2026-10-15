@@ -17,6 +17,7 @@ export const SILO_MAX = 20; // RecepcionLeche.SiloMax
 export const RESUMEN_MAX_DIAS = 366; // ResumenRecepcionesAppService.MaxDias
 export const AGUA_MAX_PORCENTAJE = 100; // ParametrosCalidad.AguaMaxPorcentaje
 export const TICKET_MIN = 1; // RecepcionLeche ticket must be a positive integer
+export const TICKET_MAX = 2147483647; // the ticket is an int in the API; a bigger number is rejected as unreadable JSON
 export const ACIDEZ_LIMITE_MIN = 10; // LimitesCalidad.AcidezMinimaPermitida
 export const ACIDEZ_LIMITE_MAX = 30; // LimitesCalidad.AcidezMaximaPermitida
 export const TEMPERATURA_LIMITE_MIN = 0; // LimitesCalidad.TemperaturaMinimaPermitida

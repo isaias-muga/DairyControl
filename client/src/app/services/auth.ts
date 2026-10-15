@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -14,6 +15,7 @@ const TOKEN_KEY = 'dairycontrol_token';
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private dialog = inject(MatDialog);
   private apiUrl = `${environment.apiUrl}/Auth`;
 
   private token = signal<string | null>(localStorage.getItem(TOKEN_KEY));
@@ -31,6 +33,8 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(TOKEN_KEY);
     this.token.set(null);
+    // An open dialog (e.g. a form whose request just got a 401) must not stay on top of the login page
+    this.dialog.closeAll();
     this.router.navigate(['/login']);
   }
 

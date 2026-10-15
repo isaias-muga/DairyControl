@@ -16,6 +16,7 @@ import {
   SILO_MIN,
   TEMPERATURA_MAX,
   TEMPERATURA_MIN,
+  TICKET_MAX,
   TICKET_MIN,
 } from '../../models/limits';
 import { getApiErrorMessage } from '../../utils/api-error';
@@ -78,7 +79,7 @@ export class RecepcionForm {
     ],
     ticket: [
       null as number | null,
-      [Validators.min(TICKET_MIN), Validators.pattern(/^\d+$/)],
+      [Validators.min(TICKET_MIN), Validators.max(TICKET_MAX), Validators.pattern(/^\d+$/)],
     ],
     observaciones: ['', Validators.maxLength(OBSERVACIONES_MAX_LENGTH)],
   });
@@ -92,6 +93,10 @@ export class RecepcionForm {
   }
 
   submit(): void {
+    // A second click can arrive before the disabled button is rendered
+    if (this.saving()) {
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
