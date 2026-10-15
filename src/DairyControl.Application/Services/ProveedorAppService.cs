@@ -92,7 +92,7 @@ namespace DairyControl.Application.Services
             }
 
             // A missing date becomes default(DateTime), which the domain rejects.
-            proveedor.RegistrarRecepcion(parametros, dto.FechaHora.GetValueOrDefault(), HoraPlanta.Ahora(_reloj), dto.Silo, dto.Observaciones, dto.Ticket);
+            proveedor.RegistrarRecepcion(parametros, HoraPlanta.ALaPlanta(dto.FechaHora.GetValueOrDefault()), HoraPlanta.Ahora(_reloj), dto.Silo, dto.Observaciones, dto.Ticket);
 
             try
             {

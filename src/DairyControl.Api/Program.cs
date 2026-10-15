@@ -1,4 +1,4 @@
-﻿using DairyControl.Api.Health;
+using DairyControl.Api.Health;
 using DairyControl.Api.Middleware;
 using DairyControl.Application.Queries;
 using DairyControl.Application.Services;

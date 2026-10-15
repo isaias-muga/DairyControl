@@ -175,7 +175,8 @@ export class RecepcionForm {
 
   /** Puts an API message on the control it names (cleared when the user edits it); false if there is none. */
   private mostrarEnCampo(campo: string | null, mensaje: string): boolean {
-    const control = campo ? (this.form.controls as Record<string, AbstractControl>)[campo] : null;
+    // Only fechaHora renders the server's text next to the field; any other field goes to the generic error.
+    const control = campo === 'fechaHora' ? this.form.controls.fechaHora : null;
     if (!control) {
       return false;
     }

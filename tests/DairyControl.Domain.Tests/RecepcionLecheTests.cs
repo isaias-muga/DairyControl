@@ -141,6 +141,20 @@ namespace DairyControl.Domain.Tests
             Assert.Contains("El silo debe estar entre 1 y 20.", ex.Message);
         }
 
+        [Fact]
+        public void Registrar_FechaHoraOneSecondOverTheLimit_ThrowsArgumentException()
+        {
+            // Arrange
+            var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
+
+            // Act
+            var ex = Assert.Throws<ArgumentException>(() =>
+                RecepcionLeche.Registrar(parametros, Ahora.AddHours(1).AddSeconds(1), Ahora, 1, null));
+
+            // Assert
+            Assert.Equal("fechaHora", ex.ParamName);
+        }
+
         // FechaHora: required, from 2000-01-01 to now + 1 hour (plant time)
 
         [Fact]

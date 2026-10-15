@@ -496,5 +496,26 @@ namespace DairyControl.Application.Tests
             Assert.NotNull(result);
             mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
         }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_FechaHoraInUtc_IsConvertedToPlantTimeBeforeValidating()
+        {
+            // Arrange: 15:30 UTC is 12:30 plant time, within the next hour of the 12:00 plant now
+            var mockRepo = new Mock<IProveedorRepository>();
+            var proveedor = Proveedor.Crear("Tambo Test");
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var dto = new RegistrarRecepcionDto
+            {
+                Acidez = 17m, Temperatura = 5m, Litros = 1000m,
+                FechaHora = new DateTime(2026, 10, 15, 15, 30, 0, DateTimeKind.Utc)
+            };
+
+            // Act
+            await service.RegistrarRecepcionAsync(proveedor.Id, dto);
+
+            // Assert
+            Assert.Equal(new DateTime(2026, 10, 15, 12, 30, 0), proveedor.Recepciones.Single().FechaHora);
+        }
     }
 }

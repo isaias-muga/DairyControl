@@ -50,7 +50,7 @@ namespace DairyControl.Domain.Entities
             }
             if (observacionesTrim != null && observacionesTrim.Length > ObservacionesMaxLength)
             {
-                throw new ArgumentException($"Las observaciones no pueden superar los {ObservacionesMaxLength} caracteres.");
+                throw new ArgumentException($"Las observaciones no pueden superar los {ObservacionesMaxLength} caracteres.", nameof(observaciones));
             }
             return new RecepcionLeche
             {
