@@ -92,6 +92,10 @@ export class RecepcionForm {
   }
 
   submit(): void {
+    // A second click can arrive before the disabled button is rendered
+    if (this.saving()) {
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;

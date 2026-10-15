@@ -182,6 +182,17 @@ describe('RecepcionForm', () => {
     expect(component.form.controls.ticket.invalid).toBe(true);
   });
 
+  it('sends only one request when submitted twice before the response arrives', () => {
+    completarObligatorios();
+
+    component.submit();
+    component.submit();
+
+    const requests = http.match((r) => r.url.endsWith('/recepciones'));
+    expect(requests).toHaveLength(1);
+    requests[0].flush({});
+  });
+
   it('sends null water and ticket when left empty', () => {
     completarObligatorios();
 

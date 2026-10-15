@@ -39,6 +39,10 @@ export class CrearProveedorDialog {
   saveError = signal<string | null>(null);
 
   crear(): void {
+    // A second click can arrive before the disabled button is rendered
+    if (this.saving()) {
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
