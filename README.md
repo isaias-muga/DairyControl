@@ -142,6 +142,8 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 
 - **Quality limits are editable at runtime.** They live in the database (`ConfiguracionCalidad`, seeded with 19 °D / 20 °C / 0 % water), not in `appsettings.json`, so a plant changes them without a deploy. Reports always evaluate deliveries with the **current** limits, so changing them re-evaluates history. When settlements are added, they will freeze the limits in force at settlement time.
 
+- **The plant ticket is unique across all proveedores.** A filtered unique index (`Ticket IS NOT NULL`) guarantees it in the database, a pre-check returns a readable `409` ("El ticket 6311 ya está registrado (Tambo X, 11/10/2026)"), and a unique-violation (SQL Server 2601/2627) from two operators saving at once is mapped to the same `409`.
+
 **API**
 
 - **DTOs shaped for their consumer.** The list returns a lightweight `ProveedorDto`; the detail returns `ProveedorDetalleDto` with flattened `RecepcionDto`s, so the client never sees domain value objects.
@@ -173,7 +175,7 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 | `GET`  | `/api/Proveedores`                  | JWT    | Lists all proveedores                               |
 | `POST` | `/api/Proveedores`                  | JWT    | Creates a proveedor                                 |
 | `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor with its recepciones, newest first |
-| `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor (optional `aguaPorcentaje` and `ticket`) |
+| `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor (optional `aguaPorcentaje` and `ticket`); `409` if the ticket is already registered by any proveedor |
 | `GET`  | `/api/Configuracion/calidad`        | JWT    | Current quality limits (`acidezMaxima`, `temperaturaMaxima`, `aguaMaxima`) and when they were last changed |
 | `PUT`  | `/api/Configuracion/calidad`        | JWT    | Updates the quality limits; they apply immediately to every report |
 | `GET`  | `/api/Recepciones/resumen`          | JWT    | Summary for `desde`/`hasta` (`YYYY-MM-DD`, max 366 days) and optional `proveedorId`: totals (min/max, out-of-range count, liters of the previous period of the same length), proveedor ranking by liters, liters per day |

@@ -29,6 +29,8 @@ namespace DairyControl.Infrastructure.Persistence.Configurations
                 r.Property(x => x.FechaHora).IsRequired();
                 r.Property(x => x.Silo);
                 r.Property(x => x.Ticket);
+                // The ticket is unique across the whole plant; old recepciones have none.
+                r.HasIndex(x => x.Ticket).IsUnique().HasFilter("[Ticket] IS NOT NULL");
                 r.Property(x => x.Observaciones).HasMaxLength(RecepcionLeche.ObservacionesMaxLength);
             });
         }

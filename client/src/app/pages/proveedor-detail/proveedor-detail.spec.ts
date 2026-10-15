@@ -2,6 +2,8 @@ import { LOCALE_ID } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeEsAr from '@angular/common/locales/es-AR';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { MatTooltip } from '@angular/material/tooltip';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -64,20 +66,155 @@ describe('ProveedorDetail', () => {
     expect(component).toBeTruthy();
   });
 
+  it('shows short one-line headers, with the full name in the tooltip and aria-label', async () => {
+    await cargar([recepcion({})]);
+
+    const encabezados = fixture.debugElement.queryAll(By.css('th'));
+    const visibles = encabezados.map((th) => th.nativeElement.textContent.trim());
+    const completos = encabezados.map((th) => th.nativeElement.getAttribute('aria-label'));
+    const tooltips = encabezados.map((th) => th.injector.get(MatTooltip, null)?.message ?? null);
+
+    expect(visibles).toEqual([
+      'Fecha', 'Ticket', 'Litros', 'Agua %', 'L. reales', 'Grasa %', 'Acidez °D', 'Temp. °C', 'Silo', 'Obs.',
+    ]);
+    expect(completos).toEqual([
+      'Fecha y hora', 'Ticket', 'Litros', '% agua', 'Litros reales', 'Grasa (%)', 'Acidez', 'Temp. (°C)', 'Silo', 'Observaciones',
+    ]);
+    // abbreviated headers carry the full name as a tooltip; headers that are already complete don't repeat it
+    expect(tooltips).toEqual([
+      'Fecha y hora', null, null, '% agua', 'Litros reales', 'Grasa (%)', 'Acidez', 'Temp. (°C)', null, 'Observaciones',
+    ]);
+  });
+
   it('shows Ticket after the date and % agua and Litros reales next to Litros', async () => {
     await cargar([recepcion({})]);
 
-    const encabezados = Array.from(
+    const columnas = Array.from(
       fixture.nativeElement.querySelectorAll('th') as NodeListOf<HTMLElement>,
-    ).map((th) => (th.textContent ?? '').trim());
+    ).map((th) => th.getAttribute('aria-label'));
 
-    expect(encabezados.slice(0, 5)).toEqual([
+    expect(columnas.slice(0, 5)).toEqual([
       'Fecha y hora',
       'Ticket',
       'Litros',
       '% agua',
       'Litros reales',
     ]);
+  });
+
+  it('wraps the table in a horizontally scrollable container', async () => {
+    await cargar([recepcion({})]);
+
+    expect(fixture.nativeElement.querySelector('.table-wrapper table.mat-mdc-table')).toBeTruthy();
+  });
+
+  it('right-aligns the numeric columns (headers included) and leaves date and observaciones left', async () => {
+    await cargar([recepcion({ ticket: 4901 })]);
+
+    const encabezados = Array.from(
+      fixture.nativeElement.querySelectorAll('th') as NodeListOf<HTMLElement>,
+    );
+    const [fila] = filas();
+    const celdasFila = Array.from(fila.querySelectorAll('td'));
+    const esNumerica = (el: Element) => el.classList.contains('numero');
+
+    // Fecha y hora, 8 numeric columns, Observaciones
+    expect(encabezados.map(esNumerica)).toEqual([
+      false, true, true, true, true, true, true, true, true, false,
+    ]);
+    expect(celdasFila.map(esNumerica)).toEqual([
+      false, true, true, true, true, true, true, true, true, false,
+    ]);
+  });
+
+  it('truncates the observation on one line and keeps the full text in a tooltip', async () => {
+    const larga = 'Entrega con demora por lluvia; el camión llegó tarde y el silo estaba ocupado.';
+    await cargar([
+      recepcion({ id: 'a', observaciones: larga }),
+      recepcion({ id: 'b', observaciones: null }),
+    ]);
+
+    const spans = fixture.debugElement.queryAll(By.css('td .truncado'));
+    const mensajes = spans.map((s) => s.injector.get(MatTooltip).message);
+
+    expect(spans).toHaveLength(2);
+    expect(spans[0].nativeElement.textContent.trim()).toBe(larga);
+    expect(mensajes).toEqual([larga, '']);
+  });
+
+  it('uses a fixed layout with percentage widths, so it does not depend on the loaded rows', async () => {
+    await cargar([recepcion({ observaciones: null })]);
+
+    const tabla = fixture.nativeElement.querySelector('table') as HTMLElement;
+    const ancho = (columna: string) =>
+      getComputedStyle(
+        fixture.nativeElement.querySelector(`th.mat-column-${columna}`) as HTMLElement,
+      ).width;
+
+    expect(getComputedStyle(tabla).tableLayout).toBe('fixed');
+    expect(getComputedStyle(tabla).minWidth).toBe('860px');
+    expect({
+      fechaHora: ancho('fechaHora'),
+      ticket: ancho('ticket'),
+      litros: ancho('litros'),
+      aguaPorcentaje: ancho('aguaPorcentaje'),
+      litrosAPagar: ancho('litrosAPagar'),
+      grasa: ancho('grasa'),
+      acidez: ancho('acidez'),
+      temperatura: ancho('temperatura'),
+      silo: ancho('silo'),
+    }).toEqual({
+      fechaHora: '17%',
+      ticket: '7%',
+      litros: '9%',
+      aguaPorcentaje: '8%',
+      litrosAPagar: '11%',
+      grasa: '9%',
+      acidez: '10%',
+      temperatura: '10%',
+      silo: '6%',
+    });
+    // Observaciones has no explicit width: it takes the rest (13%)
+    expect(ancho('observaciones')).toBe('auto');
+  });
+
+  it('keeps headers and cells on one line, vertically centered, with the same vertical padding', async () => {
+    await cargar([recepcion({})]);
+
+    const encabezado = getComputedStyle(
+      fixture.nativeElement.querySelector('th.mat-column-litrosAPagar') as HTMLElement,
+    );
+    const celda = getComputedStyle(
+      fixture.nativeElement.querySelector('td.mat-column-litrosAPagar') as HTMLElement,
+    );
+
+    expect(encabezado.whiteSpace).toBe('nowrap');
+    expect(celda.whiteSpace).toBe('nowrap');
+    expect(encabezado.verticalAlign).toBe('middle');
+    expect(celda.verticalAlign).toBe('middle');
+    // jsdom does not cascade Material's own padding rules, so the 12px is checked through the variable both use
+    expect(
+      getComputedStyle(fixture.nativeElement.querySelector('table') as HTMLElement).getPropertyValue(
+        '--tabla-padding-vertical',
+      ),
+    ).toBe('12px');
+    expect(celda.paddingTop).toBe(encabezado.paddingTop);
+    expect(celda.paddingBottom).toBe(encabezado.paddingBottom);
+  });
+
+  it('uses the same padding on the first and the last column, header included', async () => {
+    await cargar([recepcion({})]);
+
+    const estilo = (selector: string) =>
+      getComputedStyle(fixture.nativeElement.querySelector(selector) as HTMLElement);
+
+    for (const [primera, ultima] of [
+      ['th.mat-column-fechaHora', 'th.mat-column-observaciones'],
+      ['td.mat-column-fechaHora', 'td.mat-column-observaciones'],
+    ]) {
+      expect(estilo(primera).paddingLeft).toBe('16px');
+      expect(estilo(ultima).paddingRight).toBe('16px');
+    }
   });
 
   it('shows a dash when ticket and water are empty', async () => {

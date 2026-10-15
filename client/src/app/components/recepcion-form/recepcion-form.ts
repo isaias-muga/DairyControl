@@ -112,7 +112,14 @@ export class RecepcionForm {
         this.registrada.emit();
       },
       error: (err: HttpErrorResponse) => {
-        this.saveError.set(getApiErrorMessage(err, 'No se pudo registrar la recepción.'));
+        const mensaje = getApiErrorMessage(err, 'No se pudo registrar la recepción.');
+        if (err.status === 409) {
+          // Duplicate ticket: show it next to the ticket field (cleared when the user edits it)
+          this.form.controls.ticket.setErrors({ duplicado: mensaje });
+          this.form.controls.ticket.markAsTouched();
+        } else {
+          this.saveError.set(mensaje);
+        }
         this.saving.set(false);
       },
     });

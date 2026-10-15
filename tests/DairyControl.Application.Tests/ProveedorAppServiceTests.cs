@@ -1,6 +1,7 @@
 ﻿using DairyControl.Application.DTOs;
 using DairyControl.Application.Services;
 using DairyControl.Domain.Entities;
+using DairyControl.Domain.Exceptions;
 using DairyControl.Domain.Interfaces;
 using DairyControl.Domain.ValueObjects;
 using Moq;
@@ -252,6 +253,111 @@ namespace DairyControl.Application.Tests
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        private static RegistrarRecepcionDto DtoConTicket(int? ticket) => new()
+        {
+            Acidez = 17m,
+            Temperatura = 5m,
+            Litros = 1000m,
+            FechaHora = DateTime.Now,
+            Ticket = ticket
+        };
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_TicketUsedByAnotherProveedor_ThrowsTicketDuplicadoAndNeverCallsUpdate()
+        {
+            // Arrange
+            var proveedor = Proveedor.Crear("Tambo Nuevo");
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            mockRepo.Setup(r => r.GetTicketRegistradoAsync(6311))
+                .ReturnsAsync(new TicketRegistrado("Tambo Las Acacias", new DateTime(2026, 10, 11, 11, 6, 0)));
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var ex = await Assert.ThrowsAsync<TicketDuplicadoException>(() =>
+                service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(6311)));
+
+            // Assert
+            Assert.Equal("El ticket 6311 ya está registrado (Tambo Las Acacias, 11/10/2026)", ex.Message);
+            Assert.Empty(proveedor.Recepciones);
+            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_UnusedTicket_ChecksOnceAndRegisters()
+        {
+            // Arrange
+            var proveedor = Proveedor.Crear("Tambo Nuevo");
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            mockRepo.Setup(r => r.GetTicketRegistradoAsync(7000)).ReturnsAsync((TicketRegistrado?)null);
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var result = await service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(7000));
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(7000, Assert.Single(proveedor.Recepciones).Ticket);
+            mockRepo.Verify(r => r.GetTicketRegistradoAsync(7000), Times.Once);
+            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_NoTicket_NeverChecksTicket()
+        {
+            // Arrange
+            var proveedor = Proveedor.Crear("Tambo Nuevo");
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            await service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(null));
+
+            // Assert
+            mockRepo.Verify(r => r.GetTicketRegistradoAsync(It.IsAny<int>()), Times.Never);
+            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_NonPositiveTicket_ThrowsArgumentExceptionWithoutChecking()
+        {
+            // Arrange
+            var proveedor = Proveedor.Crear("Tambo Nuevo");
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(0)));
+            mockRepo.Verify(r => r.GetTicketRegistradoAsync(It.IsAny<int>()), Times.Never);
+            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegistrarRecepcionAsync_UniqueViolationOnSave_ThrowsTicketDuplicadoWithDetails()
+        {
+            // Arrange: the pre-check passes, then another operator wins the race
+            var proveedor = Proveedor.Crear("Tambo Nuevo");
+            var mockRepo = new Mock<IProveedorRepository>();
+            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
+            mockRepo.SetupSequence(r => r.GetTicketRegistradoAsync(6311))
+                .ReturnsAsync((TicketRegistrado?)null)
+                .ReturnsAsync(new TicketRegistrado("Tambo Las Acacias", new DateTime(2026, 10, 15, 11, 50, 0)));
+            mockRepo.Setup(r => r.UpdateAsync(proveedor)).ThrowsAsync(new TicketDuplicadoException("El ticket ya está registrado."));
+            var service = new ProveedorAppService(mockRepo.Object);
+
+            // Act
+            var ex = await Assert.ThrowsAsync<TicketDuplicadoException>(() =>
+                service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(6311)));
+
+            // Assert
+            Assert.Equal("El ticket 6311 ya está registrado (Tambo Las Acacias, 15/10/2026)", ex.Message);
+            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
         }
 
         [Fact]

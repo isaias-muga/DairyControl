@@ -54,6 +54,14 @@ describe('Configuracion', () => {
     );
   });
 
+  it('has only required fields: no "(opcional)" labels and no hints', async () => {
+    await setup();
+    await cargarLimites();
+
+    expect(fixture.nativeElement.textContent).not.toContain('opcional');
+    expect(fixture.nativeElement.querySelector('mat-hint')).toBeNull();
+  });
+
   it('shows the API error when loading fails', async () => {
     await setup();
 

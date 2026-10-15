@@ -72,6 +72,12 @@ body {
   width: 100%;
 }
 
+/* Forms: the message area is dynamic (see app.config.ts), so this gap leaves room for the
+   next field's floating label and keeps hints/errors from ever overlapping it. */
+.mat-form-field-appearance-outline {
+  margin-bottom: 16px;
+}
+
 @media (min-width: 600px) {
   .page {
     padding: 24px;

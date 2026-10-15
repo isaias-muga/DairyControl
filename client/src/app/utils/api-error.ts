@@ -5,6 +5,11 @@ export function getApiErrorMessage(err: HttpErrorResponse, fallback: string): st
     return 'No se pudo conectar con el servidor.';
   }
 
+  if (err.status === 409 && typeof err.error?.error === 'string') {
+    // Conflict (e.g. duplicate ticket), from ExceptionHandlingMiddleware: { error: "..." }
+    return err.error.error;
+  }
+
   if (err.status === 400) {
     // Domain validation, from ExceptionHandlingMiddleware: { error: "..." }
     if (typeof err.error?.error === 'string') {

@@ -124,6 +124,10 @@ namespace DairyControl.Infrastructure.Migrations
 
                             b1.HasIndex("ProveedorId");
 
+                            b1.HasIndex("Ticket")
+                                .IsUnique()
+                                .HasFilter("[Ticket] IS NOT NULL");
+
                             b1.ToTable("Recepciones", (string)null);
 
                             b1.WithOwner()

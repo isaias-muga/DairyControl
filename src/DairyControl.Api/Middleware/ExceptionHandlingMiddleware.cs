@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using DairyControl.Domain.Exceptions;
+using System.Text.Json;
 namespace DairyControl.Api.Middleware
 {
     public class ExceptionHandlingMiddleware
@@ -19,6 +20,14 @@ namespace DairyControl.Api.Middleware
             catch (ArgumentException ex)
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                context.Response.ContentType = "application/json";
+                var errorResponse = new { error = ex.Message };
+                var json = JsonSerializer.Serialize(errorResponse);
+                await context.Response.WriteAsync(json);
+            }
+            catch (TicketDuplicadoException ex)
+            {
+                context.Response.StatusCode = StatusCodes.Status409Conflict;
                 context.Response.ContentType = "application/json";
                 var errorResponse = new { error = ex.Message };
                 var json = JsonSerializer.Serialize(errorResponse);
