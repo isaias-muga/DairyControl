@@ -27,24 +27,29 @@ namespace DairyControl.Api.Validation
                 .Select(p => p.Name)
                 .ToHashSet();
 
-            foreach (var (key, entry) in context.ModelState)
-            {
-                foreach (var modelError in entry.Errors)
-                {
-                    var field = FieldName(key);
-                    string message;
-                    if (bodyParameters.Contains(key) || key.Length == 0)
-                        message = CuerpoObligatorio;
-                    else if (modelError.Exception is JsonException or FormatException || string.IsNullOrWhiteSpace(modelError.ErrorMessage))
-                        message = $"El valor de «{field}» no es válido.";
-                    else
-                        message = modelError.ErrorMessage;
+            // The binder reports a bad body twice: the real error ("$.fechaHora") and a "dto is required" entry.
+            // Show the specific one first and the generic body message only when nothing else is wrong.
+            var errores = context.ModelState
+                .SelectMany(e => e.Value!.Errors.Select(error => (Key: e.Key, Error: error)))
+                .OrderBy(e => EsCuerpo(e.Key, bodyParameters) ? 1 : 0)
+                .ToList();
 
-                    return new BadRequestObjectResult(Body(message, bodyParameters.Contains(key) || key.Length == 0 ? null : field));
-                }
+            foreach (var (key, modelError) in errores)
+            {
+                if (EsCuerpo(key, bodyParameters))
+                    return new BadRequestObjectResult(Body(CuerpoObligatorio));
+
+                var field = FieldName(key);
+                // Errors keyed by a JSON path ($.x) come from the body deserializer, whose text is English.
+                var message = key.StartsWith('$') || modelError.Exception is JsonException or FormatException || string.IsNullOrWhiteSpace(modelError.ErrorMessage)
+                    ? $"El valor de «{field}» no es válido."
+                    : modelError.ErrorMessage;
+                return new BadRequestObjectResult(Body(message, field));
             }
             return new BadRequestObjectResult(Body("La solicitud no es válida."));
         }
+
+        private static bool EsCuerpo(string key, HashSet<string> bodyParameters) => key.Length == 0 || bodyParameters.Contains(key);
 
         // "$.fechaHora" (JSON path), "Dto.Ticket" or "desde" -> "fechaHora", "ticket", "desde"
         private static string FieldName(string key)

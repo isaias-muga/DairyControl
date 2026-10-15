@@ -52,6 +52,32 @@ namespace DairyControl.Api.Tests
         }
 
         [Fact]
+        public void InvalidModelState_BodyRequiredAndJsonErrorTogether_ReportsTheJsonError()
+        {
+            // Act: the generic entry comes first, as the binder adds it
+            var (_, error, field) = Invoke(m =>
+            {
+                m.AddModelError("dto", "The dto field is required.");
+                m.TryAddModelException("$.fechaHora", new JsonException("The JSON value could not be converted"));
+            });
+
+            // Assert
+            Assert.Equal("El valor de «fechaHora» no es válido.", error);
+            Assert.Equal("fechaHora", field);
+        }
+
+        [Fact]
+        public void InvalidModelState_JsonPathKeyWithEnglishMessage_ReturnsSpanishMessage()
+        {
+            // Act: the deserializer stores only the English message, no exception
+            var (_, error, field) = Invoke(m => m.AddModelError("$.ticket", "The JSON value could not be converted to System.Nullable`1[System.Int32]. Path: $.ticket"));
+
+            // Assert
+            Assert.Equal("El valor de «ticket» no es válido.", error);
+            Assert.Equal("ticket", field);
+        }
+
+        [Fact]
         public void InvalidModelState_BindingMessage_KeepsMessageAndNamesField()
         {
             // Act
