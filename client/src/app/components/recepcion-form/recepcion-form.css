@@ -6,6 +6,7 @@ mat-card-header {
   display: grid;
   grid-template-columns: 1fr;
   column-gap: 16px;
+  align-items: start; /* a field whose error wraps must not stretch its neighbours in the same row */
 }
 
 @media (min-width: 600px) {

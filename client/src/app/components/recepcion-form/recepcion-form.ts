@@ -4,10 +4,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ProveedoresService } from '../../services/proveedores';
 import { RegistrarRecepcion } from '../../models/proveedor';
 import {
+  AGUA_MAX_PORCENTAJE,
   LITROS_MAX_EXCLUSIVE,
   LITROS_MIN,
   OBSERVACIONES_MAX_LENGTH,
   PARAMETRO_MAX_EXCLUSIVE,
+  TICKET_MIN,
 } from '../../models/limits';
 import { lessThan } from '../../utils/validators';
 import { getApiErrorMessage } from '../../utils/api-error';
@@ -61,6 +63,14 @@ export class RecepcionForm {
       [Validators.required, Validators.min(0), lessThan(PARAMETRO_MAX_EXCLUSIVE)],
     ],
     silo: [null as number | null, [Validators.min(1), Validators.pattern(/^\d+$/)]],
+    aguaPorcentaje: [
+      null as number | null,
+      [Validators.min(0), Validators.max(AGUA_MAX_PORCENTAJE)],
+    ],
+    ticket: [
+      null as number | null,
+      [Validators.min(TICKET_MIN), Validators.pattern(/^\d+$/)],
+    ],
     observaciones: ['', Validators.maxLength(OBSERVACIONES_MAX_LENGTH)],
   });
 
@@ -86,6 +96,8 @@ export class RecepcionForm {
       acidez: v.acidez!,
       temperatura: v.temperatura!,
       silo: v.silo,
+      aguaPorcentaje: v.aguaPorcentaje,
+      ticket: v.ticket,
       observaciones: v.observaciones?.trim() || null,
     };
 
@@ -100,7 +112,14 @@ export class RecepcionForm {
         this.registrada.emit();
       },
       error: (err: HttpErrorResponse) => {
-        this.saveError.set(getApiErrorMessage(err, 'No se pudo registrar la recepción.'));
+        const mensaje = getApiErrorMessage(err, 'No se pudo registrar la recepción.');
+        if (err.status === 409) {
+          // Duplicate ticket: show it next to the ticket field (cleared when the user edits it)
+          this.form.controls.ticket.setErrors({ duplicado: mensaje });
+          this.form.controls.ticket.markAsTouched();
+        } else {
+          this.saveError.set(mensaje);
+        }
         this.saving.set(false);
       },
     });

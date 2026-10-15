@@ -67,8 +67,6 @@ The tables are not created by hand: the API applies the EF Core migrations and s
    | `DemoData__SeedOnStartup`            | `true`                         |
    | `HttpsRedirection__Enabled`          | `false` (Azure terminates TLS) |
 
-   The quality limits default to 19 °D acidity and 20 °C temperature (`CalidadLimites` in `appsettings.json`); override them per environment with `CalidadLimites__AcidezMaxima` and `CalidadLimites__TemperaturaMaxima`.
-
 4. Create the **client app** in the same environment:
    - Image: `ghcr.io/isaias-muga/dairycontrol-client:<tag>`.
    - Ingress: **accepting traffic from anywhere** (external), target port `8080`, insecure connections not allowed.

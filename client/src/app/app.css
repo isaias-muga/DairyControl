@@ -23,6 +23,33 @@
   flex: 1 1 auto;
 }
 
+/* Desktop: the links sit in the toolbar row, before "Cerrar sesión" */
+.nav {
+  display: contents;
+}
+
+/* Phones: title + "Cerrar sesión" on the first row, the links on their own row (no overlap, no sideways scroll) */
+@media (max-width: 599px) {
+  .toolbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 56px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .logout {
+    order: 2;
+  }
+
+  .nav {
+    order: 3;
+    display: flex;
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+}
+
 .waking-banner {
   display: flex;
   align-items: center;

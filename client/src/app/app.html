@@ -2,9 +2,12 @@
   <a class="title" routerLink="/resumen">DairyControl</a>
   <span class="spacer"></span>
   @if (auth.isLoggedIn()) {
-    <a mat-button class="nav-link" routerLink="/resumen" routerLinkActive="active">Resumen</a>
-    <a mat-button class="nav-link" routerLink="/proveedores" routerLinkActive="active">Proveedores</a>
-    <button mat-button type="button" (click)="auth.logout()">Cerrar sesión</button>
+    <nav class="nav">
+      <a mat-button class="nav-link" routerLink="/resumen" routerLinkActive="active">Resumen</a>
+      <a mat-button class="nav-link" routerLink="/proveedores" routerLinkActive="active">Proveedores</a>
+      <a mat-button class="nav-link" routerLink="/configuracion" routerLinkActive="active">Configuración</a>
+    </nav>
+    <button mat-button type="button" class="logout" (click)="auth.logout()">Cerrar sesión</button>
   } @else {
     <a mat-button routerLink="/login">Iniciar sesión</a>
   }

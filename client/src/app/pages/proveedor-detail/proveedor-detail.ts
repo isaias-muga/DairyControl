@@ -14,6 +14,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-proveedor-detail',
@@ -25,6 +26,7 @@ import { MatTableModule } from '@angular/material/table';
     MatCardModule,
     MatProgressSpinnerModule,
     MatTableModule,
+    MatTooltipModule,
   ],
   templateUrl: './proveedor-detail.html',
   styleUrl: './proveedor-detail.css',

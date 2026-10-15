@@ -7,6 +7,7 @@
         public const int Scale = 2;
         public const int ScaleLitros = 3;
         public const int PrecisionLitros = 8;
+        public const decimal AguaMaxPorcentaje = 100m;
         private static readonly decimal MaxValue = (decimal)Math.Pow(10, Precision - Scale);
 
         private static readonly decimal MaxValueLitros = (decimal)Math.Pow(10, PrecisionLitros - ScaleLitros);
@@ -14,15 +15,17 @@
         public decimal Acidez { get; init; }
         public decimal Temperatura { get; init; }
         public decimal Litros { get; init; }
+        public decimal? AguaPorcentaje { get; init; }
 
-        private ParametrosCalidad(decimal? grasa, decimal acidez, decimal temperatura, decimal litros)
+        private ParametrosCalidad(decimal? grasa, decimal acidez, decimal temperatura, decimal litros, decimal? aguaPorcentaje)
         {
             Grasa = grasa;
             Acidez = acidez;
             Temperatura = temperatura;
             Litros = litros;
+            AguaPorcentaje = aguaPorcentaje;
         }
-        public static ParametrosCalidad Create(decimal? grasa, decimal acidez, decimal temperatura, decimal litros)
+        public static ParametrosCalidad Create(decimal? grasa, decimal acidez, decimal temperatura, decimal litros, decimal? aguaPorcentaje = null)
         {
             if ((grasa != null && grasa < 0) || acidez < 0 || temperatura < 0)
             {
@@ -44,7 +47,12 @@
                 throw new ArgumentException("La cantidad de litros no puede exceder el valor máximo permitido.");
             }
 
-            return new ParametrosCalidad(grasa, acidez, temperatura, litros);
+            if (aguaPorcentaje != null && (aguaPorcentaje < 0 || aguaPorcentaje > AguaMaxPorcentaje))
+            {
+                throw new ArgumentException($"El porcentaje de agua debe estar entre 0 y {AguaMaxPorcentaje}.", nameof(aguaPorcentaje));
+            }
+
+            return new ParametrosCalidad(grasa, acidez, temperatura, litros, aguaPorcentaje);
 
 
         }

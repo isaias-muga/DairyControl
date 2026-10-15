@@ -1,0 +1,70 @@
+<header class="encabezado">
+  <h2>Configuración</h2>
+  <p class="subtitulo">Límites de calidad de la planta</p>
+</header>
+
+@if (loading()) {
+  <p class="state-message"><mat-spinner diameter="24" /> Cargando...</p>
+} @else if (error()) {
+  <p class="form-error" role="alert">{{ error() }}</p>
+  <button mat-stroked-button type="button" (click)="cargar()">Reintentar</button>
+} @else {
+  <mat-card appearance="outlined" class="limites">
+    <mat-card-header>
+      <mat-card-title>Límites de calidad</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <p class="nota">Los cambios se aplican de inmediato a todos los informes.</p>
+
+      <form [formGroup]="form" (ngSubmit)="guardar()">
+        <div class="grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Acidez máxima (°D)</mat-label>
+            <input matInput id="acidezMaxima" type="number" step="0.1" formControlName="acidezMaxima" />
+            @if (invalid('acidezMaxima')) {
+              <mat-error>Requerido, entre {{ acidezMin }} y {{ acidezMax }}.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Temperatura máxima (°C)</mat-label>
+            <input
+              matInput
+              id="temperaturaMaxima"
+              type="number"
+              step="0.1"
+              formControlName="temperaturaMaxima"
+            />
+            @if (invalid('temperaturaMaxima')) {
+              <mat-error>Requerido, entre {{ temperaturaMin }} y {{ temperaturaMax }}.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Agua máxima (%)</mat-label>
+            <input matInput id="aguaMaxima" type="number" step="0.1" formControlName="aguaMaxima" />
+            @if (invalid('aguaMaxima')) {
+              <mat-error>Requerido, entre {{ aguaMin }} y {{ aguaMax }}.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        @if (saveError()) {
+          <p class="form-error" role="alert">{{ saveError() }}</p>
+        }
+
+        <div class="acciones">
+          @if (ultimaModificacion(); as fecha) {
+            <span class="modificacion">
+              Última modificación: {{ fecha | date: 'dd/MM/yyyy HH:mm' }}
+            </span>
+          }
+          <button mat-flat-button type="submit" [disabled]="saving()">
+            {{ saving() ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+}

@@ -1,4 +1,5 @@
 ﻿using DairyControl.Domain.Entities;
+using DairyControl.Domain.ValueObjects;
 namespace DairyControl.Domain.Interfaces
 {
     public interface IProveedorRepository
@@ -10,5 +11,7 @@ namespace DairyControl.Domain.Interfaces
         Task AddAsync(Proveedor proveedor);
 
         Task UpdateAsync(Proveedor proveedor);
+
+        Task<TicketRegistrado?> GetTicketRegistradoAsync(int ticket);
     }
 }

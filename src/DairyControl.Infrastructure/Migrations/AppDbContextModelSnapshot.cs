@@ -21,6 +21,26 @@ namespace DairyControl.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("DairyControl.Domain.Entities.ConfiguracionCalidad", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ActualizadoEn")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ConfiguracionesCalidad");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("5b0c6f0e-3f6a-4f7e-9a53-0d1c2b7a4e11"),
+                            ActualizadoEn = new DateTime(2026, 10, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
             modelBuilder.Entity("DairyControl.Domain.Entities.Proveedor", b =>
                 {
                     b.Property<Guid>("Id")
@@ -35,6 +55,46 @@ namespace DairyControl.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Proveedores");
+                });
+
+            modelBuilder.Entity("DairyControl.Domain.Entities.ConfiguracionCalidad", b =>
+                {
+                    b.OwnsOne("DairyControl.Domain.ValueObjects.LimitesCalidad", "Limites", b1 =>
+                        {
+                            b1.Property<Guid>("ConfiguracionCalidadId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<decimal>("AcidezMaxima")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("decimal(5,2)");
+
+                            b1.Property<decimal>("AguaMaxima")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("decimal(5,2)");
+
+                            b1.Property<decimal>("TemperaturaMaxima")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("decimal(5,2)");
+
+                            b1.HasKey("ConfiguracionCalidadId");
+
+                            b1.ToTable("ConfiguracionesCalidad");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ConfiguracionCalidadId");
+
+                            b1.HasData(
+                                new
+                                {
+                                    ConfiguracionCalidadId = new Guid("5b0c6f0e-3f6a-4f7e-9a53-0d1c2b7a4e11"),
+                                    AcidezMaxima = 19m,
+                                    AguaMaxima = 0m,
+                                    TemperaturaMaxima = 20m
+                                });
+                        });
+
+                    b.Navigation("Limites")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DairyControl.Domain.Entities.Proveedor", b =>
@@ -57,9 +117,16 @@ namespace DairyControl.Infrastructure.Migrations
                             b1.Property<int?>("Silo")
                                 .HasColumnType("int");
 
+                            b1.Property<int?>("Ticket")
+                                .HasColumnType("int");
+
                             b1.HasKey("Id");
 
                             b1.HasIndex("ProveedorId");
+
+                            b1.HasIndex("Ticket")
+                                .IsUnique()
+                                .HasFilter("[Ticket] IS NOT NULL");
 
                             b1.ToTable("Recepciones", (string)null);
 
@@ -72,6 +139,10 @@ namespace DairyControl.Infrastructure.Migrations
                                         .HasColumnType("uniqueidentifier");
 
                                     b2.Property<decimal>("Acidez")
+                                        .HasPrecision(5, 2)
+                                        .HasColumnType("decimal(5,2)");
+
+                                    b2.Property<decimal?>("AguaPorcentaje")
                                         .HasPrecision(5, 2)
                                         .HasColumnType("decimal(5,2)");
 

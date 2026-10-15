@@ -1,8 +1,10 @@
 ﻿using DairyControl.Application.Dtos;
 using DairyControl.Application.DTOs;
 using DairyControl.Domain.Entities;
+using DairyControl.Domain.Exceptions;
 using DairyControl.Domain.Interfaces;
 using DairyControl.Domain.ValueObjects;
+using System.Globalization;
 
 namespace DairyControl.Application.Services
 {
@@ -49,7 +51,10 @@ namespace DairyControl.Application.Services
                         Acidez = r.Parametros.Acidez,
                         Temperatura = r.Parametros.Temperatura,
                         Silo = r.Silo,
-                        Observaciones = r.Observaciones
+                        Observaciones = r.Observaciones,
+                        AguaPorcentaje = r.Parametros.AguaPorcentaje,
+                        Ticket = r.Ticket,
+                        LitrosAPagar = r.LitrosAPagar
                     })
                     .ToList()
             };
@@ -73,10 +78,30 @@ namespace DairyControl.Application.Services
             if (proveedor == null)
                 return null;
 
-            var parametros = ParametrosCalidad.Create(dto.Grasa, dto.Acidez, dto.Temperatura, dto.Litros);
+            var parametros = ParametrosCalidad.Create(dto.Grasa, dto.Acidez, dto.Temperatura, dto.Litros, dto.AguaPorcentaje);
 
-            proveedor.RegistrarRecepcion(parametros, dto.FechaHora, dto.Silo, dto.Observaciones);
-            await _repository.UpdateAsync(proveedor);
+            // The ticket is unique across the whole plant. A non-positive ticket is left to the domain (400).
+            var ticket = dto.Ticket is > 0 ? dto.Ticket : null;
+            if (ticket is int numeroTicket)
+            {
+                var existente = await _repository.GetTicketRegistradoAsync(numeroTicket);
+                if (existente is not null)
+                    throw new TicketDuplicadoException(MensajeTicketDuplicado(numeroTicket, existente));
+            }
+
+            proveedor.RegistrarRecepcion(parametros, dto.FechaHora, dto.Silo, dto.Observaciones, dto.Ticket);
+
+            try
+            {
+                await _repository.UpdateAsync(proveedor);
+            }
+            catch (TicketDuplicadoException) when (ticket is not null)
+            {
+                // Lost a race with another operator: same 409, now with the details of the winner.
+                var existente = await _repository.GetTicketRegistradoAsync(ticket.Value);
+                throw new TicketDuplicadoException(MensajeTicketDuplicado(ticket.Value, existente));
+            }
+
             return new ProveedorDto
             {
                 Id = proveedor.Id,
@@ -84,5 +109,11 @@ namespace DairyControl.Application.Services
                 CantidadRecepciones = proveedor.Recepciones.Count
             };
         }
+
+        private static string MensajeTicketDuplicado(int ticket, TicketRegistrado? existente) =>
+            existente is null
+                ? $"El ticket {ticket} ya está registrado"
+                : string.Create(CultureInfo.InvariantCulture,
+                    $"El ticket {ticket} ya está registrado ({existente.ProveedorNombre}, {existente.FechaHora:dd/MM/yyyy})");
     }
 }

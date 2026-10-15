@@ -49,7 +49,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Return `null` when something is not found; the controller turns it into a 404.
 - Methods are `async` only when they await I/O.
 - Settings classes live in `Application/Settings` and are injected as `IOptions<T>`.
-- Quality limits come from the `CalidadLimites` section of `appsettings.json` (`AcidezMaxima` = 19 °D, `TemperaturaMaxima` = 20 °C; not secrets), bound to `CalidadLimitesSettings` and validated on startup (both > 0). Override with `CalidadLimites__AcidezMaxima` / `CalidadLimites__TemperaturaMaxima`. The rule "out of range = acidity > max OR temperature > max" lives only in the domain (`LimitesCalidad.FueraDeRango`, an expression so EF Core can translate it); never copy the thresholds or the rule elsewhere. Fat has no limit.
+- Quality limits are not configuration files: they are the single `ConfiguracionCalidad` row (aggregate root, own repository), seeded with 19 °D / 20 °C / 0 % water and editable at runtime through `GET/PUT /api/Configuracion/calidad` (`ConfiguracionCalidadAppService`). `RecepcionQueries` reads the current limits from the database on every request. The rule "out of range = acidity > max OR temperature > max OR water > max" lives only in the domain (`LimitesCalidad.FueraDeRango`, an expression so EF Core can translate it); never copy the thresholds or the rule elsewhere. Fat has no limit. Water null counts as 0.
 
 ## Infrastructure conventions
 
@@ -66,16 +66,16 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Every controller has `[ApiController]` and `[Route("api/[controller]")]`.
 - `ProveedoresController` has `[Authorize]` at class level: every endpoint requires a JWT, including reads. Only `AuthController` is public.
 - For 201 responses, use a named route plus `CreatedAtRoute` (ASP.NET Core strips the `Async` suffix from action names, so `CreatedAtAction(nameof(...))` fails).
-- `ExceptionHandlingMiddleware` maps `ArgumentException` to 400 with `{ "error": "..." }`, and every other exception to a generic 500. Do not catch domain exceptions in controllers.
+- `ExceptionHandlingMiddleware` maps `ArgumentException` to 400 with `{ "error": "..." }`, `TicketDuplicadoException` (the plant ticket is unique across all proveedores) to 409 with the same shape, and every other exception to a generic 500. Do not catch domain exceptions in controllers.
 - Pipeline order matters: exception middleware first, then HTTPS redirection, CORS, `UseAuthentication`, `UseAuthorization`, `MapControllers`.
 
 ## Client conventions
 
 - Standalone components only (no NgModules). Use signals for component state and the built-in control flow (`@if`, `@for`, `@empty`).
 - Folders under `client/src/app`:
-  - `pages/`: routed components (`login`, `proveedores-list`, `proveedor-detail`)
-  - `components/`: reusable components (`recepcion-form`)
-  - `services/`: the only place that uses `HttpClient` (`ProveedoresService`, `AuthService`)
+  - `pages/`: routed components (`login`, `resumen`, `proveedores-list`, `proveedor-detail`, `configuracion`)
+  - `components/`: reusable components and dialogs (`recepcion-form`, `registrar-recepcion-dialog`, `crear-proveedor-dialog`)
+  - `services/`: the only place that uses `HttpClient` (`ProveedoresService`, `RecepcionesService`, `ConfiguracionService`, `AuthService`)
   - `models/`: TypeScript interfaces mirroring the API DTOs, plus `limits.ts`
   - `guards/`, `interceptors/`, `utils/`
 - Components get dependencies with `inject()`. Components never call `HttpClient` directly.
@@ -87,7 +87,17 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `slowRequestInterceptor` and `ServerStatusService` show the global "waking up" banner when any request takes more than 3 seconds; pages don't add their own cold-start messages.
 - The API base URL comes from `environments/`; never hardcode it.
 - User-facing text is in Spanish.
+
+### UI conventions
+
 - Styling: each component's styles live in its own CSS file; global styles and theme in `styles.scss`.
+- Form fields: mark optional fields in the label, e.g. "Silo (opcional)"; required fields keep the asterisk. Never use `mat-hint` for "opcional"; hints are only for short help text. Leave room for hints and errors so they never overlap the next field's label (form fields use dynamic subscript sizing from `app.config.ts`, and outline fields have a bottom margin in `styles.scss`).
+- Tables:
+  - Layout: fixed layout with percentage column widths (one column takes the rest), inside an `overflow-x: auto` container. The table fits its card on desktop without horizontal scroll. Below its `min-width` (860px) it scrolls horizontally with a visible, styled scrollbar, only on narrow screens.
+  - Headers: short, one line, with the full name in a `matTooltip` and `aria-label`. Never let headers wrap or truncate.
+  - Cells: single line; long text is truncated with an ellipsis and its full text in a `matTooltip`.
+  - Alignment and padding: headers and cells are vertically centered with the same vertical padding; the first and last cells have the same horizontal padding, so text never touches a border or the card edge; numeric columns are right-aligned (header included), text columns left-aligned.
+- Visual check: for any UI change, before reporting back, run the app and take Playwright screenshots of every changed page at 1366px and 390px wide. Check them yourself (no clipped or truncated text, no unexpected scroll, nothing touching the edges, consistent alignment), fix what is wrong, and include the screenshots in your report. Launch Chromium with `ignoreDefaultArgs: ['--hide-scrollbars']`, otherwise scrollbars are invisible in the screenshots.
 
 ## Testing
 
@@ -128,6 +138,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Start with a plan that lists every file you will create or change. Wait for approval before editing.
 - Keep changes scoped to the task. Do not refactor unrelated code. If a new file is needed, justify it in the plan.
 - After making changes, run the build and the tests (and `ng build` for client changes), and report the results.
+- For UI changes, also do the visual check described in Client conventions > UI conventions.
 - If a request conflicts with a rule in this file, stop and ask.
 - Do not run Git commands that change history or the remote (commit, push, branch, merge). The developer handles Git.
 

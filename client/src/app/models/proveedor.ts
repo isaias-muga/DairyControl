@@ -13,6 +13,9 @@ export interface Recepcion {
   temperatura: number;
   silo: number | null;
   observaciones: string | null;
+  aguaPorcentaje: number | null;
+  ticket: number | null;
+  litrosAPagar: number;
 }
 
 export interface ProveedorDetalle {
@@ -29,4 +32,6 @@ export interface RegistrarRecepcion {
   temperatura: number;
   silo: number | null;
   observaciones: string | null;
+  aguaPorcentaje: number | null;
+  ticket: number | null;
 }

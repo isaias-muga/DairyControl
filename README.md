@@ -16,7 +16,7 @@ The demo scales to zero when nobody is using it and its database pauses, so the 
 
 DairyControl registers milk suppliers (_proveedores_) and every delivery received at the plant (_recepción_): volume in liters, temperature, acidity, optional fat content, destination silo, timestamp and free-text notes.
 
-On top of the records, a **Resumen** dashboard answers the plant's key question for any period: how much milk came in, compared with the previous period, from which suppliers, and how many deliveries were out of range. Quality limits (acidity and temperature) are configurable per plant.
+On top of the records, a **Resumen** dashboard answers the plant's key question for any period: how much milk came in, compared with the previous period, from which suppliers, and how many deliveries were out of range. Quality limits (acidity, temperature and added water) are configurable per plant from the app.
 
 The domain model is based on real reception logs from a dairy plant. All data in this repository is synthetic.
 
@@ -124,7 +124,10 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 
 - **`Proveedor`** (aggregate root): the single entry point to the aggregate. Its recepciones are exposed read-only and can only be added through `RegistrarRecepcion`.
 - **`RecepcionLeche`** (entity): a single delivery, owned by its `Proveedor`.
-- **`ParametrosCalidad`** (value object, `record`): quality and volume measurements, validated at creation through a factory method.
+- **`ParametrosCalidad`** (value object, `record`): quality and volume measurements, including the optional added-water percentage (0–100), validated at creation through a factory method.
+- **`RecepcionLeche`** also carries an optional plant `Ticket` (positive integer) and `LitrosAPagar`: liters × (1 − water % / 100), with no water counting as 0.
+- **`LimitesCalidad`** (value object, `record`): maximum acidity (10–30 °D), temperature (0–40 °C) and water (0–10 %). It defines the out-of-range rule once: acidity > max OR temperature > max OR water > max.
+- **`ConfiguracionCalidad`** (aggregate root, single row): the `LimitesCalidad` currently in force and when they were last changed.
 
 ## Key design decisions
 
@@ -136,6 +139,10 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 - **Client-generated IDs.** The domain assigns its own `Guid` IDs and EF Core is configured with `ValueGeneratedNever()`, so new recepciones added to a loaded aggregate are inserted, not mistaken for existing rows.
 - **Shared limits.** Constants such as maximum name length and decimal precision are defined once in the domain and reused by both validation and the database mapping.
 - **Recepciones are records of what happened.** They can be registered but not edited or deleted; a correction flow would void a recepción with a reason rather than remove it.
+
+- **Quality limits are editable at runtime.** They live in the database (`ConfiguracionCalidad`, seeded with 19 °D / 20 °C / 0 % water), not in `appsettings.json`, so a plant changes them without a deploy. Reports always evaluate deliveries with the **current** limits, so changing them re-evaluates history. When settlements are added, they will freeze the limits in force at settlement time.
+
+- **The plant ticket is unique across all proveedores.** A filtered unique index (`Ticket IS NOT NULL`) guarantees it in the database, a pre-check returns a readable `409` ("El ticket 6311 ya está registrado (Tambo X, 11/10/2026)"), and a unique-violation (SQL Server 2601/2627) from two operators saving at once is mapped to the same `409`.
 
 **API**
 
@@ -158,7 +165,7 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 - **Built for a serverless database.** EF Core retries transient failures (`EnableRetryOnFailure`), so the first request after the database resumes succeeds instead of failing.
 - **Cost-aware hosting.** The Azure SQL free offer, the Container Apps free grant, scale to zero and a budget alert keep the demo at $0 a month.
 - **Container-only behavior behind configuration flags.** Applying migrations on startup, seeding demo data and disabling HTTPS redirection are enabled only in Compose, so local development is unchanged.
-- **Demo data through the domain.** The seeder creates proveedores and recepciones with the same factory methods as the API, runs once in a single transaction, and skips if any proveedor exists. Value ranges come from aggregated real reception logs; names are invented.
+- **Demo data through the domain.** The seeder creates proveedores and recepciones with the same factory methods as the API, runs once in a single transaction, and skips if any proveedor exists. Value ranges come from aggregated real reception logs; names are invented. Each delivery gets a plant ticket from one consecutive sequence (starting at 4900, in delivery order) and a mostly-zero water percentage.
 
 ## API
 
@@ -168,7 +175,9 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 | `GET`  | `/api/Proveedores`                  | JWT    | Lists all proveedores                               |
 | `POST` | `/api/Proveedores`                  | JWT    | Creates a proveedor                                 |
 | `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor with its recepciones, newest first |
-| `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor      |
+| `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor (optional `aguaPorcentaje` and `ticket`); `409` if the ticket is already registered by any proveedor |
+| `GET`  | `/api/Configuracion/calidad`        | JWT    | Current quality limits (`acidezMaxima`, `temperaturaMaxima`, `aguaMaxima`) and when they were last changed |
+| `PUT`  | `/api/Configuracion/calidad`        | JWT    | Updates the quality limits; they apply immediately to every report |
 | `GET`  | `/api/Recepciones/resumen`          | JWT    | Summary for `desde`/`hasta` (`YYYY-MM-DD`, max 366 days) and optional `proveedorId`: totals (min/max, out-of-range count, liters of the previous period of the same length), proveedor ranking by liters, liters per day |
 
 ## Local development (without Docker)
@@ -225,8 +234,8 @@ dotnet test --solution DairyControl.slnx
 
 Unit tests, none of which touch a database:
 
-- **Domain:** `ParametrosCalidad` validation, covering negative values, minimum volume, and optional fat content.
-- **Application:** `ProveedorAppService` with a mocked repository (Moq), covering found and not-found paths, listing, recepciones mapping and ordering, and verifying that persistence methods are called exactly as often as they should be.
+- **Domain:** `ParametrosCalidad` validation (negative values, minimum volume, optional fat, water range), `LimitesCalidad` ranges and the out-of-range rule including water, `LitrosAPagar`, ticket validation and `ConfiguracionCalidad`.
+- **Application:** `ProveedorAppService` and `ConfiguracionCalidadAppService` with mocked repositories (Moq), covering found and not-found paths, listing, recepciones mapping and ordering, and verifying that persistence methods are called exactly as often as they should be.
 
 **Client**
 
@@ -258,7 +267,7 @@ Every merge to `main` is deployed automatically: once CI passes, `deploy.yml` bu
 - [ ] Recepciones by period: filter by date range and proveedor (`GET /api/Recepciones`)
 - [x] Summary by period: total liters, quality averages, proveedor ranking and liters per day (`GET /api/Recepciones/resumen`)
 - [x] Angular client: summary dashboard (Día/Semana/Mes/Año, custom range, proveedor filter, daily chart, ranking)
-- [x] Configurable quality limits (`CalidadLimites`) and out-of-range count
+- [x] Quality limits editable from the app (`Configuración`), water percentage, ticket number and out-of-range count
 - [ ] Summaries grouped by week, month or year, and a period filter on the proveedor detail
 - [ ] Chart and quality alerts: out-of-range limits as a domain rule, highlighted in the UI
 - [ ] Integration tests with a real database (`WebApplicationFactory`)
