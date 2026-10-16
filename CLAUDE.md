@@ -95,6 +95,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 
 - Styling: each component's styles live in its own CSS file; global styles and theme in `styles.scss`.
 - Form fields: mark optional fields in the label, e.g. "Silo (opcional)"; required fields keep the asterisk. Never use `mat-hint` for "opcional"; hints are only for short help text. Leave room for hints and errors so they never overlap the next field's label (form fields use dynamic subscript sizing from `app.config.ts`, and outline fields have a bottom margin in `styles.scss`).
+- No page-level horizontal scroll at any width. Main sections are tabs; rarely used pages (settings) are icon buttons in the top row. The tabs row may scroll inside itself, never the page.
 - Tables:
   - Layout: fixed layout with percentage column widths (one column takes the rest), inside an `overflow-x: auto` container. The table fits its card on desktop without horizontal scroll. Below its `min-width` (860px) it scrolls horizontally with a visible, styled scrollbar, only on narrow screens.
   - Headers: short, one line, with the full name in a `matTooltip` and `aria-label`. Never let headers wrap or truncate.

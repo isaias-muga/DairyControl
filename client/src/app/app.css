@@ -7,7 +7,8 @@
   border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
-.nav-link.active {
+.nav-link.active,
+.config.active {
   background: var(--mat-sys-secondary-container);
   color: var(--mat-sys-on-secondary-container);
   border-radius: 999px;
@@ -28,16 +29,20 @@
   display: contents;
 }
 
-/* Phones: title + "Cerrar sesión" on the first row, the links on their own row (no overlap, no sideways scroll) */
+/* Phones: name + actions on the first row, the tabs on their own row. The tabs row scrolls inside itself if it
+   ever overflows (no visible bar); the toolbar never widens the page. */
 @media (max-width: 599px) {
   .toolbar {
     flex-wrap: wrap;
     height: auto;
     min-height: 56px;
+    max-width: 100%;
+    box-sizing: border-box;
     padding-top: 4px;
     padding-bottom: 4px;
   }
 
+  .config,
   .logout {
     order: 2;
   }
@@ -46,7 +51,18 @@
     order: 3;
     display: flex;
     flex: 1 1 100%;
-    justify-content: space-between;
+    min-width: 0;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link {
+    flex: 1 0 auto;
   }
 }
 
