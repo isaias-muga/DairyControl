@@ -19,6 +19,22 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
+  it('shows Recepciones between Resumen and Proveedores when logged in', async () => {
+    localStorage.setItem('dairycontrol_token', 'x');
+    try {
+      const fixture = TestBed.createComponent(App);
+      await fixture.whenStable();
+
+      const enlaces = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('nav a'),
+      ).map((a) => a.textContent?.trim());
+
+      expect(enlaces).toEqual(['Resumen', 'Recepciones', 'Proveedores', 'Configuración']);
+    } finally {
+      localStorage.removeItem('dairycontrol_token');
+    }
+  });
+
   it('should render title', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();

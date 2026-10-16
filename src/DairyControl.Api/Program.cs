@@ -51,6 +51,7 @@ builder.Services.AddScoped<IProveedorRepository, ProveedorRepository>();
 builder.Services.AddScoped<ProveedorAppService>();
 builder.Services.AddScoped<IRecepcionQueries, RecepcionQueries>();
 builder.Services.AddScoped<ResumenRecepcionesAppService>();
+builder.Services.AddScoped<ListadoRecepcionesAppService>();
 builder.Services.AddScoped<IConfiguracionCalidadRepository, ConfiguracionCalidadRepository>();
 builder.Services.AddScoped<ConfiguracionCalidadAppService>();
 builder.Services.AddScoped<AuthService>();

@@ -1,10 +1,12 @@
 import {
   ahoraEnPlanta,
+  atajoDeRango,
   dateAIso,
   diasEnRango,
   etiquetaPeriodo,
   hoyEnPlanta,
   isoADate,
+  rangoDeAtajo,
   rangoDePeriodo,
 } from './periodos';
 
@@ -165,6 +167,50 @@ describe('periodos', () => {
       expect(etiquetaPeriodo({ desde: '2026-09-01', hasta: '2026-09-30' }, null)).toBe(
         '01/09/2026 – 30/09/2026',
       );
+    });
+  });
+
+  describe('rangoDeAtajo', () => {
+    // 2026-10-15 is a Thursday
+    it.each([
+      ['hoy', { desde: '2026-10-15', hasta: '2026-10-15' }],
+      ['ayer', { desde: '2026-10-14', hasta: '2026-10-14' }],
+      ['semana', { desde: '2026-10-12', hasta: '2026-10-15' }],
+      ['mes', { desde: '2026-10-01', hasta: '2026-10-15' }],
+    ] as const)('%s on Thursday 15/10/2026', (atajo, esperado) => {
+      expect(rangoDeAtajo(atajo, '2026-10-15')).toEqual(esperado);
+    });
+
+    it('goes to the previous month for "ayer" on the 1st', () => {
+      expect(rangoDeAtajo('ayer', '2026-11-01')).toEqual({ desde: '2026-10-31', hasta: '2026-10-31' });
+      expect(rangoDeAtajo('ayer', '2027-01-01')).toEqual({ desde: '2026-12-31', hasta: '2026-12-31' });
+    });
+
+    it('uses plant time for "hoy" when the browser is in another zone', () => {
+      // 01:30 UTC on the 14th is still the 13th in Buenos Aires
+      expect(rangoDeAtajo('hoy', hoyEnPlanta(new Date('2026-10-14T01:30:00Z')))).toEqual({
+        desde: '2026-10-13',
+        hasta: '2026-10-13',
+      });
+    });
+  });
+
+  describe('atajoDeRango', () => {
+    it.each(['hoy', 'ayer'] as const)('recognises the range of %s', (atajo) => {
+      expect(atajoDeRango(rangoDeAtajo(atajo, '2026-10-15'), '2026-10-15')).toBe(atajo);
+    });
+
+    it('recognises the week and the month on a day where they differ from "hoy"', () => {
+      expect(atajoDeRango({ desde: '2026-10-12', hasta: '2026-10-15' }, '2026-10-15')).toBe('semana');
+      expect(atajoDeRango({ desde: '2026-10-01', hasta: '2026-10-15' }, '2026-10-15')).toBe('mes');
+    });
+
+    it('returns null for a custom range', () => {
+      expect(atajoDeRango({ desde: '2026-10-03', hasta: '2026-10-09' }, '2026-10-15')).toBeNull();
+    });
+
+    it('returns null for the range of a quick period that is not today any more', () => {
+      expect(atajoDeRango({ desde: '2026-10-14', hasta: '2026-10-14' }, '2026-10-16')).toBeNull();
     });
   });
 

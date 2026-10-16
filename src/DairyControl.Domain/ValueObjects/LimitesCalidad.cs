@@ -46,24 +46,43 @@ namespace DairyControl.Domain.ValueObjects
         }
 
         // The single definition of "out of range": acidity above its maximum OR temperature above its maximum
-        // OR water above its maximum. Fat has no limit. It is an expression so EF Core can translate it to SQL.
+        // OR water above its maximum. Fat has no limit. The rule is built from the three per-reason expressions
+        // below, so a list can show why a recepción is out of range without repeating the thresholds. They are
+        // expressions so EF Core can translate them to SQL.
         public Expression<Func<T, bool>> FueraDeRango<T>(
             Expression<Func<T, decimal>> acidez,
             Expression<Func<T, decimal>> temperatura,
             Expression<Func<T, decimal>> agua)
         {
             var parametro = Expression.Parameter(typeof(T), "x");
-            var acidezCuerpo = new ReemplazarParametro(acidez.Parameters[0], parametro).Visit(acidez.Body);
-            var temperaturaCuerpo = new ReemplazarParametro(temperatura.Parameters[0], parametro).Visit(temperatura.Body);
-            var aguaCuerpo = new ReemplazarParametro(agua.Parameters[0], parametro).Visit(agua.Body);
-
             var cuerpo = Expression.OrElse(
                 Expression.OrElse(
-                    Expression.GreaterThan(acidezCuerpo, Expression.Constant(AcidezMaxima)),
-                    Expression.GreaterThan(temperaturaCuerpo, Expression.Constant(TemperaturaMaxima))),
-                Expression.GreaterThan(aguaCuerpo, Expression.Constant(AguaMaxima)));
+                    Mayor(acidez, AcidezMaxima, parametro),
+                    Mayor(temperatura, TemperaturaMaxima, parametro)),
+                Mayor(agua, AguaMaxima, parametro));
 
             return Expression.Lambda<Func<T, bool>>(cuerpo, parametro);
+        }
+
+        public Expression<Func<T, bool>> AcidezAlta<T>(Expression<Func<T, decimal>> acidez)
+            => MayorQue(acidez, AcidezMaxima);
+
+        public Expression<Func<T, bool>> TemperaturaAlta<T>(Expression<Func<T, decimal>> temperatura)
+            => MayorQue(temperatura, TemperaturaMaxima);
+
+        public Expression<Func<T, bool>> AguaAlta<T>(Expression<Func<T, decimal>> agua)
+            => MayorQue(agua, AguaMaxima);
+
+        private static Expression<Func<T, bool>> MayorQue<T>(Expression<Func<T, decimal>> valor, decimal maximo)
+        {
+            var parametro = Expression.Parameter(typeof(T), "x");
+            return Expression.Lambda<Func<T, bool>>(Mayor(valor, maximo, parametro), parametro);
+        }
+
+        private static BinaryExpression Mayor<T>(Expression<Func<T, decimal>> valor, decimal maximo, ParameterExpression parametro)
+        {
+            var cuerpo = new ReemplazarParametro(valor.Parameters[0], parametro).Visit(valor.Body);
+            return Expression.GreaterThan(cuerpo, Expression.Constant(maximo));
         }
 
         public bool EstaFueraDeRango(decimal acidez, decimal temperatura, decimal agua)

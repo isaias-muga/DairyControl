@@ -1,4 +1,17 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { DecimalPipe } from '@angular/common';
 import {
   AbstractControl,
   FormBuilder,
@@ -7,8 +20,12 @@ import {
   Validators,
 } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { map, startWith } from 'rxjs';
 import { ProveedoresService } from '../../services/proveedores';
-import { RegistrarRecepcion } from '../../models/proveedor';
+import { RecepcionesService } from '../../services/recepciones';
+import { ConfiguracionService } from '../../services/configuracion';
+import { Proveedor, RegistrarRecepcion } from '../../models/proveedor';
+import { LimitesCalidad } from '../../models/configuracion';
 import {
   ACIDEZ_MAX,
   ACIDEZ_MIN,
@@ -28,11 +45,13 @@ import {
   TICKET_MIN,
 } from '../../models/limits';
 import { getApiErrorField, getApiErrorMessage } from '../../utils/api-error';
+import { litrosReales, motivosFueraDeRango } from '../../utils/calidad';
 import { ahoraEnPlanta } from '../../utils/periodos';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 
 /** fechaHora must be between FECHA_MIN and the plant's now + FECHA_ADELANTO_MINUTOS (YYYY-MM-DDTHH:mm strings compare in order). */
@@ -54,9 +73,11 @@ function fechaHoraEnRango(control: AbstractControl): ValidationErrors | null {
   selector: 'app-recepcion-form',
   imports: [
     ReactiveFormsModule,
+    DecimalPipe,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatButtonModule,
   ],
   templateUrl: './recepcion-form.html',
@@ -64,15 +85,20 @@ function fechaHoraEnRango(control: AbstractControl): ValidationErrors | null {
 })
 export class RecepcionForm {
   private proveedoresService = inject(ProveedoresService);
+  private recepcionesService = inject(RecepcionesService);
+  private configuracionService = inject(ConfiguracionService);
   private fb = inject(FormBuilder);
   private snackBar = inject(MatSnackBar);
 
-  proveedorId = input.required<string>();
-  registrada = output<void>();
+  /** The proveedor of the recepción. Without it the form shows a selector to choose one. */
+  proveedorId = input<string | null>(null);
+  /** Emits after a successful save; `true` when the operator asked to keep loading ("Registrar y cargar otra"). */
+  registrada = output<boolean>();
 
   readonly observacionesMaxLength = OBSERVACIONES_MAX_LENGTH;
 
   form = this.fb.group({
+    proveedorId: ['', Validators.required],
     fechaHora: [ahoraEnPlanta(), [Validators.required, fechaHoraEnRango]],
     litros: [
       null as number | null,
@@ -105,12 +131,80 @@ export class RecepcionForm {
   saving = signal(false);
   saveError = signal<string | null>(null);
 
+  proveedores = signal<Proveedor[]>([]);
+  proveedoresError = signal<string | null>(null);
+  /** True while the ticket field still holds the number the API suggested (it can be edited). */
+  ticketSugerido = signal(false);
+  private limites = signal<LimitesCalidad | null>(null);
+
+  private litrosInput = viewChild<ElementRef<HTMLInputElement>>('litrosInput');
+  private proveedoresCargados = false;
+
+  private valores = toSignal(
+    this.form.valueChanges.pipe(
+      startWith(null),
+      map(() => this.form.getRawValue()),
+    ),
+    { requireSync: true },
+  );
+
+  /** Live preview: the liters minus the water. Null until the liters are a valid number. */
+  litrosRealesPrevios = computed(() => {
+    const { litros, aguaPorcentaje } = this.valores();
+    if (litros == null || !Number.isFinite(litros) || litros <= 0) {
+      return null;
+    }
+    return litrosReales(litros, aguaPorcentaje);
+  });
+
+  /** Live preview of the quality limits the reading exceeds; null while the limits are not loaded. */
+  motivosPrevios = computed(() => {
+    const limites = this.limites();
+    if (!limites) {
+      return null;
+    }
+    const { acidez, temperatura, aguaPorcentaje } = this.valores();
+    return motivosFueraDeRango(limites, { acidez, temperatura, aguaPorcentaje });
+  });
+
+  constructor() {
+    effect(() => {
+      const id = this.proveedorId();
+      untracked(() => {
+        if (id) {
+          this.form.controls.proveedorId.setValue(id);
+        } else {
+          this.cargarProveedores();
+        }
+      });
+    });
+    this.cargarSiguienteTicket();
+    this.configuracionService.getCalidad().subscribe({
+      next: (limites) => this.limites.set(limites),
+      // The preview is a convenience: without the limits it just does not show the check.
+      error: () => this.limites.set(null),
+    });
+  }
+
+  /**
+   * True when the operator has typed or changed something that would be lost by closing: any reading or
+   * observation, or a proveedor, ticket or date they touched. The suggested ticket and the default date alone are not data.
+   */
+  tieneDatos(): boolean {
+    const v = this.form.getRawValue();
+    const lectura = [v.litros, v.grasa, v.acidez, v.temperatura, v.silo, v.aguaPorcentaje].some((x) => x != null);
+    const tocado = ['proveedorId', 'ticket', 'fechaHora'].some(
+      (c) => this.form.controls[c as 'proveedorId' | 'ticket' | 'fechaHora'].dirty,
+    );
+    return lectura || (v.observaciones ?? '').trim() !== '' || tocado;
+  }
+
   invalid(control: keyof typeof this.form.controls): boolean {
     const c = this.form.controls[control];
     return c.touched && c.invalid;
   }
 
-  submit(): void {
+  submit(cargarOtra = false): void {
     // A second click can arrive before the disabled button is rendered
     if (this.saving()) {
       return;
@@ -136,12 +230,21 @@ export class RecepcionForm {
     this.saving.set(true);
     this.saveError.set(null);
 
-    this.proveedoresService.registrarRecepcion(this.proveedorId(), recepcion).subscribe({
+    this.proveedoresService.registrarRecepcion(v.proveedorId!, recepcion).subscribe({
       next: () => {
-        this.form.reset({ fechaHora: ahoraEnPlanta(), observaciones: '' });
+        this.form.reset({
+          proveedorId: v.proveedorId,
+          fechaHora: ahoraEnPlanta(),
+          observaciones: '',
+        });
+        this.ticketSugerido.set(false);
         this.saving.set(false);
         this.snackBar.open('Recepción registrada.', 'Cerrar', { duration: 4000 });
-        this.registrada.emit();
+        if (cargarOtra) {
+          this.cargarSiguienteTicket();
+          this.litrosInput()?.nativeElement.focus();
+        }
+        this.registrada.emit(cargarOtra);
       },
       error: (err: HttpErrorResponse) => {
         const mensaje = getApiErrorMessage(err, 'No se pudo registrar la recepción.');
@@ -171,6 +274,37 @@ export class RecepcionForm {
       return 'No puede superar la hora actual en más de 1 hora.';
     }
     return 'Requerido.';
+  }
+
+  protected etiquetaMotivos(motivos: string[]): string {
+    return motivos.map((m) => m.toLowerCase()).join(', ');
+  }
+
+  private cargarSiguienteTicket(): void {
+    this.recepcionesService.getSiguienteTicket().subscribe({
+      next: ({ ticket }) => {
+        // Never overwrite what the operator already typed while the suggestion was loading
+        if (ticket != null && this.form.controls.ticket.value == null) {
+          this.form.controls.ticket.setValue(ticket);
+          this.ticketSugerido.set(true);
+        }
+      },
+      // The suggestion is optional: without it the operator types the ticket.
+      error: () => this.ticketSugerido.set(false),
+    });
+  }
+
+  private cargarProveedores(): void {
+    if (this.proveedoresCargados) {
+      return;
+    }
+    this.proveedoresCargados = true;
+    this.proveedoresService.getAll().subscribe({
+      next: (proveedores) =>
+        this.proveedores.set([...proveedores].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))),
+      error: (err: HttpErrorResponse) =>
+        this.proveedoresError.set(getApiErrorMessage(err, 'No se pudieron cargar los proveedores.')),
+    });
   }
 
   /** Puts an API message on the control it names (cleared when the user edits it); false if there is none. */

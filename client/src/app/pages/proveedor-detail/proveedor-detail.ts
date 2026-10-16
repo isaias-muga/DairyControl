@@ -1,39 +1,18 @@
-import { Component, effect, inject, input, signal, untracked } from '@angular/core';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { Component, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ProveedoresService } from '../../services/proveedores';
-import { ProveedorDetalle, Recepcion } from '../../models/proveedor';
-import {
-  RegistrarRecepcionDialog,
-  RegistrarRecepcionDialogData,
-} from '../../components/registrar-recepcion-dialog/registrar-recepcion-dialog';
-import { ObservacionCelda } from '../../components/observacion-celda/observacion-celda';
-import {
-  ObservacionesDialog,
-  ObservacionesDialogData,
-} from '../../components/observaciones-dialog/observaciones-dialog';
+import { Proveedor } from '../../models/proveedor';
+import { RecepcionesPanel } from '../../components/recepciones-panel/recepciones-panel';
+import { RegistrarRecepcionDialog } from '../../components/registrar-recepcion-dialog/registrar-recepcion-dialog';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-proveedor-detail',
-  imports: [
-    RouterLink,
-    DatePipe,
-    DecimalPipe,
-    MatButtonModule,
-    MatCardModule,
-    MatProgressSpinnerModule,
-    MatTableModule,
-    MatTooltipModule,
-    ObservacionCelda,
-  ],
+  imports: [RouterLink, MatButtonModule, MatProgressSpinnerModule, RecepcionesPanel],
   templateUrl: './proveedor-detail.html',
   styleUrl: './proveedor-detail.css',
 })
@@ -42,9 +21,11 @@ export class ProveedorDetail {
   private dialog = inject(MatDialog);
   private request?: Subscription;
 
+  private panel = viewChild(RecepcionesPanel);
+
   id = input.required<string>();
 
-  proveedor = signal<ProveedorDetalle | null>(null);
+  proveedor = signal<Proveedor | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
   notFound = signal(false);
@@ -56,31 +37,12 @@ export class ProveedorDetail {
     });
   }
 
-  protected verObservaciones(recepcion: Recepcion, proveedor: ProveedorDetalle): void {
-    this.dialog.open<ObservacionesDialog, ObservacionesDialogData>(ObservacionesDialog, {
-      data: {
-        ticket: recepcion.ticket,
-        proveedor: proveedor.nombre,
-        fechaHora: recepcion.fechaHora,
-        observaciones: recepcion.observaciones ?? '',
-      },
-      width: '480px',
-      maxWidth: '95vw',
-    });
-  }
-
   protected abrirRegistro(proveedorId: string): void {
-    this.dialog
-      .open<RegistrarRecepcionDialog, RegistrarRecepcionDialogData, boolean>(
-        RegistrarRecepcionDialog,
-        { data: { proveedorId }, width: '640px', maxWidth: '95vw' },
-      )
-      .afterClosed()
-      .subscribe((registrada) => {
-        if (registrada) {
-          this.load(false);
-        }
-      });
+    RegistrarRecepcionDialog.abrir(this.dialog, { proveedorId }).subscribe((registro) => {
+      if (registro) {
+        this.panel()?.recargar();
+      }
+    });
   }
 
   protected load(showSpinner = true): void {
@@ -92,17 +54,17 @@ export class ProveedorDetail {
     this.error.set(null);
     this.notFound.set(false);
 
-    this.request = this.proveedoresService.getById(this.id()).subscribe({
-      next: (data) => {
-        this.proveedor.set(data);
+    // The name comes from the lightweight list: the recepciones come from the paged list endpoint
+    // (the panel), not from loading the whole aggregate.
+    this.request = this.proveedoresService.getAll().subscribe({
+      next: (lista) => {
+        const proveedor = lista.find((p) => p.id === this.id()) ?? null;
+        this.proveedor.set(proveedor);
+        this.notFound.set(proveedor === null);
         this.loading.set(false);
       },
-      error: (err: HttpErrorResponse) => {
-        if (err.status === 404) {
-          this.notFound.set(true);
-        } else {
-          this.error.set('No se pudo cargar el proveedor.');
-        }
+      error: (_: HttpErrorResponse) => {
+        this.error.set('No se pudo cargar el proveedor.');
         this.loading.set(false);
       },
     });

@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { Subscription } from 'rxjs';
 import { RecepcionesService } from '../../services/recepciones';
@@ -30,6 +31,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-resumen',
@@ -44,6 +46,8 @@ import { MatTableModule } from '@angular/material/table';
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTableModule,
+    MatTooltipModule,
+    RouterLink,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './resumen.html',
@@ -57,6 +61,11 @@ export class Resumen {
 
   protected columnasProveedores = ['nombre', 'litros', 'participacion', 'recepciones', 'fueraDeRango'];
   protected formatearFecha = formatearFecha;
+
+  /** Query params of /recepciones for a ranking row: that proveedor over the period shown here. */
+  protected paramsDeProveedor(proveedorId: string): Record<string, string> {
+    return { desde: this.rango().desde, hasta: this.rango().hasta, proveedor: proveedorId };
+  }
 
   // null = custom range typed or picked in the date range field
   periodo = signal<PeriodoPreset | null>('mes');

@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Queries;
 using DairyControl.Domain.ValueObjects;
@@ -21,11 +22,7 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             var hastaAnterior = desde.AddDays(-1);
 
             var recepciones = Recepciones(desde, hasta, proveedorId);
-            // The limits are editable at runtime, so they are read from the database on every request.
-            var limites = await _context.ConfiguracionesCalidad
-                .AsNoTracking()
-                .Select(c => c.Limites)
-                .SingleAsync();
+            var limites = await LeerLimitesAsync();
             var fueraDeRango = limites.FueraDeRango<FilaRecepcion>(x => x.Acidez, x => x.Temperatura, x => x.Agua);
 
             var totales = await recepciones
@@ -104,6 +101,168 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             };
         }
 
+        public async Task<ListadoRecepcionesDto> GetListadoAsync(FiltroRecepciones filtro)
+        {
+            var limites = await LeerLimitesAsync();
+            var fueraDeRango = limites.FueraDeRango<FilaListado>(x => x.Acidez, x => x.Temperatura, x => x.Agua);
+            // Compiled once for the page, not once per row
+            var motivosDe = MotivosDe(limites);
+
+            var recepciones = RecepcionesListado(filtro.Desde, filtro.Hasta, filtro.ProveedorId);
+            if (filtro.Ticket is int ticket)
+            {
+                recepciones = recepciones.Where(x => x.Ticket == ticket);
+            }
+            if (filtro.SoloFueraDeRango)
+            {
+                recepciones = recepciones.Where(fueraDeRango);
+            }
+
+            // One extra row tells whether there is a next page, without a separate count.
+            var filas = await recepciones
+                .OrderByDescending(x => x.FechaHora)
+                .ThenByDescending(x => x.Ticket)
+                .ThenByDescending(x => x.Id) // total order: equal time and ticket (or no ticket) must not shuffle between pages
+                .Skip((filtro.Pagina - 1) * FiltroRecepciones.TamanoPagina)
+                .Take(FiltroRecepciones.TamanoPagina + 1)
+                .ToListAsync();
+            var hayMas = filas.Count > FiltroRecepciones.TamanoPagina;
+            if (hayMas)
+            {
+                filas.RemoveAt(filas.Count - 1);
+            }
+
+            var totales = await recepciones
+                .GroupBy(x => 1)
+                .Select(g => new TotalesListadoDto
+                {
+                    Litros = g.Sum(x => x.Litros),
+                    LitrosReales = g.Sum(x => x.LitrosReales),
+                    CantidadRecepciones = g.Count(),
+                    TicketMinimo = g.Min(x => x.Ticket),
+                    TicketMaximo = g.Max(x => x.Ticket)
+                })
+                .FirstOrDefaultAsync() ?? new TotalesListadoDto();
+            totales.LitrosReales = Math.Round(totales.LitrosReales, ParametrosCalidad.ScaleLitros);
+            totales.CantidadFueraDeRango = await recepciones.CountAsync(fueraDeRango);
+            totales.FueraPorAcidez = await recepciones.CountAsync(limites.AcidezAlta<FilaListado>(x => x.Acidez));
+            totales.FueraPorTemperatura = await recepciones.CountAsync(limites.TemperaturaAlta<FilaListado>(x => x.Temperatura));
+            totales.FueraPorAgua = await recepciones.CountAsync(limites.AguaAlta<FilaListado>(x => x.Agua));
+
+            return new ListadoRecepcionesDto
+            {
+                Items = filas.Select(f => AItem(f, motivosDe)).ToList(),
+                Totales = totales,
+                Dias = await SubtotalesDeDiasAsync(recepciones, fueraDeRango, filas),
+                Pagina = filtro.Pagina,
+                TamanoPagina = FiltroRecepciones.TamanoPagina,
+                HayMas = hayMas
+            };
+        }
+
+        public async Task<int?> GetSiguienteTicketAsync()
+        {
+            var maximo = await _context.Proveedores
+                .AsNoTracking()
+                .SelectMany(p => p.Recepciones)
+                .MaxAsync(r => (int?)r.Ticket);
+
+            // Nothing above the largest possible ticket: no suggestion rather than a wrapped (negative) number
+            return maximo == int.MaxValue ? null : (maximo ?? 0) + 1;
+        }
+
+        // The limits are editable at runtime, so they are read from the database on every request.
+        private async Task<LimitesCalidad> LeerLimitesAsync()
+        {
+            return await _context.ConfiguracionesCalidad
+                .AsNoTracking()
+                .Select(c => c.Limites)
+                .SingleAsync();
+        }
+
+        // The reasons of the (at most 100) rows on the page use the same domain rules as the SQL filters.
+        private static Func<FilaListado, List<string>> MotivosDe(LimitesCalidad limites)
+        {
+            var acidezAlta = limites.AcidezAlta<decimal>(x => x).Compile();
+            var temperaturaAlta = limites.TemperaturaAlta<decimal>(x => x).Compile();
+            var aguaAlta = limites.AguaAlta<decimal>(x => x).Compile();
+
+            return fila =>
+            {
+                var motivos = new List<string>();
+                if (acidezAlta(fila.Acidez))
+                {
+                    motivos.Add(MotivosFueraDeRango.Acidez);
+                }
+                if (temperaturaAlta(fila.Temperatura))
+                {
+                    motivos.Add(MotivosFueraDeRango.Temperatura);
+                }
+                if (aguaAlta(fila.Agua))
+                {
+                    motivos.Add(MotivosFueraDeRango.Agua);
+                }
+                return motivos;
+            };
+        }
+
+        private static RecepcionListadoDto AItem(FilaListado fila, Func<FilaListado, List<string>> motivosDe)
+        {
+            return new RecepcionListadoDto
+            {
+                Id = fila.Id,
+                Ticket = fila.Ticket,
+                FechaHora = fila.FechaHora,
+                ProveedorId = fila.ProveedorId,
+                ProveedorNombre = fila.Nombre,
+                Litros = fila.Litros,
+                AguaPorcentaje = fila.AguaPorcentaje,
+                LitrosReales = Math.Round(fila.LitrosReales, ParametrosCalidad.ScaleLitros),
+                Grasa = fila.Grasa,
+                Acidez = fila.Acidez,
+                Temperatura = fila.Temperatura,
+                Silo = fila.Silo,
+                Observaciones = fila.Observaciones,
+                Motivos = motivosDe(fila)
+            };
+        }
+
+        private static async Task<List<SubtotalDiaDto>> SubtotalesDeDiasAsync(
+            IQueryable<FilaListado> recepciones,
+            Expression<Func<FilaListado, bool>> fueraDeRango,
+            List<FilaListado> pagina)
+        {
+            if (pagina.Count == 0)
+            {
+                return [];
+            }
+
+            // The first and last day of a page may continue on another page, so every subtotal is computed
+            // over the whole day (within the filter) in SQL, not from the rows of the page.
+            var primero = pagina.Min(f => f.FechaHora).Date;
+            var fin = pagina.Max(f => f.FechaHora).Date.AddDays(1);
+            var delRango = recepciones.Where(x => x.FechaHora >= primero && x.FechaHora < fin);
+
+            var porDia = await delRango
+                .GroupBy(x => x.FechaHora.Date)
+                .Select(g => new { Fecha = g.Key, Cantidad = g.Count(), Litros = g.Sum(x => x.Litros) })
+                .OrderByDescending(x => x.Fecha)
+                .ToListAsync();
+            var fueraPorDia = await delRango
+                .Where(fueraDeRango)
+                .GroupBy(x => x.FechaHora.Date)
+                .Select(g => new { Fecha = g.Key, Cantidad = g.Count() })
+                .ToDictionaryAsync(x => x.Fecha, x => x.Cantidad);
+
+            return porDia.Select(d => new SubtotalDiaDto
+            {
+                Fecha = DateOnly.FromDateTime(d.Fecha),
+                CantidadRecepciones = d.Cantidad,
+                Litros = d.Litros,
+                CantidadFueraDeRango = fueraPorDia.GetValueOrDefault(d.Fecha)
+            }).ToList();
+        }
+
         // Flat projection of the owned recepciones (projecting the owned Parametros object does not translate).
         private IQueryable<FilaRecepcion> Recepciones(DateOnly desde, DateOnly hasta, Guid? proveedorId)
         {
@@ -131,7 +290,44 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                 }));
         }
 
-        private sealed class FilaRecepcion
+        // The same rows plus what the list shows. A join (SelectMany with a result selector) instead of filtering
+        // inside the collection, so the rows can be ordered and paged without an APPLY.
+        private IQueryable<FilaListado> RecepcionesListado(DateOnly desde, DateOnly hasta, Guid? proveedorId)
+        {
+            var inicio = desde.ToDateTime(TimeOnly.MinValue);
+            var fin = hasta.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+            var proveedores = _context.Proveedores.AsNoTracking();
+            if (proveedorId is Guid id)
+            {
+                proveedores = proveedores.Where(p => p.Id == id);
+            }
+
+            return proveedores
+                .SelectMany(p => p.Recepciones, (p, r) => new { Proveedor = p, Recepcion = r })
+                .Where(x => x.Recepcion.FechaHora >= inicio && x.Recepcion.FechaHora < fin)
+                .Select(x => new FilaListado
+                {
+                    Id = x.Recepcion.Id,
+                    ProveedorId = x.Proveedor.Id,
+                    Nombre = x.Proveedor.Nombre,
+                    FechaHora = x.Recepcion.FechaHora,
+                    Ticket = x.Recepcion.Ticket,
+                    Silo = x.Recepcion.Silo,
+                    Observaciones = x.Recepcion.Observaciones,
+                    Litros = x.Recepcion.Parametros.Litros,
+                    AguaPorcentaje = x.Recepcion.Parametros.AguaPorcentaje,
+                    // Same formula as RecepcionLeche.LitrosAPagar (a C# property, so it cannot be used in SQL), without
+                    // the final rounding: ROUND is not translated by every provider, so it is applied after the query.
+                    LitrosReales = x.Recepcion.Parametros.Litros * (1 - (x.Recepcion.Parametros.AguaPorcentaje ?? 0) / 100m),
+                    Acidez = x.Recepcion.Parametros.Acidez,
+                    Temperatura = x.Recepcion.Parametros.Temperatura,
+                    Grasa = x.Recepcion.Parametros.Grasa,
+                    Agua = x.Recepcion.Parametros.AguaPorcentaje ?? 0
+                });
+        }
+
+        private class FilaRecepcion
         {
             public Guid ProveedorId { get; set; }
             public string Nombre { get; set; } = null!;
@@ -141,6 +337,16 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             public decimal Temperatura { get; set; }
             public decimal? Grasa { get; set; }
             public decimal Agua { get; set; }
+        }
+
+        private sealed class FilaListado : FilaRecepcion
+        {
+            public Guid Id { get; set; }
+            public int? Ticket { get; set; }
+            public int? Silo { get; set; }
+            public string? Observaciones { get; set; }
+            public decimal? AguaPorcentaje { get; set; }
+            public decimal LitrosReales { get; set; }
         }
     }
 }

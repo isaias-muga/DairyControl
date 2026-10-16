@@ -4,9 +4,12 @@ import localeEsAr from '@angular/common/locales/es-AR';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
+import { MatTooltip } from '@angular/material/tooltip';
 import { Resumen } from './resumen';
 import { ResumenRecepciones } from '../../models/resumen';
-import { diasEnRango, hoyEnPlanta, rangoDePeriodo } from '../../utils/periodos';
+import { diasEnRango, hoyEnPlanta, rangoDePeriodo, sumarDias } from '../../utils/periodos';
 
 registerLocaleData(localeEsAr);
 
@@ -75,6 +78,7 @@ describe('Resumen', () => {
       imports: [Resumen],
       providers: [
         { provide: LOCALE_ID, useValue: 'es-AR' }, // same as app.config.ts
+        provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
@@ -230,13 +234,122 @@ describe('Resumen', () => {
     });
 
     it('renders an accessible bar chart with a tooltip on each bar', () => {
-      const grafico = el().querySelector('[role="img"]') as HTMLElement;
+      const grafico = el().querySelector('.grafico-cuerpo') as HTMLElement;
+
+      expect(grafico.getAttribute('role')).toBe('group');
 
       expect(grafico.getAttribute('aria-label')).toContain('Litros por día');
       const barras = el().querySelectorAll('.barra');
       const { desde, hasta } = rangoDePeriodo('mes', hoyEnPlanta());
       expect(barras.length).toBe(diasEnRango(desde, hasta)); // only the days elapsed so far
       expect(barras[0].getAttribute('title')).toMatch(/^\d{2}\/\d{2}\/\d{4}: /);
+    });
+
+    describe('links to the recepciones list', () => {
+      const { desde, hasta } = rangoDePeriodo('mes', hoyEnPlanta());
+
+      it('opens the list for that day when a day bar is clicked', () => {
+        const barras = Array.from(el().querySelectorAll('a.barra')) as HTMLAnchorElement[];
+
+        expect(barras).toHaveLength(diasEnRango(desde, hasta));
+        expect(barras[0].getAttribute('href')).toBe(`/recepciones?desde=${desde}&hasta=${desde}`);
+        if (barras.length > 1) {
+          const siguiente = sumarDias(desde, 1);
+          expect(barras[1].getAttribute('href')).toBe(`/recepciones?desde=${siguiente}&hasta=${siguiente}`);
+        }
+        expect(barras[0].getAttribute('aria-label')).toMatch(/^Ver recepciones\. /);
+      });
+
+      it('opens the list for that proveedor and the current period when a ranking row is clicked', () => {
+        const enlaces = Array.from(el().querySelectorAll('tr.mat-mdc-row a.proveedor-link')) as HTMLAnchorElement[];
+
+        expect(enlaces.map((a) => a.textContent?.trim())).toEqual(['Tambo Norte', 'Tambo Sur']);
+        expect(enlaces[0].getAttribute('href')).toBe(`/recepciones?desde=${desde}&hasta=${hasta}&proveedor=a`);
+        expect(enlaces[1].getAttribute('href')).toBe(`/recepciones?desde=${desde}&hasta=${hasta}&proveedor=b`);
+      });
+
+      it('uses the period selected in the page, not the default one', async () => {
+        const component = fixture.componentInstance;
+        component['rangoForm'].setValue({ inicio: new Date(2026, 8, 1), fin: new Date(2026, 8, 30) });
+        component['rangoPersonalizadoCambiado']();
+        resumenPendiente().flush(resumenConDatos('2026-09-01', '2026-09-30'));
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const enlace = el().querySelector('tr.mat-mdc-row a.proveedor-link') as HTMLAnchorElement;
+
+        expect(enlace.getAttribute('href')).toBe('/recepciones?desde=2026-09-01&hasta=2026-09-30&proveedor=a');
+      });
+
+      it('links a month bar to the days of that month inside the period when the chart groups by month', async () => {
+        const component = fixture.componentInstance;
+        component['rangoForm'].setValue({ inicio: new Date(2025, 0, 15), fin: new Date(2025, 11, 31) });
+        component['rangoPersonalizadoCambiado']();
+        resumenPendiente().flush(resumenConDatos('2025-01-15', '2025-12-31'));
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const barras = Array.from(el().querySelectorAll('a.barra')) as HTMLAnchorElement[];
+
+        expect(barras[0].getAttribute('href')).toBe('/recepciones?desde=2025-01-15&hasta=2025-01-31');
+        expect(barras[11].getAttribute('href')).toBe('/recepciones?desde=2025-12-01&hasta=2025-12-31');
+      });
+    });
+
+    describe('ranking table conventions', () => {
+      it('uses a fixed layout with percentage widths inside a scrollable container', () => {
+        const tabla = el().querySelector('.table-wrapper table') as HTMLElement;
+        const ancho = (columna: string) =>
+          getComputedStyle(el().querySelector(`th.mat-column-${columna}`) as HTMLElement).width;
+
+        expect(getComputedStyle(tabla).tableLayout).toBe('fixed');
+        expect(getComputedStyle(tabla).minWidth).toBe('860px');
+        expect([ancho('litros'), ancho('participacion'), ancho('recepciones'), ancho('fueraDeRango')]).toEqual([
+          '14%', '28%', '12%', '14%',
+        ]);
+        expect(ancho('nombre')).toBe('auto');
+      });
+
+      it('shows short headers with the full name as tooltip and aria-label', () => {
+        const encabezados = fixture.debugElement.queryAll(By.css('.ranking th'));
+
+        expect(encabezados.map((th) => th.nativeElement.textContent.trim())).toEqual([
+          'Proveedor', 'Litros', 'Particip.', 'Recep.', 'Fuera rango',
+        ]);
+        expect(encabezados.map((th) => th.nativeElement.getAttribute('aria-label'))).toEqual([
+          'Proveedor', 'Litros', 'Participación', 'Recepciones', 'Fuera de rango',
+        ]);
+        expect(encabezados.map((th) => th.injector.get(MatTooltip, null)?.message ?? null)).toEqual([
+          null, null, 'Participación', 'Recepciones', 'Fuera de rango',
+        ]);
+      });
+
+      it('right-aligns the quantities, each header like its column, and keeps the cells on one line', () => {
+        for (const columna of ['litros', 'recepciones', 'fueraDeRango']) {
+          for (const celda of Array.from(el().querySelectorAll(`.ranking .mat-column-${columna}`))) {
+            expect(getComputedStyle(celda).textAlign).toBe('right');
+          }
+        }
+        expect(getComputedStyle(el().querySelector('td.mat-column-nombre') as HTMLElement).whiteSpace).toBe('nowrap');
+      });
+
+      it('shows the full proveedor name as a tooltip on its link', () => {
+        const enlace = fixture.debugElement.query(By.css('tr.mat-mdc-row a.proveedor-link'));
+
+        expect(enlace.injector.get(MatTooltip).message).toBe('Ver las recepciones de Tambo Norte');
+      });
+
+      it('uses the same padding on the first and last column, header included', () => {
+        const estilo = (selector: string) => getComputedStyle(el().querySelector(selector) as HTMLElement);
+
+        for (const [primera, ultima] of [
+          ['th.mat-column-nombre', 'th.mat-column-fueraDeRango'],
+          ['td.mat-column-nombre', 'td.mat-column-fueraDeRango'],
+        ]) {
+          expect(estilo(primera).paddingLeft).toBe('16px');
+          expect(estilo(ultima).paddingRight).toBe('16px');
+        }
+      });
     });
   });
 

@@ -17,6 +17,14 @@ namespace DairyControl.Application.Services
 
         public Task<ResumenRecepcionesDto> GetResumenAsync(DateOnly desde, DateOnly hasta, Guid? proveedorId = null)
         {
+            ValidarFiltro(desde, hasta, proveedorId);
+
+            return _queries.GetResumenAsync(desde, hasta, proveedorId);
+        }
+
+        // Shared with the paged list so both screens reject the same ranges with the same messages.
+        public static void ValidarFiltro(DateOnly desde, DateOnly hasta, Guid? proveedorId)
+        {
             if (desde < DesdeMinimo)
             {
                 throw new ArgumentException($"La fecha desde no puede ser anterior al {DesdeMinimo:dd/MM/yyyy}.", nameof(desde));
@@ -36,8 +44,6 @@ namespace DairyControl.Application.Services
             {
                 throw new ArgumentException("El proveedor indicado no es válido.", nameof(proveedorId));
             }
-
-            return _queries.GetResumenAsync(desde, hasta, proveedorId);
         }
     }
 }

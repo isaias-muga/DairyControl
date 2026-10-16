@@ -68,10 +68,28 @@ export interface ValoresRecepcion {
   ticket?: number | string;
 }
 
-/** Opens the registration dialog on a proveedor's detail page, fills it and presses "Registrar". */
-export async function registrarRecepcion(page: Page, valores: ValoresRecepcion): Promise<void> {
+/**
+ * Opens the registration dialog of a proveedor's detail page and waits until the dialog has put the focus on
+ * Litros (its initial focus). Material moves the focus after the opening animation: typing into a field before
+ * that can land in the field that receives the focus.
+ */
+export async function abrirRegistro(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Registrar recepción' }).click();
   const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel(/^Litros/)).toBeFocused();
+  return dialog;
+}
+
+/** Cancelar on a form that has data asks first: confirm the discard and wait until the dialog is gone. */
+export async function descartarRegistro(page: Page): Promise<void> {
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Descartar' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+}
+
+/** Opens the registration dialog on a proveedor's detail page, fills it and presses "Registrar". */
+export async function registrarRecepcion(page: Page, valores: ValoresRecepcion): Promise<void> {
+  const dialog = await abrirRegistro(page);
   await rellenar(dialog.getByLabel(/^Litros/), String(valores.litros));
   await rellenar(dialog.getByLabel(/^Acidez/), String(valores.acidez));
   await rellenar(dialog.getByLabel(/^Temperatura/), String(valores.temperatura));

@@ -83,5 +83,70 @@ namespace DairyControl.Domain.Tests
             Assert.Equal(20m, limites.TemperaturaMaxima);
             Assert.Equal(0m, limites.AguaMaxima);
         }
+
+        [Theory]
+        [InlineData(19, false)]
+        [InlineData(19.01, true)]
+        public void AcidezAlta_ValueAroundMaximum_FlagsOnlyAboveIt(double acidez, bool esperado)
+        {
+            // Arrange
+            var limites = LimitesCalidad.Predeterminados;
+            var regla = limites.AcidezAlta<decimal>(x => x).Compile();
+
+            // Act
+            var resultado = regla((decimal)acidez);
+
+            // Assert
+            Assert.Equal(esperado, resultado);
+        }
+
+        [Theory]
+        [InlineData(20, false)]
+        [InlineData(20.01, true)]
+        public void TemperaturaAlta_ValueAroundMaximum_FlagsOnlyAboveIt(double temperatura, bool esperado)
+        {
+            // Arrange
+            var limites = LimitesCalidad.Predeterminados;
+            var regla = limites.TemperaturaAlta<decimal>(x => x).Compile();
+
+            // Act
+            var resultado = regla((decimal)temperatura);
+
+            // Assert
+            Assert.Equal(esperado, resultado);
+        }
+
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(0.01, true)]
+        public void AguaAlta_ValueAroundMaximum_FlagsOnlyAboveIt(double agua, bool esperado)
+        {
+            // Arrange
+            var limites = LimitesCalidad.Predeterminados;
+            var regla = limites.AguaAlta<decimal>(x => x).Compile();
+
+            // Act
+            var resultado = regla((decimal)agua);
+
+            // Assert
+            Assert.Equal(esperado, resultado);
+        }
+
+        [Theory]
+        [InlineData(19, 20, 0, false)]
+        [InlineData(19.5, 20, 0, true)]
+        [InlineData(19, 21, 0, true)]
+        [InlineData(19, 20, 1.5, true)]
+        public void EstaFueraDeRango_AnyReasonAboveLimit_ReturnsTrue(double acidez, double temperatura, double agua, bool esperado)
+        {
+            // Arrange
+            var limites = LimitesCalidad.Predeterminados;
+
+            // Act
+            var resultado = limites.EstaFueraDeRango((decimal)acidez, (decimal)temperatura, (decimal)agua);
+
+            // Assert
+            Assert.Equal(esperado, resultado);
+        }
     }
 }

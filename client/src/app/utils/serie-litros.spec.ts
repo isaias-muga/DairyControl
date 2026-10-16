@@ -62,6 +62,30 @@ describe('serie-litros', () => {
     });
   });
 
+  describe('range of each bar (to open its recepciones)', () => {
+    it('covers one day for a daily bar', () => {
+      const serie = construirSerie('2026-09-01', '2026-09-03', []);
+
+      expect(serie.barras.map((b) => [b.desde, b.hasta])).toEqual([
+        ['2026-09-01', '2026-09-01'],
+        ['2026-09-02', '2026-09-02'],
+        ['2026-09-03', '2026-09-03'],
+      ]);
+    });
+
+    it('covers the days of the month inside the period for a monthly bar', () => {
+      const serie = construirSerie('2026-01-15', '2026-04-10', []);
+
+      expect(serie.agrupacion).toBe('mes');
+      expect(serie.barras.map((b) => [b.desde, b.hasta])).toEqual([
+        ['2026-01-15', '2026-01-31'],
+        ['2026-02-01', '2026-02-28'],
+        ['2026-03-01', '2026-03-31'],
+        ['2026-04-01', '2026-04-10'],
+      ]);
+    });
+  });
+
   describe('ticksDelEje', () => {
     it('returns round ticks that cover the maximum', () => {
       const ticks = ticksDelEje(27500);

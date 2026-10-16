@@ -152,12 +152,12 @@
 
           <div
             class="grafico-cuerpo"
-            role="img"
+            role="group"
             [attr.aria-label]="
               (s.agrupacion === 'mes' ? 'Litros por mes' : 'Litros por día') +
               ': ' + s.barras.length + ' barras, máximo ' +
               (s.maximoEje | number: '1.0-0') + ' L, promedio diario ' +
-              (s.promedioDiario | number: '1.0-0') + ' L'
+              (s.promedioDiario | number: '1.0-0') + ' L. Cada barra abre las recepciones de ese período.'
             "
           >
             <div class="eje-y" aria-hidden="true">
@@ -171,11 +171,14 @@
                   <span class="linea" [style.bottom.%]="(t / s.maximoEje) * 100"></span>
                 }
                 @for (b of s.barras; track $index) {
-                  <span
+                  <a
                     class="barra"
+                    routerLink="/recepciones"
+                    [queryParams]="{ desde: b.desde, hasta: b.hasta }"
                     [style.height.%]="(b.litros / s.maximoEje) * 100"
                     [attr.title]="b.titulo"
-                  ></span>
+                    [attr.aria-label]="'Ver recepciones. ' + b.titulo"
+                  ></a>
                 }
               </div>
               <div class="eje-x" aria-hidden="true">
@@ -195,15 +198,23 @@
         <div class="table-wrapper">
           <table mat-table [dataSource]="filasProveedores()" class="full-width">
             <ng-container matColumnDef="nombre">
-              <th mat-header-cell *matHeaderCellDef>Proveedor</th>
-              <td mat-cell *matCellDef="let p">{{ p.nombre }}</td>
+              <th mat-header-cell *matHeaderCellDef aria-label="Proveedor">Proveedor</th>
+              <td mat-cell *matCellDef="let p">
+                <a
+                  class="proveedor-link"
+                  routerLink="/recepciones"
+                  [queryParams]="paramsDeProveedor(p.proveedorId)"
+                  [matTooltip]="'Ver las recepciones de ' + p.nombre"
+                  >{{ p.nombre }}</a
+                >
+              </td>
             </ng-container>
             <ng-container matColumnDef="litros">
-              <th mat-header-cell *matHeaderCellDef class="numero">Litros</th>
-              <td mat-cell *matCellDef="let p" class="numero">{{ p.litros | number: '1.0-0' }}</td>
+              <th mat-header-cell *matHeaderCellDef class="cantidad" aria-label="Litros">Litros</th>
+              <td mat-cell *matCellDef="let p" class="cantidad">{{ p.litros | number: '1.0-0' }}</td>
             </ng-container>
             <ng-container matColumnDef="participacion">
-              <th mat-header-cell *matHeaderCellDef>Participación</th>
+              <th mat-header-cell *matHeaderCellDef matTooltip="Participación" aria-label="Participación">Particip.</th>
               <td mat-cell *matCellDef="let p">
                 <div class="participacion">
                   <mat-progress-bar
@@ -216,17 +227,17 @@
               </td>
             </ng-container>
             <ng-container matColumnDef="recepciones">
-              <th mat-header-cell *matHeaderCellDef class="numero">Recepciones</th>
-              <td mat-cell *matCellDef="let p" class="numero">
+              <th mat-header-cell *matHeaderCellDef class="cantidad" matTooltip="Recepciones" aria-label="Recepciones">Recep.</th>
+              <td mat-cell *matCellDef="let p" class="cantidad">
                 {{ p.cantidadRecepciones | number: '1.0-0' }}
               </td>
             </ng-container>
             <ng-container matColumnDef="fueraDeRango">
-              <th mat-header-cell *matHeaderCellDef class="numero">Fuera de rango</th>
+              <th mat-header-cell *matHeaderCellDef class="cantidad" matTooltip="Fuera de rango" aria-label="Fuera de rango">Fuera rango</th>
               <td
                 mat-cell
                 *matCellDef="let p"
-                class="numero"
+                class="cantidad"
                 [class.alerta]="p.cantidadFueraDeRango > 0"
               >
                 {{ p.cantidadFueraDeRango | number: '1.0-0' }}
