@@ -67,6 +67,7 @@ export class RecepcionesFiltros {
     fin: this.fb.control<Date | null>(null),
   });
   protected proveedorControl = this.fb.control<string>(this.TODOS);
+  // A string control (debounce, URL echo), not appNumero: it shares the parser, so "1.234" is ticket 1234.
   // Typed the es-AR way ("1.234" is ticket 1234; decimals are rejected). Whitespace around (or only whitespace)
   // counts as an empty search, not as an invalid ticket.
   protected ticketControl = this.fb.control<string>('', [

@@ -6,7 +6,6 @@ describe('parsearNumeroEs', () => {
     ['', null],
     ['   ', null],
     ['1234', 1234],
-    ['007', 7],
     ['3,5', 3.5],
     ['3.5', 3.5],
     [' 3,5 ', 3.5],
@@ -19,6 +18,8 @@ describe('parsearNumeroEs', () => {
     ['1.234.567', 1234567],
     ['0,001', 0.001],
     ['0.001', 0.001],
+    ['0.500', 0.5],
+    ['0,5', 0.5],
     ['1234.567', 1234.567],
     [',5', 0.5],
     ['5,0', 5],
@@ -38,6 +39,11 @@ describe('parsearNumeroEs', () => {
     '12.34,5',
     '12.34.567',
     '0.500.000',
+    '007', // leading zeros are never guessed
+    '012.345',
+    '00.500',
+    '0.123,5',
+    '0,00000000001', // more than 10 decimals
     '5,',
     '5.',
     '.5',
@@ -84,6 +90,14 @@ describe('parsearNumeroEs', () => {
 
     // Assert
     expect(resultado).toEqual({ ok: false, mensaje: 'Ingresá un número entero, sin decimales.' });
+  });
+
+  it.each([['1.2.3'], ['1,2,3']])('integer field: "%s" gets a message that does not talk about decimals', (texto) => {
+    // Arrange / Act
+    const resultado = parsearNumeroEs(texto, { entero: true });
+
+    // Assert
+    expect(resultado.ok ? '' : resultado.mensaje).not.toContain('decimales');
   });
 
   it('1.234,5 is never read as 1.2345', () => {

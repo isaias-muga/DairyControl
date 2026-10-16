@@ -198,10 +198,12 @@ export class RecepcionForm {
   tieneDatos(): boolean {
     const v = this.form.getRawValue();
     const lectura = [v.litros, v.grasa, v.acidez, v.temperatura, v.silo, v.aguaPorcentaje].some((x) => x != null);
+    // Text the parser rejected leaves null in the control, but it is still something the operator typed
+    const textoInvalido = Object.values(this.form.controls).some((c) => c.errors?.['numero']);
     const tocado = ['proveedorId', 'ticket', 'fechaHora'].some(
       (c) => this.form.controls[c as 'proveedorId' | 'ticket' | 'fechaHora'].dirty,
     );
-    return lectura || (v.observaciones ?? '').trim() !== '' || tocado;
+    return lectura || textoInvalido || (v.observaciones ?? '').trim() !== '' || tocado;
   }
 
   invalid(control: keyof typeof this.form.controls): boolean {
@@ -289,7 +291,7 @@ export class RecepcionForm {
     this.recepcionesService.getSiguienteTicket().subscribe({
       next: ({ ticket }) => {
         // Never overwrite what the operator already typed while the suggestion was loading
-        if (ticket != null && this.form.controls.ticket.value == null) {
+        if (ticket != null && this.form.controls.ticket.value == null && !this.form.controls.ticket.errors?.['numero']) {
           this.form.controls.ticket.setValue(ticket);
           this.ticketSugerido.set(true);
         }

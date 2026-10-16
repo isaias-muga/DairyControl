@@ -297,6 +297,39 @@ describe('RecepcionForm', () => {
       expect(fixture.nativeElement.textContent).toContain('Ingresá un número entero, sin decimales.');
     });
 
+    it('counts text the parser rejected as data to lose when closing', () => {
+      fixture.detectChanges();
+      expect(component.tieneDatos()).toBe(false);
+
+      escribir('litros', '1.2.3');
+
+      expect(component.form.controls.litros.value).toBeNull();
+      expect(component.tieneDatos()).toBe(true);
+    });
+
+    it('never overwrites a rejected ticket text with the suggestion that arrives later', () => {
+      descartarSolicitudesIniciales();
+      const otro = TestBed.createComponent(RecepcionForm);
+      otro.componentRef.setInput('proveedorId', 'test-id');
+      otro.detectChanges();
+      const campo = otro.nativeElement.querySelector('#ticket') as HTMLInputElement;
+      campo.value = '2,5';
+      campo.dispatchEvent(new Event('input'));
+
+      responderIniciales(4981);
+
+      expect(otro.componentInstance.form.controls.ticket.errors?.['numero']).toBeDefined();
+      expect(campo.value).toBe('2,5');
+    });
+
+    it('is disabled with the form', () => {
+      fixture.detectChanges();
+
+      component.form.disable();
+
+      expect((fixture.nativeElement.querySelector('#litros') as HTMLInputElement).disabled).toBe(true);
+    });
+
     it('shows the suggested ticket plain, without thousands separators', () => {
       fixture.detectChanges();
       component.form.controls.ticket.setValue(1000001);

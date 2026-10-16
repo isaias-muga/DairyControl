@@ -160,3 +160,14 @@ test.describe('a 1366px screen', () => {
     expect(await sinScroll()).toBe(true);
   });
 });
+
+test('recepciones: the ticket search reads "1.234" as ticket 1234 and rejects a decimal', async ({ page }) => {
+  await abrirRecepciones(page);
+  const buscador = page.getByRole('textbox', { name: 'Ticket' });
+
+  await rellenar(buscador, '1.234');
+  await expect(page).toHaveURL(/ticket=1234(&|$)/);
+
+  await rellenar(buscador, '12,5');
+  await expect(page.getByText('Ingresá un número entero, sin decimales.')).toBeVisible();
+});
