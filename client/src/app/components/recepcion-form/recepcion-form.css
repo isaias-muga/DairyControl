@@ -55,8 +55,21 @@ mat-card-header {
   gap: 8px;
 }
 
+/* The form is taller than a laptop screen: keep the buttons visible while the fields scroll. */
+:host-context(mat-dialog-content) .actions {
+  position: sticky;
+  bottom: 0;
+  padding: 8px 0 4px;
+  background: var(--mat-dialog-container-color, var(--mat-sys-surface));
+}
+
 @media (max-width: 599px) {
   .actions {
     flex-direction: column;
+  }
+
+  /* Three stacked buttons would cover too much of a phone screen: they scroll with the fields. */
+  :host-context(mat-dialog-content) .actions {
+    position: static;
   }
 }

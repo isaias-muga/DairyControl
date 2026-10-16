@@ -299,7 +299,7 @@ describe('RecepcionesList', () => {
         agua: ancho('agua'), litrosReales: ancho('litrosReales'), grasa: ancho('grasa'), acidez: ancho('acidez'),
         temperatura: ancho('temperatura'), silo: ancho('silo'), estado: ancho('estado'),
       }).toEqual({
-        fecha: '6%', ticket: '6%', proveedor: '16%', litros: '8%', agua: '6.5%', litrosReales: '8%',
+        fecha: '6%', ticket: '8%', proveedor: '15%', litros: '8%', agua: '6.5%', litrosReales: '8%',
         grasa: '6.5%', acidez: '7.5%', temperatura: '7.5%', silo: '4.5%', estado: '11%',
       });
       // Observaciones has no explicit width: it takes the rest

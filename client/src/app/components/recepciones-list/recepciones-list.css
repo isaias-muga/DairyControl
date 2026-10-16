@@ -57,8 +57,8 @@ td.mat-mdc-cell {
 }
 
 .mat-column-fecha { width: 6%; }
-.mat-column-ticket { width: 6%; }
-.mat-column-proveedor { width: 16%; }
+.mat-column-ticket { width: 8%; }
+.mat-column-proveedor { width: 15%; }
 .mat-column-litros { width: 8%; }
 .mat-column-agua { width: 6.5%; }
 .mat-column-litrosReales { width: 8%; }
