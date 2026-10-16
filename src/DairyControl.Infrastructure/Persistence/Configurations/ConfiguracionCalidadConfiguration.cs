@@ -14,6 +14,9 @@ namespace DairyControl.Infrastructure.Persistence.Configurations
             builder.HasKey(c => c.Id);
             builder.Property(c => c.Id).ValueGeneratedNever();
             builder.Property(c => c.ActualizadoEn).IsRequired();
+            // Concurrency token as a shadow property: the domain entity has no field for it. The repository reads it for
+            // the GET and sets its original value on update, so a stale edit matches no row and is rejected.
+            builder.Property<byte[]>("RowVersion").IsRowVersion();
             builder.OwnsOne(c => c.Limites, l =>
             {
                 l.Property(x => x.AcidezMaxima).IsRequired().HasPrecision(5, 2);

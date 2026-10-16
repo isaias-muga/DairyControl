@@ -1,5 +1,6 @@
 using DairyControl.Application.DTOs;
 using DairyControl.Domain.Entities;
+using DairyControl.Domain.Exceptions;
 using DairyControl.Domain.Interfaces;
 using DairyControl.Domain.ValueObjects;
 
@@ -18,29 +19,44 @@ namespace DairyControl.Application.Services
 
         public async Task<LimitesCalidadDto?> GetAsync()
         {
-            var configuracion = await _repository.GetAsync();
-            return configuracion is null ? null : ToDto(configuracion);
+            var leida = await _repository.GetAsync();
+            return leida is null ? null : ToDto(leida.Configuracion, leida.Version);
         }
 
         public async Task<LimitesCalidadDto?> ActualizarAsync(ActualizarLimitesCalidadDto dto)
         {
+            var versionLeida = LeerVersion(dto.Version);
             var limites = LimitesCalidad.Create(dto.AcidezMaxima, dto.TemperaturaMaxima, dto.AguaMaxima);
 
-            var configuracion = await _repository.GetAsync();
-            if (configuracion is null)
+            var actual = await _repository.GetAsync();
+            if (actual is null)
                 return null;
 
-            configuracion.CambiarLimites(limites, _reloj.GetUtcNow().UtcDateTime);
-            await _repository.UpdateAsync(configuracion);
-            return ToDto(configuracion);
+            actual.Configuracion.CambiarLimites(limites, _reloj.GetUtcNow().UtcDateTime);
+            var nuevaVersion = await _repository.UpdateAsync(actual.Configuracion, versionLeida);
+            return ToDto(actual.Configuracion, nuevaVersion);
         }
 
-        private static LimitesCalidadDto ToDto(ConfiguracionCalidad configuracion) => new()
+        // The version tells the repository which state the user was looking at; without it a stale edit would go unnoticed.
+        private static byte[] LeerVersion(string? version)
+        {
+            if (string.IsNullOrWhiteSpace(version))
+                throw new ReglaDeNegocioException("Falta la versión de los límites. Recargá la página.", "version");
+
+            var bytes = new byte[version.Length];
+            if (!Convert.TryFromBase64String(version, bytes, out var escritos) || escritos == 0)
+                throw new ReglaDeNegocioException("La versión de los límites no es válida. Recargá la página.", "version");
+
+            return bytes[..escritos];
+        }
+
+        private static LimitesCalidadDto ToDto(ConfiguracionCalidad configuracion, byte[] version) => new()
         {
             AcidezMaxima = configuracion.Limites.AcidezMaxima,
             TemperaturaMaxima = configuracion.Limites.TemperaturaMaxima,
             AguaMaxima = configuracion.Limites.AguaMaxima,
-            ActualizadoEn = configuracion.ActualizadoEn
+            ActualizadoEn = configuracion.ActualizadoEn,
+            Version = Convert.ToBase64String(version)
         };
     }
 }
