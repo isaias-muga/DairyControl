@@ -248,6 +248,38 @@ describe('RecepcionesFiltros', () => {
       expect(emitidos[0].ticket).toBe(4980);
     });
 
+    it('shows the error while typing, without waiting for the field to lose the focus', async () => {
+      await mostrar(base());
+      const campo = el().querySelector('.campo-ticket input') as HTMLInputElement;
+
+      campo.value = '-5';
+      campo.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(el().querySelector('.campo-ticket mat-error')?.textContent).toContain('Número entero entre 1 y 2.147.483.647.');
+    });
+
+    it('shows no error for a valid or empty ticket', async () => {
+      await mostrar(base());
+      const campo = el().querySelector('.campo-ticket input') as HTMLInputElement;
+
+      campo.value = '4980';
+      campo.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(el().querySelector('.campo-ticket mat-error')).toBeNull();
+    });
+
+    it.each([['   '], ['	'], [' 4980 ']])('treats the whitespace in %j as an empty search or trims it', async (valor) => {
+      await mostrar(base());
+
+      interno().ticketControl.setValue(valor);
+      vi.advanceTimersByTime(400);
+
+      expect(interno().ticketControl.valid).toBe(true);
+      expect(emitidos[0].ticket).toBe(valor.trim() === '' ? null : 4980);
+    });
+
     it('accepts the largest int', async () => {
       await mostrar(base());
 

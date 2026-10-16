@@ -138,6 +138,40 @@ namespace DairyControl.Application.Tests
         }
 
         [Fact]
+        public async Task GetListadoAsync_PageAboveMaximum_ThrowsAndDoesNotQuery()
+        {
+            // Arrange
+            var mockQueries = new Mock<IRecepcionQueries>();
+            var service = new ListadoRecepcionesAppService(mockQueries.Object);
+            var filtro = Filtro();
+            filtro.Pagina = ListadoRecepcionesAppService.MaxPagina + 1;
+
+            // Act
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.GetListadoAsync(filtro));
+
+            // Assert
+            Assert.Equal("Pagina", ex.ParamName);
+            mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetListadoAsync_MaximumPage_CallsQueryOnce()
+        {
+            // Arrange
+            var mockQueries = new Mock<IRecepcionQueries>();
+            var filtro = Filtro();
+            filtro.Pagina = ListadoRecepcionesAppService.MaxPagina;
+            mockQueries.Setup(q => q.GetListadoAsync(filtro)).ReturnsAsync(new ListadoRecepcionesDto());
+            var service = new ListadoRecepcionesAppService(mockQueries.Object);
+
+            // Act
+            await service.GetListadoAsync(filtro);
+
+            // Assert
+            mockQueries.Verify(q => q.GetListadoAsync(filtro), Times.Once);
+        }
+
+        [Fact]
         public async Task GetSiguienteTicketAsync_Called_ReturnsTheQueryValue()
         {
             // Arrange

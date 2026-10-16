@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { provideNativeDateAdapter } from '@angular/material/core';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { ErrorStateMatcher, provideNativeDateAdapter } from '@angular/material/core';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -21,6 +21,11 @@ import {
   isoADate,
   rangoDeAtajo,
 } from '../../utils/periodos';
+
+/** The ticket search applies by itself while typing, so its error shows as soon as the value is invalid (not on blur). */
+export const errorAlEscribir: ErrorStateMatcher = {
+  isErrorState: (control) => !!control && control.invalid && control.dirty,
+};
 
 /** Filters of the recepciones list: quick period, custom range, proveedor, ticket and "solo fuera de rango". */
 @Component({
@@ -48,6 +53,7 @@ export class RecepcionesFiltros {
 
   protected readonly TODOS = 'todos'; // value of the "Todos" option (mat-select ignores null as a selection)
   protected readonly ticketMax = TICKET_MAX;
+  protected readonly errorAlEscribir = errorAlEscribir;
 
   protected atajo = computed<AtajoPeriodo | null>(() =>
     atajoDeRango({ desde: this.filtros().desde, hasta: this.filtros().hasta }, hoyEnPlanta()),
@@ -59,9 +65,15 @@ export class RecepcionesFiltros {
     fin: this.fb.control<Date | null>(null),
   });
   protected proveedorControl = this.fb.control<string>(this.TODOS);
+  // Whitespace around (or only whitespace) counts as an empty search, not as an invalid ticket.
   protected ticketControl = this.fb.control<string>('', [
-    Validators.pattern(/^\d+$/),
-    (c) => (c.value === '' || (Number(c.value) >= TICKET_MIN && Number(c.value) <= TICKET_MAX) ? null : { rango: true }),
+    (c) => {
+      const valor = String(c.value ?? '').trim();
+      if (valor === '') {
+        return null;
+      }
+      return /^\d+$/.test(valor) && Number(valor) >= TICKET_MIN && Number(valor) <= TICKET_MAX ? null : { ticket: true };
+    },
   ]);
   protected soloControl = this.fb.control(false);
 
@@ -76,7 +88,7 @@ export class RecepcionesFiltros {
       this.proveedorControl.setValue(f.proveedorId ?? this.TODOS, { emitEvent: false });
       this.soloControl.setValue(!!f.soloFueraDeRango, { emitEvent: false });
       const ticket = f.ticket != null ? String(f.ticket) : '';
-      if (this.ticketControl.value !== ticket) {
+      if (this.ticketControl.value.trim() !== ticket) {
         this.ticketControl.setValue(ticket, { emitEvent: false });
       }
     });
@@ -129,8 +141,9 @@ export class RecepcionesFiltros {
   private emitir(cambios: Partial<FiltroRecepciones>): void {
     // The ticket may still be waiting for its debounce: every change carries what is typed, so a change of
     // another filter right after typing the ticket does not lose it (the URL would not have it yet).
+    const escrito = this.ticketControl.value.trim();
     const ticket = this.ticketControl.valid
-      ? this.ticketControl.value === '' ? null : Number(this.ticketControl.value)
+      ? escrito === '' ? null : Number(escrito)
       : this.filtros().ticket;
     this.cambio.emit({ ...this.filtros(), ticket, ...cambios, pagina: undefined });
   }
