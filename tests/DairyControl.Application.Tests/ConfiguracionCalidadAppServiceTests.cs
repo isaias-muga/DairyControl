@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Services;
 using DairyControl.Domain.Entities;
@@ -83,8 +84,8 @@ namespace DairyControl.Application.Tests
             var dto = new ActualizarLimitesCalidadDto { AcidezMaxima = 5m, TemperaturaMaxima = 20m, AguaMaxima = 0m };
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.ActualizarAsync(dto));
-            Assert.Equal("acidezMaxima", ex.ParamName);
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.ActualizarAsync(dto));
+            Assert.Equal("acidezMaxima", ex.Campo);
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<ConfiguracionCalidad>()), Times.Never);
         }
 

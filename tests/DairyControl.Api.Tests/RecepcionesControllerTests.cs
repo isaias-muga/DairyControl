@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using DairyControl.Api.Controllers;
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Queries;
@@ -41,18 +42,18 @@ namespace DairyControl.Api.Tests
         }
 
         [Fact]
-        public async Task GetListadoAsync_InvalidRange_ThrowsArgumentExceptionForTheMiddlewareAndDoesNotQuery()
+        public async Task GetListadoAsync_InvalidRange_ThrowsReglaDeNegocioExceptionForTheMiddlewareAndDoesNotQuery()
         {
             // Arrange
             var mockQueries = new Mock<IRecepcionQueries>();
             var controller = NuevoControlador(mockQueries);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => controller.GetListadoAsync(
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => controller.GetListadoAsync(
                 new DateOnly(2026, 11, 1), new DateOnly(2026, 10, 1), null, null, false, 1));
 
             // Assert
-            Assert.Equal("desde", ex.ParamName);
+            Assert.Equal("desde", ex.Campo);
             mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
         }
 

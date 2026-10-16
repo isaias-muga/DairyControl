@@ -1,4 +1,5 @@
-﻿namespace DairyControl.Domain.ValueObjects
+﻿using DairyControl.Domain.Exceptions;
+namespace DairyControl.Domain.ValueObjects
 {
     public record ParametrosCalidad
     {
@@ -39,27 +40,27 @@
         {
             if (litros < LitrosMin || litros > LitrosMax)
             {
-                throw new ArgumentException(FormattableString.Invariant($"Los litros deben estar entre {LitrosMin} y {LitrosMax:0}."), nameof(litros));
+                throw new ReglaDeNegocioException(FormattableString.Invariant($"Los litros deben estar entre {LitrosMin} y {LitrosMax:0}."), nameof(litros));
             }
 
             if (grasa != null && (grasa < GrasaMin || grasa > GrasaMax))
             {
-                throw new ArgumentException($"La grasa debe estar entre {GrasaMin:0} y {GrasaMax:0} %.", nameof(grasa));
+                throw new ReglaDeNegocioException($"La grasa debe estar entre {GrasaMin:0} y {GrasaMax:0} %.", nameof(grasa));
             }
 
             if (acidez < AcidezMin || acidez > AcidezMax)
             {
-                throw new ArgumentException($"La acidez debe estar entre {AcidezMin:0} y {AcidezMax:0} °D.", nameof(acidez));
+                throw new ReglaDeNegocioException($"La acidez debe estar entre {AcidezMin:0} y {AcidezMax:0} °D.", nameof(acidez));
             }
 
             if (temperatura < TemperaturaMin || temperatura > TemperaturaMax)
             {
-                throw new ArgumentException($"La temperatura debe estar entre {TemperaturaMin:0} y {TemperaturaMax:0} °C.", nameof(temperatura));
+                throw new ReglaDeNegocioException($"La temperatura debe estar entre {TemperaturaMin:0} y {TemperaturaMax:0} °C.", nameof(temperatura));
             }
 
             if (aguaPorcentaje != null && (aguaPorcentaje < AguaMinPorcentaje || aguaPorcentaje > AguaMaxPorcentaje))
             {
-                throw new ArgumentException($"El porcentaje de agua debe estar entre {AguaMinPorcentaje:0} y {AguaMaxPorcentaje:0}.", nameof(aguaPorcentaje));
+                throw new ReglaDeNegocioException($"El porcentaje de agua debe estar entre {AguaMinPorcentaje:0} y {AguaMaxPorcentaje:0}.", nameof(aguaPorcentaje));
             }
 
             return new ParametrosCalidad(grasa, acidez, temperatura, litros, aguaPorcentaje);

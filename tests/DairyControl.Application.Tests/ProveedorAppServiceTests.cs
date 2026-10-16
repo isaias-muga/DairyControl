@@ -245,7 +245,7 @@ namespace DairyControl.Application.Tests
             var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, AguaPorcentaje = 120m };
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+            await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
         }
 
@@ -261,7 +261,7 @@ namespace DairyControl.Application.Tests
             var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, Ticket = 0 };
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+            await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
         }
 
@@ -290,7 +290,7 @@ namespace DairyControl.Application.Tests
             }
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+            await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
             Assert.Empty(proveedor.Recepciones);
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
         }
@@ -381,7 +381,7 @@ namespace DairyControl.Application.Tests
         }
 
         [Fact]
-        public async Task RegistrarRecepcionAsync_NonPositiveTicket_ThrowsArgumentExceptionWithoutChecking()
+        public async Task RegistrarRecepcionAsync_NonPositiveTicket_ThrowsReglaDeNegocioExceptionWithoutChecking()
         {
             // Arrange
             var proveedor = Proveedor.Crear("Tambo Nuevo");
@@ -390,7 +390,7 @@ namespace DairyControl.Application.Tests
             var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            await Assert.ThrowsAsync<ReglaDeNegocioException>(() =>
                 service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(0)));
             mockRepo.Verify(r => r.GetTicketRegistradoAsync(It.IsAny<int>()), Times.Never);
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
@@ -441,7 +441,7 @@ namespace DairyControl.Application.Tests
         }
 
         [Fact]
-        public async Task RegistrarRecepcionAsync_FechaHoraMissing_ThrowsArgumentExceptionAndDoesNotSave()
+        public async Task RegistrarRecepcionAsync_FechaHoraMissing_ThrowsReglaDeNegocioExceptionAndDoesNotSave()
         {
             // Arrange
             var mockRepo = new Mock<IProveedorRepository>();
@@ -451,10 +451,10 @@ namespace DairyControl.Application.Tests
             var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = null };
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
 
             // Assert
-            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Equal("fechaHora", ex.Campo);
             Assert.Empty(proveedor.Recepciones);
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
         }
@@ -462,7 +462,7 @@ namespace DairyControl.Application.Tests
         [Theory]
         [InlineData("1999-12-31T23:59:00")]
         [InlineData("2026-10-15T13:01:00")] // plant now is 12:00: more than 1 hour ahead
-        public async Task RegistrarRecepcionAsync_FechaHoraOutOfRange_ThrowsArgumentExceptionAndDoesNotSave(string fechaHora)
+        public async Task RegistrarRecepcionAsync_FechaHoraOutOfRange_ThrowsReglaDeNegocioExceptionAndDoesNotSave(string fechaHora)
         {
             // Arrange
             var mockRepo = new Mock<IProveedorRepository>();
@@ -472,10 +472,10 @@ namespace DairyControl.Application.Tests
             var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = DateTime.Parse(fechaHora) };
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
 
             // Assert
-            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Equal("fechaHora", ex.Campo);
             mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
         }
 
