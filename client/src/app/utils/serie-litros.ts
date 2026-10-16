@@ -9,6 +9,9 @@ export interface Barra {
   mostrarEtiqueta: boolean;
   titulo: string;
   litros: number;
+  /** The days the bar covers (YYYY-MM-DD, within the period), to open the recepciones of that bar. */
+  desde: string;
+  hasta: string;
 }
 
 export interface SerieLitros {
@@ -53,24 +56,32 @@ function barrasDiarias(desde: string, totalDias: number, litrosPorDia: Map<strin
       mostrarEtiqueta: i % paso === 0,
       titulo: `${formatearFecha(fecha)}: ${formatoLitros.format(litros)} L`,
       litros,
+      desde: fecha,
+      hasta: fecha,
     };
   });
 }
 
 function barrasMensuales(desde: string, totalDias: number, litrosPorDia: Map<string, number>): Barra[] {
-  const porMes = new Map<string, number>(); // YYYY-MM -> liters, in chronological order
+  // YYYY-MM -> liters and the first/last day of that month inside the period, in chronological order
+  const porMes = new Map<string, { litros: number; desde: string; hasta: string }>();
   for (let i = 0; i < totalDias; i++) {
     const fecha = sumarDias(desde, i);
     const mes = fecha.slice(0, 7);
-    porMes.set(mes, (porMes.get(mes) ?? 0) + (litrosPorDia.get(fecha) ?? 0));
+    const actual = porMes.get(mes) ?? { litros: 0, desde: fecha, hasta: fecha };
+    actual.litros += litrosPorDia.get(fecha) ?? 0;
+    actual.hasta = fecha;
+    porMes.set(mes, actual);
   }
-  return [...porMes].map(([mes, litros]) => {
+  return [...porMes].map(([mes, datos]) => {
     const primerDia = `${mes}-01`;
     return {
       etiqueta: nombreDeMes(primerDia, 'short'),
       mostrarEtiqueta: true,
-      titulo: `${nombreDeMes(primerDia)} ${mes.slice(0, 4)}: ${formatoLitros.format(litros)} L`,
-      litros,
+      titulo: `${nombreDeMes(primerDia)} ${mes.slice(0, 4)}: ${formatoLitros.format(datos.litros)} L`,
+      litros: datos.litros,
+      desde: datos.desde,
+      hasta: datos.hasta,
     };
   });
 }

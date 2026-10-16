@@ -17,71 +17,7 @@
     </button>
   </div>
 
-  <h3>Recepciones ({{ p.recepciones.length }})</h3>
+  <h3>Recepciones</h3>
 
-  @if (p.recepciones.length > 0) {
-    <mat-card>
-      <div class="table-wrapper">
-        <table mat-table [dataSource]="p.recepciones" class="full-width">
-          <ng-container matColumnDef="fechaHora">
-            <th mat-header-cell *matHeaderCellDef matTooltip="Fecha y hora" aria-label="Fecha y hora">Fecha</th>
-            <td mat-cell *matCellDef="let r">{{ r.fechaHora | date: 'dd/MM/yyyy HH:mm' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="ticket">
-            <th mat-header-cell class="identificador" *matHeaderCellDef aria-label="Ticket">Ticket</th>
-            <td mat-cell class="identificador" *matCellDef="let r">{{ r.ticket ?? '—' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="litros">
-            <th mat-header-cell class="cantidad" *matHeaderCellDef aria-label="Litros">Litros</th>
-            <td mat-cell class="cantidad" *matCellDef="let r">{{ r.litros | number: '1.0-3' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="aguaPorcentaje">
-            <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="% agua" aria-label="% agua">Agua %</th>
-            <td mat-cell class="cantidad" *matCellDef="let r">
-              {{ r.aguaPorcentaje !== null ? (r.aguaPorcentaje | number: '1.0-2') : '—' }}
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="litrosAPagar">
-            <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="Litros reales" aria-label="Litros reales">L. reales</th>
-            <td mat-cell class="cantidad" *matCellDef="let r">{{ r.litrosAPagar | number: '1.0-3' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="grasa">
-            <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="Grasa (%)" aria-label="Grasa (%)">Grasa %</th>
-            <td mat-cell class="cantidad" *matCellDef="let r">
-              {{ r.grasa !== null ? (r.grasa | number: '1.2-2') : '—' }}
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="acidez">
-            <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="Acidez" aria-label="Acidez">Acidez °D</th>
-            <td mat-cell class="cantidad" *matCellDef="let r">{{ r.acidez | number: '1.2-2' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="temperatura">
-            <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="Temp. (°C)" aria-label="Temp. (°C)">Temp. °C</th>
-            <td mat-cell class="cantidad" *matCellDef="let r">{{ r.temperatura | number: '1.1-2' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="silo">
-            <th mat-header-cell class="identificador" *matHeaderCellDef aria-label="Silo">Silo</th>
-            <td mat-cell class="identificador" *matCellDef="let r">{{ r.silo ?? '—' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="observaciones">
-            <th mat-header-cell *matHeaderCellDef matTooltip="Observaciones" aria-label="Observaciones">Obs.</th>
-            <td mat-cell *matCellDef="let r">
-              <app-observacion-celda [texto]="r.observaciones" (abrir)="verObservaciones(r, p)" />
-            </td>
-          </ng-container>
-
-          <tr
-            mat-header-row
-            *matHeaderRowDef="['fechaHora', 'ticket', 'litros', 'aguaPorcentaje', 'litrosAPagar', 'grasa', 'acidez', 'temperatura', 'silo', 'observaciones']"
-          ></tr>
-          <tr
-            mat-row
-            *matRowDef="let row; columns: ['fechaHora', 'ticket', 'litros', 'aguaPorcentaje', 'litrosAPagar', 'grasa', 'acidez', 'temperatura', 'silo', 'observaciones']"
-          ></tr>
-        </table>
-      </div>
-    </mat-card>
-  } @else {
-    <p class="state-message">Todavía no hay recepciones registradas.</p>
-  }
+  <app-recepciones-panel [proveedorFijo]="p.id" atajoInicial="mes" />
 }
