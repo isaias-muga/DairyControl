@@ -1,84 +1,66 @@
 # DairyControl
 
-Milk reception and quality-control system for a small dairy plant: a **.NET 10** REST API built with **Clean Architecture** and **Domain-Driven Design**, an **Angular** client, and a containerized stack with **Docker Compose**.
+Milk reception and quality control for a dairy plant, built from the plant's real spreadsheets.
 
-> **Status:** backend complete (REST API, JWT authentication, error handling, unit tests). Angular client complete for the reception module: login, protected pages, proveedores, recepción registration, reception dashboard with configurable quality limits, Angular Material UI. Full stack runs with Docker Compose; CI builds and tests both backend and client. Demo data is seeded on startup. **Live on Azure Container Apps**, deployed automatically on every merge to `main`.
+[![CI](https://github.com/isaias-muga/DairyControl/actions/workflows/ci.yml/badge.svg)](https://github.com/isaias-muga/DairyControl/actions/workflows/ci.yml)
+[![Deploy](https://github.com/isaias-muga/DairyControl/actions/workflows/deploy.yml/badge.svg)](https://github.com/isaias-muga/DairyControl/actions/workflows/deploy.yml)
+
+**.NET 10** · **Clean Architecture + DDD** · **Angular** · **SQL Server** · **Docker** · **Azure Container Apps**
+
+Jump to: [Architecture](#architecture) · [Quality gates](#quality-gates) · [How it's built](#how-its-built) · [Stories](#stories) · [Run it locally](#run-it-locally)
 
 ## Live demo
 
 **https://dairycontrol-client.graywave-771c6a95.brazilsouth.azurecontainerapps.io**
 
-Log in as `admin` with the password `demodemo123`. These credentials exist only for the demo environment, and all data is synthetic.
+Log in as `admin` with the password `demodemo123`. The credentials exist only for the demo, and all data is synthetic (invented supplier names, generated values).
 
-The demo scales to zero when nobody is using it and its database pauses, so the first request after a quiet period can take up to a minute; the app shows a message while the server wakes up.
-
-## What it does
-
-DairyControl registers milk suppliers (_proveedores_) and every delivery received at the plant (_recepción_): volume in liters, temperature, acidity, optional fat content, destination silo, timestamp and free-text notes.
-
-On top of the records, a **Resumen** dashboard answers the plant's key question for any period: how much milk came in, compared with the previous period, from which suppliers, and how many deliveries were out of range. Quality limits (acidity, temperature and added water) are configurable per plant from the app.
-
-The domain model is based on real reception logs from a dairy plant. All data in this repository is synthetic.
+- The demo database is reset on every API start (a cold start, a new deploy or a restart), so anything you type is temporary.
+- It scales to zero when idle, so the first request after a quiet period can take up to a minute. The app shows a "waking up" message after 3 seconds.
 
 ## Screenshots
 
-**Resumen**: liters, quality, liters per day and supplier ranking for any period, compared with the previous period.
+Captured at about 1366px wide, with the demo data. The UI is in Spanish, like the plant.
 
-![Resumen dashboard](docs/screenshots/resumen.png)
+**Resumen**: liters, quality, liters per day and supplier ranking for any period, compared with the previous one.
 
-![Resumen: supplier ranking with participation and out-of-range deliveries](docs/screenshots/resumen-2.png)
+![Resumen](docs/screenshots/resumen.png)
 
-| Proveedores                                           | Recepciones                                       |
-| ----------------------------------------------------- | ------------------------------------------------- |
-| ![Proveedores list](docs/screenshots/proveedores.png) | ![Proveedor detail](docs/screenshots/detalle.png) |
+**Recepciones**: every delivery, grouped by day, with the reason when a value is over a limit.
 
-| Register recepción                                                      | Mobile                                      |
-| ----------------------------------------------------------------------- | ------------------------------------------- |
-| ![Registrar recepción dialog](docs/screenshots/registrar-recepcion.png) | ![Mobile view](docs/screenshots/mobile.png) |
+![Recepciones](docs/screenshots/recepciones.png)
 
-## Quick start (Docker)
+**Registering a delivery**: the form previews the real liters (water deducted) and which limits the reading exceeds.
 
-The fastest way to run everything: SQL Server, the API and the client. Only Docker is required.
+![Registrar recepción](docs/screenshots/registrar-recepcion.png)
 
-```bash
-cp .env.example .env        # PowerShell: Copy-Item .env.example .env
-# edit .env and set your own values
-docker compose up --build
-```
+**A supplier's page** and the **quality limits**:
 
-Open `http://localhost:8080` and log in as `admin` with the `ADMIN_PASSWORD` from `.env`. Migrations are applied automatically when the API starts. On a fresh database the API also seeds about 6 months of demo data (8 proveedores, ~1,400 recepciones), so the app looks like a plant in operation.
+![Proveedor](docs/screenshots/proveedor.png)
 
-- Stop: `docker compose down`
-- Stop and delete the database: `docker compose down -v`
+![Configuración](docs/screenshots/configuracion.png)
 
-## Tech stack
+**On a phone (390px)**:
 
-**Backend**
+<img src="docs/screenshots/movil.png" alt="Recepciones on a phone" width="320">
 
-- .NET 10, ASP.NET Core Web API
-- Entity Framework Core 10 + SQL Server
-- JWT bearer authentication
-- Swagger / OpenAPI (Swashbuckle, development only)
-- xUnit + Moq
+## What it does
 
-**Client**
+A _proveedor_ is a milk supplier; a _recepción_ is one delivery received at the plant.
 
-- Angular (standalone components, signals, new control flow)
-- Angular Material 3, `es-AR` locale for numbers and dates
-- Reactive forms with validation mirroring the domain rules
-- JWT handling with an HTTP interceptor and route guards
-
-**Infrastructure**
-
-- Docker (multi-stage images, non-root containers) and Docker Compose
-- nginx serving the client and reverse-proxying the API
-- GitHub Actions: backend and client build and tests on every push and pull request; deployment on every merge to `main`
-- Azure Container Apps (consumption plan, scale to zero) and Azure SQL Database (serverless, free offer)
-- GitHub Container Registry for images; Azure login from GitHub Actions with OIDC
+- **Daily reception log.** Each delivery records liters, temperature, acidity, optional fat, silo, notes, an optional plant **ticket number** and an optional **water percentage**.
+- **Real liters.** Liters to pay = liters × (1 − water % / 100). The same figure is used in the form preview, the list and the totals.
+- **Editable quality limits.** Maximum acidity, temperature and water are set in the app and apply immediately. A value over a limit is **accepted and flagged** (with the reason), never rejected. Defaults: 19 °D, 20 °C, 0 % water.
+- **Plausible-range validation.** Typing errors are **rejected** with a clear message (for example acidity outside 10–30 °D, or more than 30,000 liters in one delivery). Plausible values are different from quality limits: a warm delivery is real and must be recorded.
+- **Unique tickets.** A ticket number can be used once across the whole plant. A duplicate shows who has it and when.
+- **Dashboard by period.** Day, week, month or year, or any date range, for all suppliers or one: liters against the previous period, averages, out-of-range count, liters per day, supplier ranking.
+- **Recepciones list.** Daily subtotals, filters by period, supplier, ticket and "out of range only".
+- **es-AR numbers and plant time.** `1.234,5` is read as 1234.5 (ambiguous input is rejected with a message). Dates are shown and validated in Buenos Aires time.
+- Deliveries are records of what happened: they can be registered, not edited or deleted.
 
 ## Architecture
 
-Four backend layers, with dependencies pointing inward. Domain has no dependencies on any other project. The client talks to the API over HTTP and never touches the database.
+Clean Architecture with Domain-Driven Design. Dependencies point inward and the Domain references nothing.
 
 ```mermaid
 graph TD
@@ -86,196 +68,103 @@ graph TD
     Api --> Application
     Api --> Infrastructure
     Infrastructure --> Application
-    Infrastructure --> Domain
-    Application --> Domain
+    Infrastructure --> DomainLayer
+    Application --> DomainLayer
+
+    subgraph DomainLayer["Domain"]
+        Proveedor
+        RecepcionLeche
+        ConfiguracionCalidad
+        RecepcionLeche -.->|"ProveedorId (by id)"| Proveedor
+    end
 ```
 
-| Layer              | Responsibility                                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| **Domain**         | Entities, value objects, business rules, repository interfaces. No framework dependencies.                          |
-| **Application**    | Use-case orchestration (`ProveedorAppService`, `AuthService`), DTOs, settings. Depends only on Domain abstractions. |
-| **Infrastructure** | EF Core `DbContext`, Fluent API mappings, migrations, repository implementations.                                   |
-| **Api**            | Controllers, middleware, authentication, dependency injection and pipeline setup (composition root).                |
-| **Client**         | Angular pages, routing and services that consume the API.                                                           |
+| Layer              | Responsibility                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| **Domain**         | Entities, value objects, business rules, domain exceptions, repository interfaces. No packages.                 |
+| **Application**    | Use cases (`ProveedorAppService`, `AuthService`, ...), DTOs, settings, read-side query interfaces.              |
+| **Infrastructure** | EF Core `DbContext`, mappings, migrations, repositories, SQL queries, demo data.                                |
+| **Api**            | Controllers, middleware, authentication, composition root.                                                      |
 
-### Runtime (Docker Compose)
+Design decisions:
 
-```mermaid
-graph LR
-    Browser -->|":8080"| Client["client<br/>nginx + Angular"]
-    Client -->|"/api/*"| Api["api<br/>ASP.NET Core :8080"]
-    Api --> Db[("db<br/>SQL Server<br/>named volume")]
-```
+- **Small aggregates.** `Proveedor` and `RecepcionLeche` are separate aggregate roots; the delivery references its supplier by id. A collection that grows without bound never lives inside an aggregate. The third root, `ConfiguracionCalidad`, is the single row of quality limits.
+- **Light CQRS.** Writes go through the domain and a repository per root. Reads (list, dashboard, supplier counts) are SQL projections behind query interfaces (`IRecepcionQueries`, `IProveedorQueries`): totals and counts are computed by the database and no delivery is loaded to count it.
+- **Rules defined once, as expressions.** "Out of range" (`LimitesCalidad.FueraDeRango`) and "liters to pay" (`LitrosAPagarRegla`) are expressions in the Domain. The entity compiles them and EF Core translates the same expression to SQL, so a threshold or a formula is never copied.
+- **Unique ticket enforced by the database.** The ticket spans all suppliers, so no aggregate can guard it. The service checks first to give a friendly message, and a filtered unique index is the last line of defense against two operators saving the same ticket at once.
+- **Domain exceptions become HTTP errors.** A rule violation raises `ReglaDeNegocioException(message, field)` and becomes a 400 `{ error, field }`. A duplicate ticket or a stale edit becomes a 409. Anything else is a bug: it is logged with the method, path and trace id, and the client gets a 500 with that trace id.
+- **Optimistic concurrency on the quality limits.** The row has a version; the PUT must send it back and answers 409 if someone saved in between.
+- **Demo data through the domain.** The seeder uses the same factory methods as the API; all values are generated and every name is invented.
 
-Only the client publishes a port. The API and the database are reachable only inside the Compose network, by service name.
+At runtime only the client is public (nginx serves it and proxies `/api`); the API and the database sit behind it, in Docker Compose and on Azure. The Azure setup is in [docs/deployment.md](docs/deployment.md).
 
-### Runtime (Azure)
+## Quality gates
 
-```mermaid
-graph LR
-    Browser -->|HTTPS| Client["dairycontrol-client<br/>nginx + Angular<br/>external ingress"]
-    Client -->|"/api/* (HTTPS)"| Api["dairycontrol-api<br/>ASP.NET Core<br/>internal ingress"]
-    Api --> Db[("Azure SQL Database<br/>serverless, auto-pause")]
-```
+- **Tests:** 260 .NET tests (Domain, Application with Moq, Api, Infrastructure on in-memory SQLite, Architecture), 454 client tests, 32 Playwright end-to-end tests.
+- **Architecture tests** (`tests/DairyControl.ArchitectureTests`): the layer rules, no public setters on entities, value objects without setters, every domain exception derives from one base type, no `ArgumentException` for business rules, every controller except login has `[Authorize]`, no direct clock reads, and no entity holding a collection of another aggregate root. Breaking a rule fails the build.
+- **End-to-end in CI:** Playwright runs against the full Docker Compose stack (SQL Server included) and is a required check, together with `build-test` and `client`. A pull request is required to change `main`.
+- **Build:** warnings are errors and nullable is on everywhere, so an unsuppressed warning fails the build (NuGet vulnerability advisories are shown but do not fail it, a documented exception).
+- **`GET /health`:** 200 when the API and the database answer, 503 otherwise. CI waits on it.
+- **Deployment:** after CI passes on `main`, GitHub Actions builds both images, pushes them to GitHub Container Registry tagged with the commit and updates both Azure Container Apps. Azure login uses OIDC: no credentials are stored in the repo. Details, rollbacks and troubleshooting: [docs/deployment.md](docs/deployment.md).
 
-The same shape as Compose: only the client is public. The API's ingress is internal to the Container Apps environment, and the nginx upstream comes from the `API_UPSTREAM` environment variable. Both apps scale from 0 to 1 replica.
+## How it's built
 
-## Domain model
+How the work is done: **the issues are implemented by Claude Code. I decide the scope, the design and the priorities, review every pull request and merge it myself.** The rules the agent works under are in [CLAUDE.md](CLAUDE.md).
 
-- **`Proveedor`** (aggregate root): a supplier. It holds no recepciones.
-- **`RecepcionLeche`** (aggregate root): a single delivery, created with `RecepcionLeche.Registrar(proveedorId, ...)` and linked to its `Proveedor` by id.
-- **`ParametrosCalidad`** (value object, `record`): quality and volume measurements, including the optional added-water percentage (0–100), validated at creation through a factory method.
-- **`RecepcionLeche`** also carries an optional plant `Ticket` (positive integer) and `LitrosAPagar`: liters × (1 − water % / 100), with no water counting as 0.
-- **`LimitesCalidad`** (value object, `record`): maximum acidity (10–30 °D), temperature (0–40 °C) and water (0–10 %). It defines the out-of-range rule once: acidity > max OR temperature > max OR water > max.
-- **`ConfiguracionCalidad`** (aggregate root, single row): the `LimitesCalidad` currently in force and when they were last changed.
+Every pull request goes through:
 
-## Key design decisions
+1. A plan I approve before any code is written.
+2. A self-review of the staged diff before each commit.
+3. An independent review by a fresh subagent that has seen only the issue, `CLAUDE.md` and the diff.
+4. Exploratory checks with Playwright on every field and endpoint the change touches (empty input, huge numbers, "3,5" vs "3.5", 5,000 characters, HTML and SQL-like text, double clicks, expired sessions).
+5. Screenshots at 1366px and 390px for any UI change, and an end-to-end test for any new critical flow.
 
-**Domain and persistence**
+`main` is protected by a ruleset: pull request required, three required checks, no force pushes. The agent's rules forbid merging or pushing to `main`, and the ruleset requires a pull request anyway.
 
-- **Invariants live in the domain.** Factory methods, private constructors and private setters make invalid state impossible to construct, rather than relying on callers to validate.
-- **One repository per aggregate root.** `IProveedorRepository` and `IRecepcionRepository` are defined in Domain and implemented in Infrastructure (dependency inversion).
-- **Small aggregates.** `RecepcionLeche` is its own aggregate root and references its `Proveedor` by id, so registering a recepción never loads the supplier's history and proveedor counts are computed in SQL. Quality parameters are an owned type (`OwnsOne`). The foreign key is `Restrict`: recepciones never disappear with a proveedor.
-- **Client-generated IDs.** The domain assigns its own `Guid` IDs and EF Core is configured with `ValueGeneratedNever()`, so new entities are inserted, not mistaken for existing rows.
-- **Shared limits.** Constants such as maximum name length and decimal precision are defined once in the domain and reused by both validation and the database mapping.
-- **Recepciones are records of what happened.** They can be registered but not edited or deleted; a correction flow would void a recepción with a reason rather than remove it.
+Numbers recorded in the notes of the 8 pull requests since the workflow was in place (#56 to #70; earlier ones predate it):
 
-- **Quality limits are editable at runtime.** They live in the database (`ConfiguracionCalidad`, seeded with 19 °D / 20 °C / 0 % water), not in `appsettings.json`, so a plant changes them without a deploy. Reports always evaluate deliveries with the **current** limits, so changing them re-evaluates history. When settlements are added, they will freeze the limits in force at settlement time.
+| What | Result |
+| --- | --- |
+| Problems found by the independent review | about 33, all fixed or answered in the PR (1 to 6 per PR) |
+| Bugs found by the E2E suite | 7: 1 double click, 2 date-message bugs, 3 while building the Recepciones page, 1 SQL translation failure after the aggregate split |
+| Bugs found by the exploratory checks | 12 fixed in the same PR, plus 3 larger problems moved to their own issues |
+| Review rounds | 1 for 7 of the 8 pull requests; 2 for the Recepciones page |
+| Lead time, issue opened to PR ready | 41 minutes to about an hour where it was recorded; the rest were done the same day |
 
-- **The plant ticket is unique across all proveedores.** A filtered unique index (`Ticket IS NOT NULL`) guarantees it in the database, a pre-check returns a readable `409` ("El ticket 6311 ya está registrado (Tambo X, 11/10/2026)"), and a unique-violation (SQL Server 2601/2627) from two operators saving at once is mapped to the same `409`.
+Architecture reviews are described in [docs/architecture-review.md](docs/architecture-review.md) and recorded in [docs/reviews/](docs/reviews/). One is recorded so far (2026-10-16): it was run by me and Claude, not by a fresh subagent, and it produced the architecture tests and the aggregate split below. The next one is meant to be run by a fresh subagent.
 
-**API**
+## Stories
 
-- **DTOs shaped for their consumer.** The list returns a lightweight `ProveedorDto`; the detail returns `ProveedorDetalleDto` with flattened `RecepcionDto`s, so the client never sees domain value objects.
-- **Global exception middleware.** Domain validation errors (`ArgumentException`) return `400` with a JSON message. Any other exception returns a generic `500` without exposing internal details.
-- **Authenticated by default.** `ProveedoresController` requires a JWT at class level, so new endpoints are protected unless explicitly opened.
+**The double click that saved two deliveries.** Exploratory checks on the registration dialog showed that a fast double click on "Registrar" sent two requests, and a delivery without a ticket has nothing to stop the second one. The form now ignores a second submit while the first is in flight (the same for creating a supplier). An end-to-end test slows the response and double clicks; it fails on the old build and passes on the new one. The checks became a standing list in `CLAUDE.md` that runs before every PR, and later the same technique caught the same class of bug in the quality limits page before it merged.
 
-**Client**
+**The ticket that could not live in an aggregate.** Tickets must be unique across all suppliers, but an aggregate boundary is one supplier, so no aggregate could guard it. The rule is enforced where it can be: a filtered unique index in the database, turned into a 409 with the owner of the ticket, plus a pre-check for a friendly message. Two parallel requests with the same ticket give exactly one 200 and one 409 on SQL Server. This is also what made the next story obvious: the one invariant that crossed suppliers was already outside the aggregate.
 
-- **One place for API access.** Components never call `HttpClient` directly; they go through services, and the API base URL comes from Angular environment files.
-- **Client validation mirrors the domain.** Limits are mirrored in `models/limits.ts` for immediate feedback; the API remains the source of truth and its error messages are shown in the forms.
+**A flaky test that poisoned the next ones.** One end-to-end test changes a global quality limit. It failed once in a full run and could not be reproduced on a quiet machine, so I measured it with the save request held for 500 ms: 18 of 20 repeated runs failed, because the first failure left 25 °D stored and every later run read that value as its "original" (without the delay, the same 20 runs passed). The suspected cause, a save lost when navigating away, was measured and ruled out. The fix: wait for the save to finish, and restore the limit through the API in a `finally` that works even if the page is gone. Tests that change global settings now restore them that way and run with one worker.
 
-**Infrastructure and security**
+**The aggregate that loaded the whole history.** `Proveedor` owned every delivery, so registering one loaded all of that supplier's history, and listing suppliers loaded every delivery in the database to count them. The architecture review had flagged it. `RecepcionLeche` became its own aggregate referencing the supplier by id, and counts moved to SQL. Tests with an EF command interceptor check that the list and the detail run one `COUNT` and that registering reads no other delivery. The migration kept the table and its data: on SQL Server with the demo data, row counts, sums and a checksum of every row were identical before and after, and the foreign key became `Restrict` so deliveries never disappear with a supplier. The end-to-end suite caught one query that stopped translating to SQL after the move; it got a regression test. The process change: a rule ("aggregates are small, reference others by id") and an architecture test for it.
 
-- **Secrets stay out of the repo.** Locally, the JWT signing key and admin password live in .NET User Secrets; in Docker they come from a git-ignored `.env` file. `.env.example` documents the required values.
-- **Single origin through a reverse proxy.** nginx serves the client and forwards `/api` to the API, so the browser never makes cross-origin calls and the database and API are not exposed.
-- **Least privilege in containers.** The API and nginx images run as non-root users; multi-stage builds keep the SDK and source code out of the runtime images.
-- **Passwordless deployment with OIDC.** GitHub Actions logs in to Azure with a short-lived federated token that Azure trusts only for this repository's `main` branch. The deploy identity has Contributor rights on the app's resource group only, and no cloud credentials are stored in GitHub.
-- **Immutable image tags.** Images are tagged with the commit SHA, so every Azure revision maps to one commit, and a rollback is a redeploy of the previous tag.
-- **Built for a serverless database.** EF Core retries transient failures (`EnableRetryOnFailure`), so the first request after the database resumes succeeds instead of failing.
-- **Cost-aware hosting.** The Azure SQL free offer, the Container Apps free grant, scale to zero and a budget alert keep the demo at $0 a month.
-- **Container-only behavior behind configuration flags.** Applying migrations on startup, seeding demo data and disabling HTTPS redirection are enabled only in Compose, so local development is unchanged.
-- **Demo data through the domain.** The seeder creates proveedores and recepciones with the same factory methods as the API, runs once in a single transaction, and skips if any proveedor exists. Value ranges come from aggregated real reception logs; names are invented. Each delivery gets a plant ticket from one consecutive sequence (starting at 4900, in delivery order) and a mostly-zero water percentage.
+**Keys generated by the domain.** Entities create their own `Guid` ids. By convention EF Core treats a `Guid` key as generated on add, so an entity that arrives with its key already set and is reached through a tracked parent can be treated as an existing row (an `UPDATE` instead of an `INSERT`). Every domain id is therefore mapped with `ValueGeneratedNever()`, a rule written in `CLAUDE.md`.
 
-## API
+## Run it locally
 
-| Method | Endpoint                            | Auth   | Description                                         |
-| ------ | ----------------------------------- | ------ | --------------------------------------------------- |
-| `POST` | `/api/Auth/login`                   | Public | Returns a signed JWT for valid credentials          |
-| `GET`  | `/api/Proveedores`                  | JWT    | Lists all proveedores                               |
-| `POST` | `/api/Proveedores`                  | JWT    | Creates a proveedor                                 |
-| `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor (id, nombre and the number of recepciones; the recepciones come from `GET /api/Recepciones`) |
-| `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor (optional `aguaPorcentaje` and `ticket`); `409` if the ticket is already registered by any proveedor |
-| `GET`  | `/api/Configuracion/calidad`        | JWT    | Current quality limits (`acidezMaxima`, `temperaturaMaxima`, `aguaMaxima`) and when they were last changed |
-| `PUT`  | `/api/Configuracion/calidad`        | JWT    | Updates the quality limits; they apply immediately to every report |
-| `GET`  | `/api/Recepciones/resumen`          | JWT    | Summary for `desde`/`hasta` (`YYYY-MM-DD`, max 366 days) and optional `proveedorId`: totals (min/max, out-of-range count, liters of the previous period of the same length), proveedor ranking by liters, liters per day |
-
-## Local development (without Docker)
-
-### Prerequisites
-
-- .NET 10 SDK
-- SQL Server LocalDB (Windows, included with Visual Studio) or SQL Server Express. On Linux or macOS, use the Docker setup above.
-- EF Core CLI: `dotnet tool install --global dotnet-ef`
-- Node.js and the Angular CLI: `npm install -g @angular/cli`
-
-### 1. Configure secrets
-
-The admin username (`admin`) is in `appsettings.json`. The signing key and password must be set locally:
+Only Docker is needed for the full stack (SQL Server, API, client):
 
 ```bash
-dotnet user-secrets set "Jwt:SigningKey" "<random string, at least 32 characters>" --project src/DairyControl.Api
-dotnet user-secrets set "AdminUser:Password" "<your password>" --project src/DairyControl.Api
+cp .env.example .env        # PowerShell: Copy-Item .env.example .env
+# edit .env and set your own values
+docker compose up --build
 ```
 
-### 2. Create the database
+Open `http://localhost:8080` and log in as `admin` with the `ADMIN_PASSWORD` from `.env`. Migrations are applied and about six months of demo data (8 suppliers, ~1,400 deliveries) are seeded on the first start. `docker compose down -v` stops it and deletes the database.
 
 ```bash
-dotnet ef database update --project src/DairyControl.Infrastructure --startup-project src/DairyControl.Api
+dotnet test --solution DairyControl.slnx          # backend, architecture tests included
+cd client && npm install && npm test              # client
+cd e2e && npm ci && npx playwright install chromium && npm test   # end to end, with the stack running
 ```
 
-### 3. Run the API
+Running without Docker (LocalDB, User Secrets, `ng serve`), the commands, the conventions and the Git workflow are in [CLAUDE.md](CLAUDE.md).
 
-```bash
-dotnet run --project src/DairyControl.Api
-```
+## Status
 
-Swagger UI is available at `https://localhost:53008/swagger`. Call `POST /api/Auth/login`, copy the token, and paste it into the **Authorize** button to use the protected endpoints.
-
-### 4. Run the client
-
-With the API running:
-
-```bash
-cd client
-npm install
-ng serve
-```
-
-The app runs at `http://localhost:4200`. In development, the API's CORS policy allows requests from that origin.
-
-## Tests
-
-**Backend**
-
-```bash
-dotnet test --solution DairyControl.slnx
-```
-
-Five test projects; only `Infrastructure.Tests` uses a database (in-memory SQLite):
-
-- **Domain:** `ParametrosCalidad` validation (negative values, minimum volume, optional fat, water range), `LimitesCalidad` ranges and the out-of-range rule including water, `LitrosAPagar`, ticket validation and `ConfiguracionCalidad`.
-- **Application:** `ProveedorAppService`, `ConfiguracionCalidadAppService` (including the stale-version and missing-version cases) and `AuthService` with mocked repositories (Moq) and a fixed clock, covering found and not-found paths, listing, recepciones mapping and ordering, and verifying that persistence methods are called exactly as often as they should be.
-- **Api:** the exception middleware (400 / 409 / logged 500 with trace id), the Spanish model-binding messages, the controllers and `/health`.
-- **Infrastructure:** the demo-data reset and seeder, the list queries, the quality-limits repository (stale edits) and the unique-ticket error detection, on in-memory SQLite.
-- **Architecture:** the rules of `CLAUDE.md` that a test can check (layer dependencies, no public setters, exception base type, no direct clock reads), so breaking one fails the build. See `docs/architecture-review.md` for the periodic review.
-
-**Client**
-
-```bash
-cd client
-npm test
-```
-
-Both suites run in GitHub Actions on every push and pull request to `main`.
-
-## Development workflow
-
-Every change is tracked as a GitHub Issue, implemented on a short-lived feature branch, and merged into `main` through a pull request that includes evidence (screenshots, API responses, test results). Two CI checks are required to merge: `build-test` (backend) and `client`. Environments are separated by configuration, not by branches.
-
-Every merge to `main` is deployed automatically: once CI passes, `deploy.yml` builds both images, pushes them to GitHub Container Registry and updates both container apps. See [docs/deployment.md](docs/deployment.md) for how the Azure environment is set up, rollbacks and troubleshooting.
-
-## Roadmap
-
-- [x] CI with GitHub Actions
-- [x] `GET /api/Proveedores` list endpoint and CORS configuration
-- [x] Angular client: browse proveedores and proveedor detail from the API
-- [x] Angular client: login, JWT handling and protected pages
-- [x] Angular client: create proveedor and register recepción forms
-- [x] Angular client: UI design pass
-- [x] Client build and tests in CI
-- [x] Full stack with Docker Compose
-- [x] Synthetic demo data seeded on startup
-- [x] Deployment to Azure Container Apps with a public URL and continuous deployment
-- [ ] Recepciones by period: filter by date range and proveedor (`GET /api/Recepciones`)
-- [x] Summary by period: total liters, quality averages, proveedor ranking and liters per day (`GET /api/Recepciones/resumen`)
-- [x] Angular client: summary dashboard (Día/Semana/Mes/Año, custom range, proveedor filter, daily chart, ranking)
-- [x] Quality limits editable from the app (`Configuración`), water percentage, ticket number and out-of-range count
-- [ ] Summaries grouped by week, month or year, and a period filter on the proveedor detail
-- [ ] Chart and quality alerts: out-of-range limits as a domain rule, highlighted in the UI
-- [ ] Integration tests with a real database (`WebApplicationFactory`)
-- [ ] Health check endpoint
-- [ ] Structured logging in the exception middleware
-- [ ] Tests for `AuthService`
-- [ ] Automated dependency and image updates (Dependabot)
-- [ ] Database-backed user accounts (only if multiple operators are needed)
+This public version is frozen as a portfolio. Development continues privately for a production pilot at a dairy plant.
