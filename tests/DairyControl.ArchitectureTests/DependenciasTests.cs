@@ -10,8 +10,15 @@ namespace DairyControl.ArchitectureTests
         private static string Detalle(NetArchTest.Rules.TestResult resultado) =>
             "Offending types: " + string.Join(", ", resultado.FailingTypeNames ?? []);
 
-        private static bool EsBcl(AssemblyName referencia) =>
-            referencia.Name is "mscorlib" or "netstandard" or "System" || referencia.Name!.StartsWith("System.", StringComparison.Ordinal);
+        // The BCL is what ships with the runtime: the assembly is loaded from the runtime's own folder. A NuGet package
+        // called System.Something (Jwt, Pkcs, Data.SqlClient...) is loaded from the build output instead.
+        private static readonly string CarpetaDelRuntime = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+
+        private static bool EsBcl(AssemblyName referencia)
+        {
+            var ensamblado = Assembly.Load(referencia);
+            return string.Equals(Path.GetDirectoryName(ensamblado.Location), CarpetaDelRuntime, StringComparison.OrdinalIgnoreCase);
+        }
 
         [Fact]
         public void Domain_ReferencesOnlyTheBcl()
@@ -99,6 +106,30 @@ namespace DairyControl.ArchitectureTests
 
             // Assert
             Assert.True(controladores.Count >= 4, "Expected the API controllers, found " + controladores.Count);
+        }
+
+        [Fact]
+        public void Controllers_RequireAuthorizationExceptTheAuthController()
+        {
+            // Arrange
+            var controladores = Types.InAssembly(Proyecto.Api).That().HaveNameEndingWith("Controller").GetTypes().ToList();
+
+            // Act: [Authorize] on the class, and no [AllowAnonymous] on any controller or action
+            var sinAutorizar = controladores
+                .Where(t => t.Name != "AuthController")
+                .Where(t => !t.IsDefined(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true))
+                .Select(t => t.Name)
+                .ToList();
+            var anonimos = controladores
+                .Where(t => t.Name != "AuthController")
+                .Where(t => t.IsDefined(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), true)
+                    || t.GetMethods().Any(m => m.IsDefined(typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute), true)))
+                .Select(t => t.Name)
+                .ToList();
+
+            // Assert
+            Assert.True(sinAutorizar.Count == 0, "Controllers without [Authorize]: " + string.Join(", ", sinAutorizar));
+            Assert.True(anonimos.Count == 0, "Controllers with [AllowAnonymous]: " + string.Join(", ", anonimos));
         }
 
         [Fact]

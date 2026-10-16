@@ -52,6 +52,8 @@ namespace DairyControl.Infrastructure.Persistence
 
             // EnableRetryOnFailure: explicit transactions must run inside the execution strategy
             var strategy = _context.Database.CreateExecutionStrategy();
+            try
+            {
             await strategy.ExecuteAsync(async () =>
             {
                 _context.ChangeTracker.Clear(); // a retried attempt starts from a clean state
@@ -74,6 +76,14 @@ namespace DairyControl.Infrastructure.Persistence
                 await _context.SaveChangesAsync();
                 await transaccion.CommitAsync();
             });
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Another instance started at the same time and changed the quality limits first (the row has a version):
+                // its reset is the one that counts, and this transaction was rolled back.
+                _logger?.LogWarning("Demo data reset skipped: another instance changed the quality limits while this one was resetting.");
+                return;
+            }
 
             _logger?.LogWarning(
                 "Demo data reset: deleted {Proveedores} proveedores and {Recepciones} recepciones, restored the default quality limits and reseeded.",

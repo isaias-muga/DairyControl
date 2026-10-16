@@ -36,6 +36,7 @@ namespace DairyControl.Api.Middleware
             catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
             {
                 // The client went away: nothing to answer and nothing wrong on our side
+                _logger.LogDebug("Request aborted by the client: {Method} {Path}", context.Request.Method, context.Request.Path.Value);
             }
             catch (Exception ex)
             {

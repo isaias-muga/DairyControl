@@ -5,6 +5,9 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
+    <!-- A new advisory against a transitive package must not stop the CI and the deploy with no code change: the
+         audit warnings (NU1901-NU1904) stay visible in every build and are reviewed in the architecture review. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
   </PropertyGroup>
 
 </Project>

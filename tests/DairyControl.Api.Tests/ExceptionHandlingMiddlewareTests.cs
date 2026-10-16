@@ -170,7 +170,7 @@ namespace DairyControl.Api.Tests
         }
 
         [Fact]
-        public async Task InvokeAsync_ClientAborted_DoesNotLogAnErrorNorWriteAnError()
+        public async Task InvokeAsync_ClientAborted_LogsOnlyAtDebugAndWritesNoError()
         {
             // Arrange
             using var cancelacion = new CancellationTokenSource();
@@ -188,7 +188,8 @@ namespace DairyControl.Api.Tests
             await middleware.InvokeAsync(context);
 
             // Assert
-            Assert.Empty(logger.Entradas);
+            Assert.All(logger.Entradas, e => Assert.Equal(LogLevel.Debug, e.Nivel));
+            Assert.Single(logger.Entradas);
             Assert.Equal(0, context.Response.Body.Length);
         }
     }

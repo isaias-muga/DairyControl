@@ -51,6 +51,13 @@ namespace DairyControl.Infrastructure.Tests
                 throw new InvalidOperationException("Fallo simulado al guardar.");
         }
 
+        // Another instance changed the quality limits between this one's read and its save
+        private sealed class ContextoConConflictoDeConcurrencia(DbContextOptions<AppDbContext> options) : AppDbContext(options)
+        {
+            public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) =>
+                throw new DbUpdateConcurrencyException("Otra instancia cambió los límites.");
+        }
+
         // Existing data that a reset must wipe: an old proveedor with one recepción, and custom limits
         private void CargarDatosViejos()
         {
@@ -244,6 +251,26 @@ namespace DairyControl.Infrastructure.Tests
             Assert.Equal(8, datos.Proveedores);
             Assert.Equal(Enumerable.Range(4900, datos.Recepciones), datos.Tickets);
             Assert.Equal(LimitesCalidad.Predeterminados, datos.Limites);
+        }
+
+        [Fact]
+        public async Task ResetAndSeedAsync_AnotherInstanceChangedTheLimits_SkipsTheResetWithAWarningAndKeepsTheData()
+        {
+            // Arrange
+            CargarDatosViejos();
+            using var contexto = new ContextoConConflictoDeConcurrencia(
+                new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
+            var logger = new LoggerEnMemoria();
+            var seeder = new DemoDataSeeder(contexto, TimeProvider.System, logger);
+
+            // Act
+            await seeder.ResetAndSeedAsync();
+
+            // Assert: no exception reaches the startup, the transaction was rolled back and a warning says why
+            var datos = Leer();
+            Assert.Equal(["Tambo Viejo"], datos.Nombres);
+            Assert.Equal(LimitesCalidad.Create(25m, 30m, 5m), datos.Limites);
+            Assert.Contains(logger.Entradas, e => e.Nivel == LogLevel.Warning && e.Mensaje.Contains("skipped"));
         }
 
         [Fact]

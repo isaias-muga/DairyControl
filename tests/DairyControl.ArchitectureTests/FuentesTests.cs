@@ -8,7 +8,9 @@ namespace DairyControl.ArchitectureTests
         [GeneratedRegex(@"\bDateTime(Offset)?\s*\.\s*(Now|UtcNow|Today)\b")]
         private static partial Regex LecturaDeReloj();
 
-        [GeneratedRegex(@"\bnew\s+Argument(OutOfRange)?Exception\b")]
+        // new ArgumentException(...), new ArgumentOutOfRangeException(...) and ArgumentException/OutOfRange.ThrowIf...
+        // (ArgumentNullException.ThrowIfNull stays allowed: a null argument is a bug)
+        [GeneratedRegex(@"\b(new\s+Argument(OutOfRange)?Exception\b|Argument(OutOfRange)?Exception\s*\.\s*ThrowIf)")]
         private static partial Regex LanzaArgumentException();
 
         private static readonly string[] Proyectos =
@@ -44,10 +46,10 @@ namespace DairyControl.ArchitectureTests
         }
 
         [Fact]
-        public void DomainAndApplication_NeverThrowArgumentExceptionForBusinessRules()
+        public void Source_NeverThrowsArgumentExceptionForBusinessRules()
         {
             // Arrange / Act: business rules throw ReglaDeNegocioException; ArgumentNullException (a bug) is still allowed
-            var lanzamientos = Coincidencias(["DairyControl.Domain", "DairyControl.Application"], LanzaArgumentException());
+            var lanzamientos = Coincidencias(Proyectos, LanzaArgumentException());
 
             // Assert
             Assert.True(lanzamientos.Count == 0, "Use ReglaDeNegocioException instead:" + Environment.NewLine + string.Join(Environment.NewLine, lanzamientos));
