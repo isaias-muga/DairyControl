@@ -3,9 +3,9 @@
   <span class="spacer"></span>
   @if (auth.isLoggedIn()) {
     <nav class="nav" aria-label="Secciones">
-      <a mat-button class="nav-link" routerLink="/resumen" routerLinkActive="active" (isActiveChange)="$event && revelarActiva()">Resumen</a>
-      <a mat-button class="nav-link" routerLink="/recepciones" routerLinkActive="active" (isActiveChange)="$event && revelarActiva()">Recepciones</a>
-      <a mat-button class="nav-link" routerLink="/proveedores" routerLinkActive="active" (isActiveChange)="$event && revelarActiva()">Proveedores</a>
+      <a mat-button class="nav-link" routerLink="/resumen" routerLinkActive="active" ariaCurrentWhenActive="page" (isActiveChange)="$event && revelarActiva()">Resumen</a>
+      <a mat-button class="nav-link" routerLink="/recepciones" routerLinkActive="active" ariaCurrentWhenActive="page" (isActiveChange)="$event && revelarActiva()">Recepciones</a>
+      <a mat-button class="nav-link" routerLink="/proveedores" routerLinkActive="active" ariaCurrentWhenActive="page" (isActiveChange)="$event && revelarActiva()">Proveedores</a>
     </nav>
     <a
       mat-icon-button
