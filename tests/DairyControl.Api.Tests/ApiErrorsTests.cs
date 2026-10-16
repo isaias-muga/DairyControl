@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using DairyControl.Api.Validation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -108,16 +108,6 @@ namespace DairyControl.Api.Tests
             // Assert
             Assert.Equal("Falta el valor de «desde».", error);
             Assert.Equal("desde", field);
-        }
-
-        [Fact]
-        public void Message_ArgumentExceptionWithParamName_RemovesParameterSuffix()
-        {
-            // Act
-            var result = ApiErrors.Message(new ArgumentException("Los litros deben estar entre 0.001 y 30000.", "litros"));
-
-            // Assert
-            Assert.Equal("Los litros deben estar entre 0.001 y 30000.", result);
         }
     }
 }

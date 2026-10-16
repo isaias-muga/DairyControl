@@ -1,15 +1,22 @@
-﻿using DairyControl.Api.Validation;
+using DairyControl.Api.Validation;
 using DairyControl.Domain.Exceptions;
+using System.Diagnostics;
 using System.Text.Json;
+
 namespace DairyControl.Api.Middleware
 {
+    // Maps the domain exceptions to their HTTP status and logs everything else (with the trace id the client also gets).
     public class ExceptionHandlingMiddleware
     {
-        private readonly RequestDelegate _next;
+        public const string MensajeInesperado = "Ocurrió un error inesperado.";
 
-        public ExceptionHandlingMiddleware(RequestDelegate next)
+        private readonly RequestDelegate _next;
+        private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+
+        public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
         {
             _next = next;
+            _logger = logger;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -18,27 +25,39 @@ namespace DairyControl.Api.Middleware
             {
                 await _next(context);
             }
-            catch (ArgumentException ex)
+            catch (ReglaDeNegocioException ex)
             {
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
-                context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(ApiErrors.Body(ApiErrors.Message(ex), ex.ParamName));
-                await context.Response.WriteAsync(json);
+                await Escribir(context, StatusCodes.Status400BadRequest, ApiErrors.Body(ex.Message, ex.Campo));
             }
-            catch (TicketDuplicadoException ex)
+            catch (Exception ex) when (ex is TicketDuplicadoException or ConflictoDeConcurrenciaException)
             {
-                context.Response.StatusCode = StatusCodes.Status409Conflict;
-                context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(ApiErrors.Body(ex.Message));
-                await context.Response.WriteAsync(json);
+                await Escribir(context, StatusCodes.Status409Conflict, ApiErrors.Body(ex.Message));
             }
-            catch (Exception)
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
             {
-                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                context.Response.ContentType = "application/json";
-                var json = JsonSerializer.Serialize(ApiErrors.Body("Ocurrió un error inesperado.")); //loggin gap here
-                await context.Response.WriteAsync(json);
+                // The client went away: nothing to answer and nothing wrong on our side
             }
+            catch (Exception ex)
+            {
+                var traceId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+
+                // Method and path only: never the body, the query string, headers or tokens
+                _logger.LogError(ex, "Unhandled exception on {Method} {Path} (trace {TraceId})",
+                    context.Request.Method, context.Request.Path.Value, traceId);
+
+                if (context.Response.HasStarted)
+                {
+                    throw;
+                }
+                await Escribir(context, StatusCodes.Status500InternalServerError, ApiErrors.BodyInesperado(MensajeInesperado, traceId));
+            }
+        }
+
+        private static Task Escribir(HttpContext context, int status, object body)
+        {
+            context.Response.StatusCode = status;
+            context.Response.ContentType = "application/json";
+            return context.Response.WriteAsync(JsonSerializer.Serialize(body));
         }
     }
 }
