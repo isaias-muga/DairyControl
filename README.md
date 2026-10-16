@@ -1,11 +1,13 @@
 # DairyControl
 
-Milk reception and quality control for a dairy plant, modelled on the plant's real reception spreadsheets.
+Milk reception and quality control for a dairy plant, built from the plant's real spreadsheets.
 
 [![CI](https://github.com/isaias-muga/DairyControl/actions/workflows/ci.yml/badge.svg)](https://github.com/isaias-muga/DairyControl/actions/workflows/ci.yml)
 [![Deploy](https://github.com/isaias-muga/DairyControl/actions/workflows/deploy.yml/badge.svg)](https://github.com/isaias-muga/DairyControl/actions/workflows/deploy.yml)
 
 **.NET 10** · **Clean Architecture + DDD** · **Angular** · **SQL Server** · **Docker** · **Azure Container Apps**
+
+Jump to: [Architecture](#architecture) · [Quality gates](#quality-gates) · [How it's built](#how-its-built) · [Stories](#stories) · [Run it locally](#run-it-locally)
 
 ## Live demo
 
@@ -18,7 +20,7 @@ Log in as `admin` with the password `demodemo123`. The credentials exist only fo
 
 ## Screenshots
 
-All at 1366px with the demo data. The UI is in Spanish, like the plant.
+Captured at about 1366px wide, with the demo data. The UI is in Spanish, like the plant.
 
 **Resumen**: liters, quality, liters per day and supplier ranking for any period, compared with the previous one.
 
@@ -66,10 +68,10 @@ graph TD
     Api --> Application
     Api --> Infrastructure
     Infrastructure --> Application
-    Infrastructure --> Domain
-    Application --> Domain
+    Infrastructure --> DomainLayer
+    Application --> DomainLayer
 
-    subgraph Domain
+    subgraph DomainLayer["Domain"]
         Proveedor
         RecepcionLeche
         ConfiguracionCalidad
@@ -84,7 +86,7 @@ graph TD
 | **Infrastructure** | EF Core `DbContext`, mappings, migrations, repositories, SQL queries, demo data.                                |
 | **Api**            | Controllers, middleware, authentication, composition root.                                                      |
 
-Design decisions worth knowing:
+Design decisions:
 
 - **Small aggregates.** `Proveedor` and `RecepcionLeche` are separate aggregate roots; the delivery references its supplier by id. A collection that grows without bound never lives inside an aggregate. The third root, `ConfiguracionCalidad`, is the single row of quality limits.
 - **Light CQRS.** Writes go through the domain and a repository per root. Reads (list, dashboard, supplier counts) are SQL projections behind query interfaces (`IRecepcionQueries`, `IProveedorQueries`): totals and counts are computed by the database and no delivery is loaded to count it.
@@ -92,7 +94,7 @@ Design decisions worth knowing:
 - **Unique ticket enforced by the database.** The ticket spans all suppliers, so no aggregate can guard it. The service checks first to give a friendly message, and a filtered unique index is the last line of defense against two operators saving the same ticket at once.
 - **Domain exceptions become HTTP errors.** A rule violation raises `ReglaDeNegocioException(message, field)` and becomes a 400 `{ error, field }`. A duplicate ticket or a stale edit becomes a 409. Anything else is a bug: it is logged with the method, path and trace id, and the client gets a 500 with that trace id.
 - **Optimistic concurrency on the quality limits.** The row has a version; the PUT must send it back and answers 409 if someone saved in between.
-- **Demo data through the domain.** The seeder uses the same factory methods as the API; value ranges come from aggregated reception logs and every name is invented.
+- **Demo data through the domain.** The seeder uses the same factory methods as the API; all values are generated and every name is invented.
 
 At runtime only the client is public (nginx serves it and proxies `/api`); the API and the database sit behind it, in Docker Compose and on Azure. The Azure setup is in [docs/deployment.md](docs/deployment.md).
 
@@ -101,13 +103,13 @@ At runtime only the client is public (nginx serves it and proxies `/api`); the A
 - **Tests:** 260 .NET tests (Domain, Application with Moq, Api, Infrastructure on in-memory SQLite, Architecture), 454 client tests, 32 Playwright end-to-end tests.
 - **Architecture tests** (`tests/DairyControl.ArchitectureTests`): the layer rules, no public setters on entities, value objects without setters, every domain exception derives from one base type, no `ArgumentException` for business rules, every controller except login has `[Authorize]`, no direct clock reads, and no entity holding a collection of another aggregate root. Breaking a rule fails the build.
 - **End-to-end in CI:** Playwright runs against the full Docker Compose stack (SQL Server included) and is a required check, together with `build-test` and `client`. A pull request is required to change `main`.
-- **Build:** warnings are errors, nullable is on everywhere, and an unsuppressed warning fails the build.
+- **Build:** warnings are errors and nullable is on everywhere, so an unsuppressed warning fails the build (NuGet vulnerability advisories are shown but do not fail it, a documented exception).
 - **`GET /health`:** 200 when the API and the database answer, 503 otherwise. CI waits on it.
 - **Deployment:** after CI passes on `main`, GitHub Actions builds both images, pushes them to GitHub Container Registry tagged with the commit and updates both Azure Container Apps. Azure login uses OIDC: no credentials are stored in the repo. Details, rollbacks and troubleshooting: [docs/deployment.md](docs/deployment.md).
 
 ## How it's built
 
-Honest account: **the issues are implemented by Claude Code. I decide the scope, the design and the priorities, review every pull request and merge it myself.** The rules the agent works under are in [CLAUDE.md](CLAUDE.md).
+How the work is done: **the issues are implemented by Claude Code. I decide the scope, the design and the priorities, review every pull request and merge it myself.** The rules the agent works under are in [CLAUDE.md](CLAUDE.md).
 
 Every pull request goes through:
 
@@ -123,7 +125,7 @@ Numbers recorded in the notes of the 8 pull requests since the workflow was in p
 
 | What | Result |
 | --- | --- |
-| Problems found by the independent review | 33, all fixed or answered in the PR (1 to 6 per PR) |
+| Problems found by the independent review | about 33, all fixed or answered in the PR (1 to 6 per PR) |
 | Bugs found by the E2E suite | 7: 1 double click, 2 date-message bugs, 3 while building the Recepciones page, 1 SQL translation failure after the aggregate split |
 | Bugs found by the exploratory checks | 12 fixed in the same PR, plus 3 larger problems moved to their own issues |
 | Review rounds | 1 for 7 of the 8 pull requests; 2 for the Recepciones page |
@@ -137,11 +139,11 @@ Architecture reviews are described in [docs/architecture-review.md](docs/archite
 
 **The ticket that could not live in an aggregate.** Tickets must be unique across all suppliers, but an aggregate boundary is one supplier, so no aggregate could guard it. The rule is enforced where it can be: a filtered unique index in the database, turned into a 409 with the owner of the ticket, plus a pre-check for a friendly message. Two parallel requests with the same ticket give exactly one 200 and one 409 on SQL Server. This is also what made the next story obvious: the one invariant that crossed suppliers was already outside the aggregate.
 
-**A flaky test that poisoned the next ones.** One end-to-end test changes a global quality limit. When it failed, it left 25 °D stored, and the following runs read that value as their "original", so 18 of 20 repeated runs failed. The suspected cause (a save lost when navigating away) was measured and ruled out. The fix: wait for the save to finish, and restore the limit through the API in a `finally` that works even if the page is gone. Tests that change global settings now restore them that way and run with one worker.
+**A flaky test that poisoned the next ones.** One end-to-end test changes a global quality limit. It failed once in a full run and could not be reproduced on a quiet machine, so I measured it with the save request held for 500 ms: 18 of 20 repeated runs failed, because the first failure left 25 °D stored and every later run read that value as its "original" (without the delay, the same 20 runs passed). The suspected cause, a save lost when navigating away, was measured and ruled out. The fix: wait for the save to finish, and restore the limit through the API in a `finally` that works even if the page is gone. Tests that change global settings now restore them that way and run with one worker.
 
 **The aggregate that loaded the whole history.** `Proveedor` owned every delivery, so registering one loaded all of that supplier's history, and listing suppliers loaded every delivery in the database to count them. The architecture review had flagged it. `RecepcionLeche` became its own aggregate referencing the supplier by id, and counts moved to SQL. Tests with an EF command interceptor check that the list and the detail run one `COUNT` and that registering reads no other delivery. The migration kept the table and its data: on SQL Server with the demo data, row counts, sums and a checksum of every row were identical before and after, and the foreign key became `Restrict` so deliveries never disappear with a supplier. The end-to-end suite caught one query that stopped translating to SQL after the move; it got a regression test. The process change: a rule ("aggregates are small, reference others by id") and an architecture test for it.
 
-**Keys generated by the domain.** Entities create their own `Guid` ids. EF Core's default for a key the database does not generate is to treat an entity with a key already set, discovered through a loaded parent, as an existing row: an `UPDATE` that affects zero rows. Every domain id is therefore mapped with `ValueGeneratedNever()`, a rule written in `CLAUDE.md`.
+**Keys generated by the domain.** Entities create their own `Guid` ids. By convention EF Core treats a `Guid` key as generated on add, so an entity that arrives with its key already set and is reached through a tracked parent can be treated as an existing row (an `UPDATE` instead of an `INSERT`). Every domain id is therefore mapped with `ValueGeneratedNever()`, a rule written in `CLAUDE.md`.
 
 ## Run it locally
 
