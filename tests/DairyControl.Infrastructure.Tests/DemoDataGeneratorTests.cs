@@ -2,7 +2,7 @@ using DairyControl.Domain.Entities;
 using DairyControl.Domain.ValueObjects;
 using DairyControl.Infrastructure.Persistence;
 
-namespace DairyControl.Application.Tests
+namespace DairyControl.Infrastructure.Tests
 {
     public class DemoDataGeneratorTests
     {
