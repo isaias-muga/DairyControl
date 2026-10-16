@@ -282,5 +282,20 @@ namespace DairyControl.Domain.Tests
             Assert.Equal((decimal)esperado, recepcion.LitrosAPagar);
             Assert.Equal((decimal)esperado, Math.Round(sinRedondear, ParametrosCalidad.ScaleLitros));
         }
+
+        [Fact]
+        public void Expandir_ReplacesEveryDeCallWithTheFormula()
+        {
+            // Arrange
+            System.Linq.Expressions.Expression<Func<RecepcionLeche, decimal>> consulta = r => DairyControl.Domain.Rules.LitrosAPagarRegla.De(r) + 1m;
+
+            // Act
+            var expandida = DairyControl.Domain.Rules.LitrosAPagarRegla.Expandir(consulta);
+
+            // Assert: no call is left (EF Core could not translate it) and the result is the same value
+            Assert.DoesNotContain("LitrosAPagarRegla", expandida.ToString());
+            var recepcion = Registrar(1000m, 10m);
+            Assert.Equal(901m, expandida.Compile()(recepcion));
+        }
     }
 }

@@ -62,7 +62,7 @@ export class ProveedorDetail {
       },
       error: (err: HttpErrorResponse) => {
         this.proveedor.set(null);
-        if (err.status === 404) {
+        if (err.status === 404 || err.status === 400) { // 400: the id in the URL is not a valid Guid
           this.notFound.set(true);
         } else {
           this.error.set('No se pudo cargar el proveedor.');

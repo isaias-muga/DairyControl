@@ -32,6 +32,8 @@ namespace DairyControl.Infrastructure.Persistence.Repositories
             }
             catch (DbUpdateException ex) when (UnicidadSql.EsViolacion(ex))
             {
+                // The rejected recepción must not stay tracked as Added in the scoped context.
+                _context.Entry(recepcion).State = EntityState.Detached;
                 throw new TicketDuplicadoException("El ticket ya está registrado.");
             }
         }

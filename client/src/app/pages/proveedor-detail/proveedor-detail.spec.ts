@@ -127,6 +127,14 @@ describe('ProveedorDetail', () => {
     expect(el().querySelector('app-recepciones-panel')).toBeNull();
   });
 
+  it('shows "Proveedor no encontrado." when the id in the URL is malformed (400)', async () => {
+    http.expectOne((r) => r.url.endsWith('/Proveedores/test-id')).flush({}, { status: 400, statusText: 'Bad Request' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el().querySelector('.state-message')?.textContent).toContain('Proveedor no encontrado.');
+  });
+
   it('shows an error when the proveedor cannot be loaded', async () => {
     http.expectOne((r) => r.url.endsWith('/Proveedores/test-id')).flush({}, { status: 500, statusText: 'Server Error' });
     await fixture.whenStable();

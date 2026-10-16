@@ -87,14 +87,20 @@ namespace DairyControl.Infrastructure.Tests
             return (a, b);
         }
 
-        // Columns that only appear when recepciones are read (not just counted)
-        private static void AssertSinLecturaDeRecepciones(IEnumerable<string> comandos)
+        // Only the SELECTs (the INSERT of the new recepción returns its own columns). Reads of Recepciones may only count
+        // them or look one up by ticket: never read rows by proveedor, nor any recepción column besides the ticket lookup.
+        private static void AssertSinLecturaDeRecepciones(IEnumerable<string> comandos, bool conTicket = false)
         {
-            // Only the queries: the INSERT of the new recepción returns its own columns
             foreach (var sql in comandos.Where(c => c.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase)))
             {
                 Assert.DoesNotContain("Parametros_Litros", sql);
                 Assert.DoesNotContain("Observaciones", sql);
+                if (sql.Contains("Recepciones", StringComparison.Ordinal))
+                {
+                    var esConteo = sql.Contains("COUNT(", StringComparison.OrdinalIgnoreCase);
+                    var esBusquedaDeTicket = conTicket && sql.Contains("\"Ticket\" =", StringComparison.Ordinal);
+                    Assert.True(esConteo || esBusquedaDeTicket, "A query reads recepciones: " + sql);
+                }
             }
         }
 
@@ -195,7 +201,8 @@ namespace DairyControl.Infrastructure.Tests
             // Assert
             Assert.NotNull(resultado);
             Assert.Equal(251, resultado.CantidadRecepciones);
-            AssertSinLecturaDeRecepciones(captura.Comandos);
+            AssertSinLecturaDeRecepciones(captura.Comandos, conTicket: true);
+            Assert.Contains(captura.Comandos, c => c.Contains("\"Ticket\" =", StringComparison.Ordinal));
             Assert.Single(context.ChangeTracker.Entries<RecepcionLeche>());
         }
 
