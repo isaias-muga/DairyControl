@@ -20,9 +20,24 @@ describe('RecepcionForm', () => {
     component = fixture.componentInstance;
     fixture.componentRef.setInput('proveedorId', 'test-id');
     await fixture.whenStable();
+    responderIniciales();
+    await fixture.whenStable();
   });
 
   afterEach(() => http.verify());
+
+  const LIMITES = { acidezMaxima: 19, temperaturaMaxima: 20, aguaMaxima: 0, actualizadoEn: '2026-10-15T00:00:00Z' };
+
+  /** The form asks for the suggested ticket and the quality limits when it is created. */
+  function responderIniciales(ticket = 4981): void {
+    http.expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket')).flush({ ticket });
+    http.expectOne((r) => r.url.endsWith('/Configuracion/calidad')).flush(LIMITES);
+  }
+
+  /** Answers (and discards) whatever the form requested on creation, for tests that build a second component. */
+  function descartarSolicitudesIniciales(): void {
+    http.match(() => true);
+  }
 
   function completarObligatorios(): void {
     component.form.patchValue({ litros: 1000, acidez: 17, temperatura: 5 });
@@ -72,7 +87,9 @@ describe('RecepcionForm', () => {
     it('does not use mat-hint for "opcional"', () => {
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.querySelector('mat-hint')).toBeNull();
+      // The only hint is the short help text about the suggested ticket
+      const pistas = Array.from(fixture.nativeElement.querySelectorAll('mat-hint') as NodeListOf<HTMLElement>);
+      expect(pistas.map((h) => h.textContent)).not.toContainEqual(expect.stringMatching(/opcional/));
       expect(fixture.nativeElement.textContent).not.toMatch(/\bopcional\b(?!\))/);
     });
   });
@@ -203,6 +220,7 @@ describe('RecepcionForm', () => {
 
   it('sends null water and ticket when left empty', () => {
     completarObligatorios();
+    component.form.controls.ticket.setValue(null); // the suggested ticket was cleared
 
     component.submit();
 
@@ -268,6 +286,7 @@ describe('RecepcionForm', () => {
         vi.setSystemTime(new Date('2026-10-14T01:30:00Z'));
         const otro = TestBed.createComponent(RecepcionForm);
         otro.componentRef.setInput('proveedorId', 'test-id');
+        descartarSolicitudesIniciales();
 
         expect(otro.componentInstance.form.controls.fechaHora.value).toBe('2026-10-13T22:30');
       } finally {
@@ -341,5 +360,252 @@ describe('RecepcionForm', () => {
     component.submit();
 
     http.expectNone((r) => r.url.endsWith('/recepciones'));
+  });
+
+  describe('suggested ticket', () => {
+    it('prefills the ticket with the suggestion and says it can be changed', () => {
+      fixture.detectChanges();
+
+      expect(component.form.controls.ticket.value).toBe(4981);
+      expect(fixture.nativeElement.querySelector('mat-hint')?.textContent).toContain(
+        'Siguiente número sugerido; se puede cambiar.',
+      );
+    });
+
+    it('hides the hint once the operator edits the ticket, and sends the edited value', () => {
+      fixture.detectChanges();
+      const input = fixture.nativeElement.querySelector('#ticket') as HTMLInputElement;
+      input.value = '5000';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      completarObligatorios();
+
+      component.submit();
+
+      expect(fixture.nativeElement.querySelector('mat-hint')).toBeNull();
+      const req = http.expectOne((r) => r.url.endsWith('/Proveedores/test-id/recepciones'));
+      expect(req.request.body.ticket).toBe(5000);
+    });
+
+    it('never overwrites a ticket typed before the suggestion arrives', () => {
+      const otro = TestBed.createComponent(RecepcionForm);
+      otro.componentRef.setInput('proveedorId', 'test-id');
+      otro.componentInstance.form.controls.ticket.setValue(777);
+
+      responderIniciales(4981);
+
+      expect(otro.componentInstance.form.controls.ticket.value).toBe(777);
+    });
+
+    it('leaves the ticket empty when the suggestion cannot be loaded', () => {
+      const otro = TestBed.createComponent(RecepcionForm);
+      otro.componentRef.setInput('proveedorId', 'test-id');
+      http
+        .expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket'))
+        .flush({}, { status: 500, statusText: 'Server Error' });
+      http.expectOne((r) => r.url.endsWith('/Configuracion/calidad')).flush(LIMITES);
+
+      expect(otro.componentInstance.form.controls.ticket.value).toBeNull();
+      expect(otro.componentInstance.ticketSugerido()).toBe(false);
+    });
+  });
+
+  describe('live preview', () => {
+    it('shows the real liters (liters minus the water) as the operator types', () => {
+      component.form.patchValue({ litros: 1905, aguaPorcentaje: 1.5 });
+      fixture.detectChanges();
+
+      expect(component.litrosRealesPrevios()).toBe(1876.425);
+      expect(fixture.nativeElement.querySelector('.resumen-vivo').textContent).toContain('Litros reales:');
+    });
+
+    it('counts a missing water as 0 and shows a dash until the liters are valid', () => {
+      expect(component.litrosRealesPrevios()).toBeNull();
+
+      component.form.patchValue({ litros: 2150 });
+
+      expect(component.litrosRealesPrevios()).toBe(2150);
+    });
+
+    it('says the reading is within the limits when no limit is exceeded', () => {
+      component.form.patchValue({ litros: 2150, acidez: 18, temperatura: 5.2 });
+      fixture.detectChanges();
+
+      expect(component.motivosPrevios()).toEqual([]);
+      expect(fixture.nativeElement.querySelector('.estado-ok').textContent).toContain('Dentro de los límites');
+    });
+
+    it('names every limit that is exceeded, using the limits from the API', () => {
+      component.form.patchValue({ litros: 2150, acidez: 20, temperatura: 21.3, aguaPorcentaje: 1.5 });
+      fixture.detectChanges();
+
+      expect(component.motivosPrevios()).toEqual(['Acidez', 'Temperatura', 'Agua']);
+      expect(fixture.nativeElement.querySelector('.estado-alerta').textContent).toContain(
+        'Fuera de los límites: acidez, temperatura, agua',
+      );
+    });
+
+    it('shows no limits check while the limits are not loaded', () => {
+      const otro = TestBed.createComponent(RecepcionForm);
+      otro.componentRef.setInput('proveedorId', 'test-id');
+      http.expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket')).flush({ ticket: 1 });
+      http.expectOne((r) => r.url.endsWith('/Configuracion/calidad')).flush({}, { status: 500, statusText: 'Server Error' });
+      otro.componentInstance.form.patchValue({ acidez: 25 });
+
+      expect(otro.componentInstance.motivosPrevios()).toBeNull();
+    });
+  });
+
+  describe('without a proveedor (chosen in the form)', () => {
+    let sinProveedor: ComponentFixture<RecepcionForm>;
+
+    beforeEach(async () => {
+      sinProveedor = TestBed.createComponent(RecepcionForm);
+      await sinProveedor.whenStable();
+      http
+        .expectOne((r) => r.url.endsWith('/Proveedores'))
+        .flush([
+          { id: 'b', nombre: 'Tambo San José', cantidadRecepciones: 1 },
+          { id: 'a', nombre: 'Tambo Don Pedro', cantidadRecepciones: 2 },
+        ]);
+      responderIniciales();
+      sinProveedor.detectChanges();
+    });
+
+    it('shows a required proveedor selector with the proveedores sorted by name', () => {
+      const componente = sinProveedor.componentInstance;
+
+      expect(sinProveedor.nativeElement.querySelector('#proveedorId')).toBeTruthy();
+      expect(componente.proveedores().map((p) => p.nombre)).toEqual(['Tambo Don Pedro', 'Tambo San José']);
+      expect(componente.form.controls.proveedorId.hasError('required')).toBe(true);
+    });
+
+    it('does not submit until a proveedor is chosen', () => {
+      const componente = sinProveedor.componentInstance;
+      componente.form.patchValue({ litros: 1000, acidez: 17, temperatura: 5 });
+
+      componente.submit();
+
+      expect(componente.form.invalid).toBe(true);
+      http.expectNone((r) => r.url.endsWith('/recepciones'));
+    });
+
+    it('registers the recepción for the chosen proveedor', () => {
+      const componente = sinProveedor.componentInstance;
+      componente.form.patchValue({ proveedorId: 'b', litros: 1000, acidez: 17, temperatura: 5 });
+
+      componente.submit();
+
+      const req = http.expectOne((r) => r.url.endsWith('/Proveedores/b/recepciones'));
+      expect(req.request.method).toBe('POST');
+      req.flush({});
+    });
+
+    it('shows no selector when the proveedor is given', () => {
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('#proveedorId')).toBeNull();
+    });
+  });
+
+  describe('"Registrar y cargar otra"', () => {
+    function enviarYResponder(cargarOtra: boolean): void {
+      component.submit(cargarOtra);
+      http.expectOne((r) => r.url.endsWith('/Proveedores/test-id/recepciones')).flush({});
+    }
+
+    it('keeps the proveedor, clears the fields and suggests the next ticket', () => {
+      completarObligatorios();
+      component.form.patchValue({ grasa: 3.5, silo: 2, aguaPorcentaje: 1, observaciones: 'Olor' });
+
+      enviarYResponder(true);
+      http.expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket')).flush({ ticket: 4982 });
+
+      const v = component.form.getRawValue();
+      expect(v.proveedorId).toBe('test-id');
+      expect(v.litros).toBeNull();
+      expect(v.acidez).toBeNull();
+      expect(v.temperatura).toBeNull();
+      expect(v.grasa).toBeNull();
+      expect(v.silo).toBeNull();
+      expect(v.aguaPorcentaje).toBeNull();
+      expect(v.observaciones).toBe('');
+      expect(v.ticket).toBe(4982);
+      expect(component.saving()).toBe(false);
+    });
+
+    it('registers two recepciones with consecutive suggested tickets', () => {
+      completarObligatorios();
+
+      component.submit(true);
+      const req1 = http.expectOne((r) => r.url.endsWith('/Proveedores/test-id/recepciones'));
+      req1.flush({});
+      http.expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket')).flush({ ticket: 4982 });
+      completarObligatorios();
+      component.submit(true);
+      const req2 = http.expectOne((r) => r.url.endsWith('/Proveedores/test-id/recepciones'));
+      req2.flush({});
+      http.expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket')).flush({ ticket: 4983 });
+
+      expect(req1.request.body.ticket).toBe(4981);
+      expect(req2.request.body.ticket).toBe(4982);
+      expect(component.form.controls.ticket.value).toBe(4983);
+    });
+
+    it('emits true for "cargar otra" and false for a plain "Registrar"', () => {
+      const emitidos: boolean[] = [];
+      component.registrada.subscribe((cargarOtra) => emitidos.push(cargarOtra));
+      completarObligatorios();
+
+      enviarYResponder(true);
+      http.expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket')).flush({ ticket: 4982 });
+      completarObligatorios();
+      enviarYResponder(false);
+
+      expect(emitidos).toEqual([true, false]);
+    });
+
+    it('does not ask for another suggestion after a plain "Registrar"', () => {
+      completarObligatorios();
+
+      enviarYResponder(false);
+
+      http.expectNone((r) => r.url.endsWith('/Recepciones/siguiente-ticket'));
+    });
+
+    it('keeps the entered values when the save fails', () => {
+      completarObligatorios();
+
+      component.submit(true);
+      http
+        .expectOne((r) => r.url.endsWith('/Proveedores/test-id/recepciones'))
+        .flush({ error: 'Dato inválido' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(component.form.controls.litros.value).toBe(1000);
+      expect(component.saveError()).toBe('Dato inválido');
+    });
+
+    it('sends only one request when both buttons are clicked before the response arrives', () => {
+      completarObligatorios();
+
+      component.submit(true);
+      component.submit(false);
+      component.submit(true);
+
+      const requests = http.match((r) => r.url.endsWith('/recepciones'));
+      expect(requests).toHaveLength(1);
+      requests[0].flush({});
+      http.match((r) => r.url.endsWith('/Recepciones/siguiente-ticket'));
+    });
+
+    it('disables both buttons while saving', () => {
+      completarObligatorios();
+      component.submit(true);
+      fixture.detectChanges();
+
+      const botones = fixture.nativeElement.querySelectorAll('.actions button') as NodeListOf<HTMLButtonElement>;
+      expect(Array.from(botones).every((b) => b.disabled)).toBe(true);
+      http.match((r) => r.url.endsWith('/recepciones'));
+    });
   });
 });
