@@ -54,17 +54,19 @@ export class ProveedorDetail {
     this.error.set(null);
     this.notFound.set(false);
 
-    // The name comes from the lightweight list: the recepciones come from the paged list endpoint
-    // (the panel), not from loading the whole aggregate.
-    this.request = this.proveedoresService.getAll().subscribe({
-      next: (lista) => {
-        const proveedor = lista.find((p) => p.id === this.id()) ?? null;
+    // The endpoint returns only the name and the count: the recepciones come from the paged list endpoint (the panel).
+    this.request = this.proveedoresService.getById(this.id()).subscribe({
+      next: (proveedor) => {
         this.proveedor.set(proveedor);
-        this.notFound.set(proveedor === null);
         this.loading.set(false);
       },
-      error: (_: HttpErrorResponse) => {
-        this.error.set('No se pudo cargar el proveedor.');
+      error: (err: HttpErrorResponse) => {
+        this.proveedor.set(null);
+        if (err.status === 404) {
+          this.notFound.set(true);
+        } else {
+          this.error.set('No se pudo cargar el proveedor.');
+        }
         this.loading.set(false);
       },
     });
