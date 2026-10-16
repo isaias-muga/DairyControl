@@ -19,7 +19,7 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('shows Recepciones between Resumen and Proveedores when logged in', async () => {
+  it('shows the three section tabs when logged in', async () => {
     localStorage.setItem('dairycontrol_token', 'x');
     try {
       const fixture = TestBed.createComponent(App);
@@ -29,7 +29,23 @@ describe('App', () => {
         (fixture.nativeElement as HTMLElement).querySelectorAll('nav a'),
       ).map((a) => a.textContent?.trim());
 
-      expect(enlaces).toEqual(['Resumen', 'Recepciones', 'Proveedores', 'Configuración']);
+      expect(enlaces).toEqual(['Resumen', 'Recepciones', 'Proveedores']);
+    } finally {
+      localStorage.removeItem('dairycontrol_token');
+    }
+  });
+
+  it('shows Configuración as a gear button outside the tabs when logged in', async () => {
+    localStorage.setItem('dairycontrol_token', 'x');
+    try {
+      const fixture = TestBed.createComponent(App);
+      await fixture.whenStable();
+
+      const engranaje = (fixture.nativeElement as HTMLElement).querySelector('a[aria-label="Configuración"]');
+
+      expect(engranaje).not.toBeNull();
+      expect(engranaje?.getAttribute('href')).toBe('/configuracion');
+      expect(engranaje?.closest('nav')).toBeNull();
     } finally {
       localStorage.removeItem('dairycontrol_token');
     }
