@@ -85,7 +85,7 @@ export class RecepcionesFiltros {
       .pipe(debounceTime(400), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe(() => {
         if (this.ticketControl.valid) {
-          this.emitir({ ticket: this.ticketControl.value === '' ? null : Number(this.ticketControl.value) });
+          this.emitir({});
         }
       });
   }
@@ -127,6 +127,11 @@ export class RecepcionesFiltros {
   }
 
   private emitir(cambios: Partial<FiltroRecepciones>): void {
-    this.cambio.emit({ ...this.filtros(), ...cambios, pagina: undefined });
+    // The ticket may still be waiting for its debounce: every change carries what is typed, so a change of
+    // another filter right after typing the ticket does not lose it (the URL would not have it yet).
+    const ticket = this.ticketControl.valid
+      ? this.ticketControl.value === '' ? null : Number(this.ticketControl.value)
+      : this.filtros().ticket;
+    this.cambio.emit({ ...this.filtros(), ticket, ...cambios, pagina: undefined });
   }
 }

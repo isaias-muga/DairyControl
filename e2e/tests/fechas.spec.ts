@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { crearProveedor, loginYEsperarResumen, rellenar } from '../helpers';
+import { abrirRegistro, crearProveedor, loginYEsperarResumen, rellenar } from '../helpers';
 
 const ZONA_PLANTA = 'America/Argentina/Buenos_Aires';
 
@@ -27,8 +27,8 @@ test.describe('fechas con el navegador en otra zona horaria', () => {
     await loginYEsperarResumen(page);
     await crearProveedor(page);
 
-    await page.getByRole('button', { name: 'Registrar recepción' }).click();
-    const valor = await page.getByRole('dialog').getByLabel('Fecha y hora').inputValue();
+    const dialog = await abrirRegistro(page);
+    const valor = await dialog.getByLabel('Fecha y hora').inputValue();
 
     // New York is 1 or 2 hours ahead of Buenos Aires; the default must still be the plant's time
     expect(Math.abs(minutos(valor) - minutos(ahoraEnPlanta()))).toBeLessThanOrEqual(2);
@@ -42,8 +42,7 @@ test.describe('fechas', () => {
 
   test('una fecha anterior al año 2000 se rechaza junto al campo y no se guarda', async ({ page }) => {
     await crearProveedor(page);
-    await page.getByRole('button', { name: 'Registrar recepción' }).click();
-    const dialog = page.getByRole('dialog');
+    const dialog = await abrirRegistro(page);
 
     await rellenar(dialog.getByLabel('Fecha y hora'), '1999-12-31T23:59');
     await rellenar(dialog.getByLabel(/^Litros/), '1000');
@@ -53,7 +52,7 @@ test.describe('fechas', () => {
 
     await expect(dialog.getByText('No puede ser anterior al 01/01/2000.')).toBeVisible();
     await dialog.getByRole('button', { name: 'Cancelar' }).click();
-    await expect(page.getByText('Todavía no hay recepciones registradas.')).toBeVisible();
+    await expect(page.getByText('No hay recepciones con estos filtros.')).toBeVisible();
   });
 
   test('la API responde 400 en español, sin "(Parameter", si falta la fecha o es inválida', async ({ page }) => {

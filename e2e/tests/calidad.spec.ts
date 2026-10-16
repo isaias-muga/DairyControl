@@ -26,7 +26,7 @@ test('calidad: a value outside the limits is saved and flagged as out of range',
 
   // Acidity 25 is plausible (10-30) but above the default maximum of 19.
   await registrarRecepcion(page, { litros: 1000, acidez: 25, temperatura: 5 });
-  await expect(page.getByRole('heading', { name: 'Recepciones (1)' })).toBeVisible();
+  await expect(page.getByText('1 de 1 recepciones')).toBeVisible();
 
   expect(await fueraDeRangoEn(page, nombre)).toBe('1');
 });
@@ -45,7 +45,7 @@ for (const demoraMs of [0, 500]) {
     }
     const nombre = await crearProveedor(page);
     await registrarRecepcion(page, { litros: 1000, acidez: 22, temperatura: 5 });
-    await expect(page.getByRole('heading', { name: 'Recepciones (1)' })).toBeVisible();
+    await expect(page.getByText('1 de 1 recepciones')).toBeVisible();
     expect(await fueraDeRangoEn(page, nombre)).toBe('1');
 
     await page.getByRole('link', { name: 'Configuración' }).click();

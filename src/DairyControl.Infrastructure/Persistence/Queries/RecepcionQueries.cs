@@ -104,9 +104,9 @@ namespace DairyControl.Infrastructure.Persistence.Queries
         public async Task<ListadoRecepcionesDto> GetListadoAsync(FiltroRecepciones filtro)
         {
             var limites = await LeerLimitesAsync();
-            var fueraDeRango = limites.FueraDeRango<FilaRecepcion>(x => x.Acidez, x => x.Temperatura, x => x.Agua);
+            var fueraDeRango = limites.FueraDeRango<FilaListado>(x => x.Acidez, x => x.Temperatura, x => x.Agua);
 
-            var recepciones = Recepciones(filtro.Desde, filtro.Hasta, filtro.ProveedorId);
+            var recepciones = RecepcionesListado(filtro.Desde, filtro.Hasta, filtro.ProveedorId);
             if (filtro.Ticket is int ticket)
             {
                 recepciones = recepciones.Where(x => x.Ticket == ticket);
@@ -142,9 +142,9 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                 .FirstOrDefaultAsync() ?? new TotalesListadoDto();
             totales.LitrosReales = Math.Round(totales.LitrosReales, ParametrosCalidad.ScaleLitros);
             totales.CantidadFueraDeRango = await recepciones.CountAsync(fueraDeRango);
-            totales.FueraPorAcidez = await recepciones.CountAsync(limites.AcidezAlta<FilaRecepcion>(x => x.Acidez));
-            totales.FueraPorTemperatura = await recepciones.CountAsync(limites.TemperaturaAlta<FilaRecepcion>(x => x.Temperatura));
-            totales.FueraPorAgua = await recepciones.CountAsync(limites.AguaAlta<FilaRecepcion>(x => x.Agua));
+            totales.FueraPorAcidez = await recepciones.CountAsync(limites.AcidezAlta<FilaListado>(x => x.Acidez));
+            totales.FueraPorTemperatura = await recepciones.CountAsync(limites.TemperaturaAlta<FilaListado>(x => x.Temperatura));
+            totales.FueraPorAgua = await recepciones.CountAsync(limites.AguaAlta<FilaListado>(x => x.Agua));
 
             return new ListadoRecepcionesDto
             {
@@ -176,7 +176,7 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                 .SingleAsync();
         }
 
-        private static RecepcionListadoDto AItem(FilaRecepcion fila, LimitesCalidad limites)
+        private static RecepcionListadoDto AItem(FilaListado fila, LimitesCalidad limites)
         {
             // The reasons of the (at most 100) rows on the page use the same domain rules as the SQL filters.
             var motivos = new List<string>();
@@ -213,9 +213,9 @@ namespace DairyControl.Infrastructure.Persistence.Queries
         }
 
         private static async Task<List<SubtotalDiaDto>> SubtotalesDeDiasAsync(
-            IQueryable<FilaRecepcion> recepciones,
-            Expression<Func<FilaRecepcion, bool>> fueraDeRango,
-            List<FilaRecepcion> pagina)
+            IQueryable<FilaListado> recepciones,
+            Expression<Func<FilaListado, bool>> fueraDeRango,
+            List<FilaListado> pagina)
         {
             if (pagina.Count == 0)
             {
@@ -260,12 +260,38 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                 proveedores = proveedores.Where(p => p.Id == id);
             }
 
-            // SelectMany with a result selector (instead of filtering inside the collection) translates to a plain join,
-            // so the rows can be ordered and paged without an APPLY.
+            return proveedores.SelectMany(p => p.Recepciones
+                .Where(r => r.FechaHora >= inicio && r.FechaHora < fin)
+                .Select(r => new FilaRecepcion
+                {
+                    ProveedorId = p.Id,
+                    Nombre = p.Nombre,
+                    FechaHora = r.FechaHora,
+                    Litros = r.Parametros.Litros,
+                    Acidez = r.Parametros.Acidez,
+                    Temperatura = r.Parametros.Temperatura,
+                    Grasa = r.Parametros.Grasa,
+                    Agua = r.Parametros.AguaPorcentaje ?? 0
+                }));
+        }
+
+        // The same rows plus what the list shows. A join (SelectMany with a result selector) instead of filtering
+        // inside the collection, so the rows can be ordered and paged without an APPLY.
+        private IQueryable<FilaListado> RecepcionesListado(DateOnly desde, DateOnly hasta, Guid? proveedorId)
+        {
+            var inicio = desde.ToDateTime(TimeOnly.MinValue);
+            var fin = hasta.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+            var proveedores = _context.Proveedores.AsNoTracking();
+            if (proveedorId is Guid id)
+            {
+                proveedores = proveedores.Where(p => p.Id == id);
+            }
+
             return proveedores
                 .SelectMany(p => p.Recepciones, (p, r) => new { Proveedor = p, Recepcion = r })
                 .Where(x => x.Recepcion.FechaHora >= inicio && x.Recepcion.FechaHora < fin)
-                .Select(x => new FilaRecepcion
+                .Select(x => new FilaListado
                 {
                     Id = x.Recepcion.Id,
                     ProveedorId = x.Proveedor.Id,
@@ -286,22 +312,26 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                 });
         }
 
-        private sealed class FilaRecepcion
+        private class FilaRecepcion
         {
-            public Guid Id { get; set; }
             public Guid ProveedorId { get; set; }
             public string Nombre { get; set; } = null!;
             public DateTime FechaHora { get; set; }
-            public int? Ticket { get; set; }
-            public int? Silo { get; set; }
-            public string? Observaciones { get; set; }
             public decimal Litros { get; set; }
-            public decimal? AguaPorcentaje { get; set; }
-            public decimal LitrosReales { get; set; }
             public decimal Acidez { get; set; }
             public decimal Temperatura { get; set; }
             public decimal? Grasa { get; set; }
             public decimal Agua { get; set; }
+        }
+
+        private sealed class FilaListado : FilaRecepcion
+        {
+            public Guid Id { get; set; }
+            public int? Ticket { get; set; }
+            public int? Silo { get; set; }
+            public string? Observaciones { get; set; }
+            public decimal? AguaPorcentaje { get; set; }
+            public decimal LitrosReales { get; set; }
         }
     }
 }

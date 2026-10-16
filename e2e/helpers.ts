@@ -68,10 +68,21 @@ export interface ValoresRecepcion {
   ticket?: number | string;
 }
 
-/** Opens the registration dialog on a proveedor's detail page, fills it and presses "Registrar". */
-export async function registrarRecepcion(page: Page, valores: ValoresRecepcion): Promise<void> {
+/**
+ * Opens the registration dialog of a proveedor's detail page and waits until the dialog has put the focus on
+ * Litros (its initial focus). Material moves the focus after the opening animation: typing into a field before
+ * that can land in the field that receives the focus.
+ */
+export async function abrirRegistro(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Registrar recepción' }).click();
   const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel(/^Litros/)).toBeFocused();
+  return dialog;
+}
+
+/** Opens the registration dialog on a proveedor's detail page, fills it and presses "Registrar". */
+export async function registrarRecepcion(page: Page, valores: ValoresRecepcion): Promise<void> {
+  const dialog = await abrirRegistro(page);
   await rellenar(dialog.getByLabel(/^Litros/), String(valores.litros));
   await rellenar(dialog.getByLabel(/^Acidez/), String(valores.acidez));
   await rellenar(dialog.getByLabel(/^Temperatura/), String(valores.temperatura));

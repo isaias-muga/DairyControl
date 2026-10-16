@@ -362,6 +362,26 @@ describe('RecepcionForm', () => {
     http.expectNone((r) => r.url.endsWith('/recepciones'));
   });
 
+  describe('initial focus when the dialog opens', () => {
+    it('marks Litros as the initial focus when the proveedor is given (the ticket is prefilled)', () => {
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('#litros').hasAttribute('cdkFocusInitial')).toBe(true);
+      expect(fixture.nativeElement.querySelector('#ticket').hasAttribute('cdkFocusInitial')).toBe(false);
+    });
+
+    it('marks the proveedor selector instead when the proveedor must be chosen', async () => {
+      const sinProveedor = TestBed.createComponent(RecepcionForm);
+      await sinProveedor.whenStable();
+      http.match((r) => r.url.endsWith('/Proveedores'));
+      responderIniciales();
+      sinProveedor.detectChanges();
+
+      expect(sinProveedor.nativeElement.querySelector('#proveedorId').hasAttribute('cdkFocusInitial')).toBe(true);
+      expect(sinProveedor.nativeElement.querySelector('#litros').hasAttribute('cdkFocusInitial')).toBe(false);
+    });
+  });
+
   describe('suggested ticket', () => {
     it('prefills the ticket with the suggestion and says it can be changed', () => {
       fixture.detectChanges();

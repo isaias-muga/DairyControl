@@ -226,6 +226,28 @@ describe('RecepcionesFiltros', () => {
       },
     );
 
+    it('keeps a ticket that is still being typed when another filter changes right after', async () => {
+      await mostrar(base());
+
+      interno().ticketControl.setValue('4980'); // the debounce has not fired yet
+      interno().soloControl.setValue(true);
+      interno().soloCambiado();
+
+      expect(emitidos).toHaveLength(1);
+      expect(emitidos[0].ticket).toBe(4980);
+      expect(emitidos[0].soloFueraDeRango).toBe(true);
+    });
+
+    it('keeps the ticket of the URL when what is typed is invalid and another filter changes', async () => {
+      await mostrar(base({ ticket: 4980 }));
+
+      interno().ticketControl.setValue('abc');
+      interno().soloControl.setValue(true);
+      interno().soloCambiado();
+
+      expect(emitidos[0].ticket).toBe(4980);
+    });
+
     it('accepts the largest int', async () => {
       await mostrar(base());
 

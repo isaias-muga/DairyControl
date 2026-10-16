@@ -9,7 +9,7 @@
         @if (!proveedorId()) {
           <mat-form-field appearance="outline" class="completo">
             <mat-label>Proveedor</mat-label>
-            <mat-select id="proveedorId" formControlName="proveedorId" required>
+            <mat-select id="proveedorId" formControlName="proveedorId" required cdkFocusInitial>
               @for (p of proveedores(); track p.id) {
                 <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
               }
@@ -54,6 +54,7 @@
           <input
             matInput
             #litrosInput
+            [attr.cdkFocusInitial]="proveedorId() ? '' : null"
             id="litros"
             type="number"
             step="0.001"
