@@ -10,6 +10,7 @@ const limites: LimitesCalidad = {
   temperaturaMaxima: 20,
   aguaMaxima: 0,
   actualizadoEn: '2026-10-01T00:00:00Z',
+  version: 'AAAAAAAAB9A=',
 };
 
 describe('Configuracion', () => {
@@ -160,17 +161,51 @@ describe('Configuracion', () => {
     expect(component.saving()).toBe(true);
     const req = http.expectOne(esCalidad);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ acidezMaxima: 18, temperaturaMaxima: 8, aguaMaxima: 1.5 });
+    expect(req.request.body).toEqual({ acidezMaxima: 18, temperaturaMaxima: 8, aguaMaxima: 1.5, version: 'AAAAAAAAB9A=' });
     req.flush({
       acidezMaxima: 18,
       temperaturaMaxima: 8,
       aguaMaxima: 1.5,
       actualizadoEn: '2026-10-15T12:00:00Z',
+      version: 'AAAAAAAAB9E=',
     });
 
     expect(component.saving()).toBe(false);
     expect(component.actualizadoEn()).toBe('2026-10-15T12:00:00Z');
     expect(open).toHaveBeenCalledWith('Configuración guardada.', 'Cerrar', { duration: 4000 });
+  });
+
+  it('sends the version returned by the last save, not the one from the first load', async () => {
+    await setup();
+    await cargarLimites();
+    component.guardar();
+    http.expectOne(esCalidad).flush({ ...limites, version: 'AAAAAAAAB9E=' });
+
+    component.guardar();
+
+    expect(http.expectOne(esCalidad).request.body.version).toBe('AAAAAAAAB9E=');
+  });
+
+  it('shows the conflict message when someone else changed the limits (409) and keeps what was typed', async () => {
+    await setup();
+    await cargarLimites();
+    component.form.controls.acidezMaxima.setValue(21);
+
+    component.guardar();
+    http
+      .expectOne(esCalidad)
+      .flush(
+        { error: 'Los límites fueron modificados por otro usuario. Recargá la página.' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    fixture.detectChanges();
+
+    expect(component.saving()).toBe(false);
+    expect(component.saveError()).toBe('Los límites fueron modificados por otro usuario. Recargá la página.');
+    expect(fixture.nativeElement.querySelector('.form-error').textContent).toContain(
+      'Los límites fueron modificados por otro usuario. Recargá la página.',
+    );
+    expect(component.form.controls.acidezMaxima.value).toBe(21);
   });
 
   it('shows the API error when saving fails', async () => {
