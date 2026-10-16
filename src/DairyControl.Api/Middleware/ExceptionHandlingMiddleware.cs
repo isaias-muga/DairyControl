@@ -32,7 +32,7 @@ namespace DairyControl.Api.Middleware
                 var json = JsonSerializer.Serialize(ApiErrors.Body(ex.Message));
                 await context.Response.WriteAsync(json);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 context.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 context.Response.ContentType = "application/json";

@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Only the csproj files the API references, so the restore layer is cached
+COPY Directory.Build.props ./
 COPY src/DairyControl.Domain/DairyControl.Domain.csproj src/DairyControl.Domain/
 COPY src/DairyControl.Application/DairyControl.Application.csproj src/DairyControl.Application/
 COPY src/DairyControl.Infrastructure/DairyControl.Infrastructure.csproj src/DairyControl.Infrastructure/

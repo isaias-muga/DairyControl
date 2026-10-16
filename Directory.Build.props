@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Build rules for every project in the repo (src and tests): see CLAUDE.md, "Build rules". -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+  </PropertyGroup>
+
+</Project>

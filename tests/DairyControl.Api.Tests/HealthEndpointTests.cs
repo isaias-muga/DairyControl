@@ -39,7 +39,7 @@ namespace DairyControl.Api.Tests
             });
 
             // Act
-            var response = await server.CreateClient().GetAsync(HealthEndpoints.Path);
+            var response = await server.CreateClient().GetAsync(HealthEndpoints.Path, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(System.Net.HttpStatusCode.ServiceUnavailable, response.StatusCode);
@@ -62,11 +62,11 @@ namespace DairyControl.Api.Tests
             });
 
             // Act
-            var response = await server.CreateClient().GetAsync(HealthEndpoints.Path);
+            var response = await server.CreateClient().GetAsync(HealthEndpoints.Path, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+            Assert.Equal("Healthy", await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         }
 
         [Fact]
