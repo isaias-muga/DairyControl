@@ -12,7 +12,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `tests/DairyControl.Domain.Tests`, `tests/DairyControl.Application.Tests`, `tests/DairyControl.Api.Tests`, `tests/DairyControl.Infrastructure.Tests` and `tests/DairyControl.ArchitectureTests` (the rules of this file that a test can check; see "Architecture tests")
 - `client/`: Angular client (see "Client conventions")
 - `e2e/`: Playwright end-to-end tests (see "E2E tests")
-- `Directory.Build.props`: for every project, `Nullable` enabled, warnings as errors and the latest analysis level. The build must have zero warnings; fix the cause, and never suppress a warning without a justification written next to it.
+- `Directory.Build.props`: for every project, `Nullable` enabled, warnings as errors and the latest analysis level. The build must have zero warnings; fix the cause, and never suppress a warning without a justification written next to it. The one exception is the NuGet audit warnings NU1901-NU1904: they stay visible but do not fail the build (see the comment in that file) and are reviewed in the architecture review.
 - `docs/`: deployment notes, the architecture review process (`docs/architecture-review.md`) and its records (`docs/reviews/`).
 - `global.json`: opts `dotnet test` into Microsoft.Testing.Platform. Required on the .NET 10 SDK; do not delete it or pin an SDK version in it.
 
@@ -58,13 +58,14 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Return `null` when something is not found; the controller turns it into a 404.
 - Methods are `async` only when they await I/O.
 - Settings classes live in `Application/Settings` and are injected as `IOptions<T>`.
+- Read-side query interfaces (`IRecepcionQueries`, `IProveedorQueries`) live in `Application/Queries` and are implemented in `Infrastructure/Persistence/Queries`; they return DTOs computed in SQL and never load aggregates.
 - Every "now" comes from the injected `TimeProvider` (`HoraPlanta.Ahora(reloj)` for plant time); never `DateTime.Now/UtcNow/Today` or `DateTimeOffset.Now/UtcNow` in `src`. Tests use a fixed clock (`RelojFijo`).
 - Quality limits are not configuration files: they are the single `ConfiguracionCalidad` row (aggregate root, own repository), seeded with 19 °D / 20 °C / 0 % water and editable at runtime through `GET/PUT /api/Configuracion/calidad` (`ConfiguracionCalidadAppService`). The GET returns a `version` (the row version, kept in a shadow property, never a field of the entity); the PUT must send it back: without it the API answers 400 (`field: "version"`), and if someone saved in between it answers 409 (`ConflictoDeConcurrenciaException`). `RecepcionQueries` reads the current limits from the database on every request. The rule "out of range = acidity > max OR temperature > max OR water > max" lives only in the domain (`LimitesCalidad.FueraDeRango`, an expression so EF Core can translate it); never copy the thresholds or the rule elsewhere. Fat has no limit. Water null counts as 0.
 
 ## Infrastructure conventions
 
 - One repository per aggregate root (`IProveedorRepository`, `IRecepcionRepository`, `IConfiguracionCalidadRepository`). Only aggregate roots get a `DbSet`. The foreign key from `Recepciones` to `Proveedores` is `Restrict`: recepciones are historical records and never disappear with a proveedor. Date-range queries rely on the indexes on `FechaHora` and `(ProveedorId, FechaHora)`.
-- Child entities are mapped with `OwnsMany`; value objects with `OwnsOne`.
+- Value objects are mapped with `OwnsOne`. A child entity inside an aggregate (a small, bounded collection) would use `OwnsMany`; there are none today.
 - Domain-generated IDs are configured with `ValueGeneratedNever()`.
 - One `IEntityTypeConfiguration<T>` class per aggregate, in `Persistence/Configurations`, declared `internal`.
 - Never edit a migration that has already been applied. Add a new migration instead (the old `Designer` files and the snapshot refer to `AppDbContext` through the project-level `<Using>` in the csproj; leave it).
