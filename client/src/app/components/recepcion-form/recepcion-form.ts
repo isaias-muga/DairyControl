@@ -271,7 +271,7 @@ export class RecepcionForm {
     this.recepcionesService.getSiguienteTicket().subscribe({
       next: ({ ticket }) => {
         // Never overwrite what the operator already typed while the suggestion was loading
-        if (this.form.controls.ticket.value == null) {
+        if (ticket != null && this.form.controls.ticket.value == null) {
           this.form.controls.ticket.setValue(ticket);
           this.ticketSugerido.set(true);
         }

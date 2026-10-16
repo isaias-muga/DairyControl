@@ -105,6 +105,8 @@ namespace DairyControl.Infrastructure.Persistence.Queries
         {
             var limites = await LeerLimitesAsync();
             var fueraDeRango = limites.FueraDeRango<FilaListado>(x => x.Acidez, x => x.Temperatura, x => x.Agua);
+            // Compiled once for the page, not once per row
+            var motivosDe = MotivosDe(limites);
 
             var recepciones = RecepcionesListado(filtro.Desde, filtro.Hasta, filtro.ProveedorId);
             if (filtro.Ticket is int ticket)
@@ -120,6 +122,7 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             var filas = await recepciones
                 .OrderByDescending(x => x.FechaHora)
                 .ThenByDescending(x => x.Ticket)
+                .ThenByDescending(x => x.Id) // total order: equal time and ticket (or no ticket) must not shuffle between pages
                 .Skip((filtro.Pagina - 1) * FiltroRecepciones.TamanoPagina)
                 .Take(FiltroRecepciones.TamanoPagina + 1)
                 .ToListAsync();
@@ -148,7 +151,7 @@ namespace DairyControl.Infrastructure.Persistence.Queries
 
             return new ListadoRecepcionesDto
             {
-                Items = filas.Select(f => AItem(f, limites)).ToList(),
+                Items = filas.Select(f => AItem(f, motivosDe)).ToList(),
                 Totales = totales,
                 Dias = await SubtotalesDeDiasAsync(recepciones, fueraDeRango, filas),
                 Pagina = filtro.Pagina,
@@ -157,14 +160,15 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             };
         }
 
-        public async Task<int> GetSiguienteTicketAsync()
+        public async Task<int?> GetSiguienteTicketAsync()
         {
             var maximo = await _context.Proveedores
                 .AsNoTracking()
                 .SelectMany(p => p.Recepciones)
                 .MaxAsync(r => (int?)r.Ticket);
 
-            return (maximo ?? 0) + 1;
+            // Nothing above the largest possible ticket: no suggestion rather than a wrapped (negative) number
+            return maximo == int.MaxValue ? null : (maximo ?? 0) + 1;
         }
 
         // The limits are editable at runtime, so they are read from the database on every request.
@@ -176,23 +180,34 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                 .SingleAsync();
         }
 
-        private static RecepcionListadoDto AItem(FilaListado fila, LimitesCalidad limites)
+        // The reasons of the (at most 100) rows on the page use the same domain rules as the SQL filters.
+        private static Func<FilaListado, List<string>> MotivosDe(LimitesCalidad limites)
         {
-            // The reasons of the (at most 100) rows on the page use the same domain rules as the SQL filters.
-            var motivos = new List<string>();
-            if (limites.AcidezAlta<decimal>(x => x).Compile()(fila.Acidez))
-            {
-                motivos.Add(MotivosFueraDeRango.Acidez);
-            }
-            if (limites.TemperaturaAlta<decimal>(x => x).Compile()(fila.Temperatura))
-            {
-                motivos.Add(MotivosFueraDeRango.Temperatura);
-            }
-            if (limites.AguaAlta<decimal>(x => x).Compile()(fila.Agua))
-            {
-                motivos.Add(MotivosFueraDeRango.Agua);
-            }
+            var acidezAlta = limites.AcidezAlta<decimal>(x => x).Compile();
+            var temperaturaAlta = limites.TemperaturaAlta<decimal>(x => x).Compile();
+            var aguaAlta = limites.AguaAlta<decimal>(x => x).Compile();
 
+            return fila =>
+            {
+                var motivos = new List<string>();
+                if (acidezAlta(fila.Acidez))
+                {
+                    motivos.Add(MotivosFueraDeRango.Acidez);
+                }
+                if (temperaturaAlta(fila.Temperatura))
+                {
+                    motivos.Add(MotivosFueraDeRango.Temperatura);
+                }
+                if (aguaAlta(fila.Agua))
+                {
+                    motivos.Add(MotivosFueraDeRango.Agua);
+                }
+                return motivos;
+            };
+        }
+
+        private static RecepcionListadoDto AItem(FilaListado fila, Func<FilaListado, List<string>> motivosDe)
+        {
             return new RecepcionListadoDto
             {
                 Id = fila.Id,
@@ -208,7 +223,7 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                 Temperatura = fila.Temperatura,
                 Silo = fila.Silo,
                 Observaciones = fila.Observaciones,
-                Motivos = motivos
+                Motivos = motivosDe(fila)
             };
         }
 

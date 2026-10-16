@@ -61,7 +61,7 @@ describe('RecepcionesService', () => {
   });
 
   it('asks for the suggested next ticket', () => {
-    let ticket: number | undefined;
+    let ticket: number | null | undefined;
 
     service.getSiguienteTicket().subscribe((r) => (ticket = r.ticket));
     http.expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket')).flush({ ticket: 4981 });

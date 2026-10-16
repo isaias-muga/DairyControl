@@ -172,7 +172,11 @@ export class RecepcionesPanel {
     this.requestMas?.unsubscribe();
     this.requestMas = this.recepcionesService.getListado({ ...this.filtros(), pagina: siguiente }).subscribe({
       next: (data) => {
-        this.items.update((actuales) => [...actuales, ...data.items]);
+        // A recepción registered meanwhile shifts the pages by one: never show a row twice
+        this.items.update((actuales) => {
+          const ids = new Set(actuales.map((r) => r.id));
+          return [...actuales, ...data.items.filter((r) => !ids.has(r.id))];
+        });
         this.dias.update((actuales) => unirDias(actuales, data.dias));
         this.hayMas.set(data.hayMas);
         this.pagina.set(data.pagina);

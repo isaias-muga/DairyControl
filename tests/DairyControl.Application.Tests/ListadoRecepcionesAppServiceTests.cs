@@ -176,7 +176,7 @@ namespace DairyControl.Application.Tests
         {
             // Arrange
             var mockQueries = new Mock<IRecepcionQueries>();
-            mockQueries.Setup(q => q.GetSiguienteTicketAsync()).ReturnsAsync(4981);
+            mockQueries.Setup(q => q.GetSiguienteTicketAsync()).ReturnsAsync((int?)4981);
             var service = new ListadoRecepcionesAppService(mockQueries.Object);
 
             // Act

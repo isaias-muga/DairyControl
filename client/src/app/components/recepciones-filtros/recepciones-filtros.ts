@@ -76,6 +76,8 @@ export class RecepcionesFiltros {
     },
   ]);
   protected soloControl = this.fb.control(false);
+  /** The ticket this component last asked for: the URL echoing it back must not overwrite what is typed since. */
+  private ticketEmitido: number | null | undefined;
 
   constructor() {
     // The URL is the source of truth: whenever the filters change from outside, the controls follow.
@@ -88,9 +90,10 @@ export class RecepcionesFiltros {
       this.proveedorControl.setValue(f.proveedorId ?? this.TODOS, { emitEvent: false });
       this.soloControl.setValue(!!f.soloFueraDeRango, { emitEvent: false });
       const ticket = f.ticket != null ? String(f.ticket) : '';
-      if (this.ticketControl.value.trim() !== ticket) {
+      if (f.ticket !== this.ticketEmitido && this.ticketControl.value.trim() !== ticket) {
         this.ticketControl.setValue(ticket, { emitEvent: false });
       }
+      this.ticketEmitido = f.ticket ?? null;
     });
 
     this.ticketControl.valueChanges
@@ -145,6 +148,7 @@ export class RecepcionesFiltros {
     const ticket = this.ticketControl.valid
       ? escrito === '' ? null : Number(escrito)
       : this.filtros().ticket;
+    this.ticketEmitido = cambios.ticket !== undefined ? cambios.ticket : ticket;
     this.cambio.emit({ ...this.filtros(), ticket, ...cambios, pagina: undefined });
   }
 }

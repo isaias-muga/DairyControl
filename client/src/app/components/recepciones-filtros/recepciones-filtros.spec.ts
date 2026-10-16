@@ -280,6 +280,27 @@ describe('RecepcionesFiltros', () => {
       expect(emitidos[0].ticket).toBe(valor.trim() === '' ? null : 4980);
     });
 
+    it('does not overwrite what is typed when the URL echoes the ticket it asked for', async () => {
+      await mostrar(base());
+
+      interno().ticketControl.setValue('5');
+      vi.advanceTimersByTime(400); // emits 5
+      interno().ticketControl.setValue('56'); // typed before the URL answered
+      await mostrar(base({ ticket: 5 })); // the URL arrives with the old value
+
+      expect(interno().ticketControl.value).toBe('56');
+    });
+
+    it('does follow a ticket that changes from outside (e.g. back navigation)', async () => {
+      await mostrar(base({ ticket: 5 }));
+      interno().ticketControl.setValue('56');
+      vi.advanceTimersByTime(400);
+
+      await mostrar(base({ ticket: 9 }));
+
+      expect(interno().ticketControl.value).toBe('9');
+    });
+
     it('accepts the largest int', async () => {
       await mostrar(base());
 

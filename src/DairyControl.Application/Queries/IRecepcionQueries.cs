@@ -8,6 +8,6 @@ namespace DairyControl.Application.Queries
 
         Task<ListadoRecepcionesDto> GetListadoAsync(FiltroRecepciones filtro);
 
-        Task<int> GetSiguienteTicketAsync();
+        Task<int?> GetSiguienteTicketAsync();
     }
 }

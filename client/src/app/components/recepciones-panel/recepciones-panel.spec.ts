@@ -401,6 +401,20 @@ describe('RecepcionesPanel', () => {
       expect(texto('.pie')).toContain('3 de 12 recepciones');
     });
 
+    it('never shows a row twice when a recepción registered meanwhile shifts the pages', async () => {
+      await abrir('/');
+      await cargar(listado({ items: [recepcion({ id: 'a' }), recepcion({ id: 'b', ticket: 4979 })], hayMas: true }));
+
+      (elemento().querySelector('.cargar-mas button') as HTMLButtonElement).click();
+      http
+        .expectOne((r) => esListado(r) && r.params.get('pagina') === '2')
+        .flush(listado({ items: [recepcion({ id: 'b', ticket: 4979 }), recepcion({ id: 'c', ticket: 4978 })], pagina: 2 }));
+      harness.detectChanges();
+
+      const tickets = Array.from(elemento().querySelectorAll('tr.mat-mdc-row:not(.fila-dia) td:nth-child(2)')).map((td) => td.textContent?.trim());
+      expect(tickets).toEqual(['4980', '4979', '4978']);
+    });
+
     it('keeps what is shown and offers to retry when the next page fails', async () => {
       await abrir('/');
       await cargar(listado({ hayMas: true }));

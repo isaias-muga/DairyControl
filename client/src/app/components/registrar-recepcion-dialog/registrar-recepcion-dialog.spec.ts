@@ -91,6 +91,16 @@ describe('RegistrarRecepcionDialog', () => {
       expect(close).toHaveBeenNthCalledWith(2, true);
     });
 
+    it('does not close while a save is in flight, so the list is told about it when it finishes', () => {
+      formulario().saving.set(true);
+
+      (component as unknown as { cerrar(): void }).cerrar();
+      teclas.next(new KeyboardEvent('keydown', { key: 'Escape' }));
+      backdrop.next(new MouseEvent('click'));
+
+      expect(close).not.toHaveBeenCalled();
+    });
+
     it('closes from the Cancelar button', () => {
       const cancelar = Array.from(
         fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -26,6 +26,7 @@ export class RegistrarRecepcionDialog {
 
   /** True once at least one recepción was saved, even if the dialog stays open ("Registrar y cargar otra"). */
   protected registro = signal(false);
+  private formulario = viewChild(RecepcionForm);
 
   constructor() {
     // The dialog is opened with disableClose so that closing it by any route (Cancelar, Esc, backdrop)
@@ -60,6 +61,10 @@ export class RegistrarRecepcionDialog {
   }
 
   protected cerrar(): void {
+    // Closing while a save is in flight would report "nothing saved" before the answer arrives
+    if (this.formulario()?.saving()) {
+      return;
+    }
     this.dialogRef.close(this.registro());
   }
 }

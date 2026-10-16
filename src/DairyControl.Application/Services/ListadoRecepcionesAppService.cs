@@ -38,6 +38,6 @@ namespace DairyControl.Application.Services
         }
 
         // A suggestion only: the unique ticket rule is still enforced when the recepción is registered.
-        public Task<int> GetSiguienteTicketAsync() => _queries.GetSiguienteTicketAsync();
+        public Task<int?> GetSiguienteTicketAsync() => _queries.GetSiguienteTicketAsync();
     }
 }

@@ -417,6 +417,16 @@ describe('RecepcionForm', () => {
       expect(otro.componentInstance.form.controls.ticket.value).toBe(777);
     });
 
+    it('leaves the ticket empty when there is nothing to suggest', () => {
+      const otro = TestBed.createComponent(RecepcionForm);
+      otro.componentRef.setInput('proveedorId', 'test-id');
+      http.expectOne((r) => r.url.endsWith('/Recepciones/siguiente-ticket')).flush({ ticket: null });
+      http.expectOne((r) => r.url.endsWith('/Configuracion/calidad')).flush(LIMITES);
+
+      expect(otro.componentInstance.form.controls.ticket.value).toBeNull();
+      expect(otro.componentInstance.ticketSugerido()).toBe(false);
+    });
+
     it('leaves the ticket empty when the suggestion cannot be loaded', () => {
       const otro = TestBed.createComponent(RecepcionForm);
       otro.componentRef.setInput('proveedorId', 'test-id');

@@ -55,5 +55,6 @@ export interface FiltroRecepciones {
 }
 
 export interface SiguienteTicket {
-  ticket: number;
+  /** Null when there is nothing to suggest. */
+  ticket: number | null;
 }

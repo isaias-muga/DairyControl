@@ -368,6 +368,45 @@ namespace DairyControl.Infrastructure.Tests
         }
 
         [Fact]
+        public async Task GetListadoAsync_EqualTimeAndNoTicket_PagesWithoutRepeatingOrSkippingRows()
+        {
+            // Arrange
+            var a = AgregarProveedor("Tambo A");
+            for (var i = 0; i < 150; i++)
+            {
+                Registrar(a.Id, new DateTime(2026, 10, 15, 8, 0, 0), null);
+            }
+            using var context = NuevoContexto();
+            var queries = new RecepcionQueries(context);
+            var segunda = Filtro("2026-10-15", "2026-10-15");
+            segunda.Pagina = 2;
+
+            // Act
+            var primeraPagina = await queries.GetListadoAsync(Filtro("2026-10-15", "2026-10-15"));
+            var segundaPagina = await queries.GetListadoAsync(segunda);
+
+            // Assert
+            var ids = primeraPagina.Items.Concat(segundaPagina.Items).Select(i => i.Id).ToList();
+            Assert.Equal(150, ids.Count);
+            Assert.Equal(150, ids.Distinct().Count());
+        }
+
+        [Fact]
+        public async Task GetSiguienteTicketAsync_LargestPossibleTicketTaken_ReturnsNullInsteadOfWrapping()
+        {
+            // Arrange
+            var a = AgregarProveedor("Tambo A");
+            Registrar(a.Id, new DateTime(2026, 10, 15, 7, 0, 0), int.MaxValue);
+            using var context = NuevoContexto();
+
+            // Act
+            var ticket = await new RecepcionQueries(context).GetSiguienteTicketAsync();
+
+            // Assert
+            Assert.Null(ticket);
+        }
+
+        [Fact]
         public async Task GetSiguienteTicketAsync_NoTickets_ReturnsOne()
         {
             // Arrange
