@@ -81,6 +81,7 @@ if (resetDemoData || seedDemoData)
     using var scope = app.Services.CreateScope();
     var seeder = new DemoDataSeeder(
         scope.ServiceProvider.GetRequiredService<AppDbContext>(),
+        scope.ServiceProvider.GetRequiredService<TimeProvider>(),
         scope.ServiceProvider.GetRequiredService<ILogger<DemoDataSeeder>>());
     await seeder.InitializeAsync(resetDemoData, seedDemoData);
 }

@@ -10,6 +10,9 @@ namespace DairyControl.Application.Tests
 {
     public class ConfiguracionCalidadAppServiceTests
     {
+        private static readonly DateTimeOffset Ahora = new(2026, 10, 15, 15, 0, 0, TimeSpan.Zero);
+        private static readonly TimeProvider Reloj = new RelojFijo(Ahora);
+
         private static ConfiguracionCalidad Configuracion(DateTime? actualizadoEn = null) =>
             ConfiguracionCalidad.Crear(
                 LimitesCalidad.Create(19m, 20m, 0m),
@@ -22,7 +25,7 @@ namespace DairyControl.Application.Tests
             var actualizadoEn = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
             var mockRepo = new Mock<IConfiguracionCalidadRepository>();
             mockRepo.Setup(r => r.GetAsync()).ReturnsAsync(Configuracion(actualizadoEn));
-            var service = new ConfiguracionCalidadAppService(mockRepo.Object);
+            var service = new ConfiguracionCalidadAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.GetAsync();
@@ -42,7 +45,7 @@ namespace DairyControl.Application.Tests
             // Arrange
             var mockRepo = new Mock<IConfiguracionCalidadRepository>();
             mockRepo.Setup(r => r.GetAsync()).ReturnsAsync((ConfiguracionCalidad?)null);
-            var service = new ConfiguracionCalidadAppService(mockRepo.Object);
+            var service = new ConfiguracionCalidadAppService(mockRepo.Object, Reloj);
 
             // Act
             var result = await service.GetAsync();
@@ -58,7 +61,7 @@ namespace DairyControl.Application.Tests
             var configuracion = Configuracion();
             var mockRepo = new Mock<IConfiguracionCalidadRepository>();
             mockRepo.Setup(r => r.GetAsync()).ReturnsAsync(configuracion);
-            var service = new ConfiguracionCalidadAppService(mockRepo.Object);
+            var service = new ConfiguracionCalidadAppService(mockRepo.Object, Reloj);
             var dto = new ActualizarLimitesCalidadDto { AcidezMaxima = 18m, TemperaturaMaxima = 8m, AguaMaxima = 1.5m };
 
             // Act
@@ -80,7 +83,7 @@ namespace DairyControl.Application.Tests
             // Arrange
             var mockRepo = new Mock<IConfiguracionCalidadRepository>();
             mockRepo.Setup(r => r.GetAsync()).ReturnsAsync(Configuracion());
-            var service = new ConfiguracionCalidadAppService(mockRepo.Object);
+            var service = new ConfiguracionCalidadAppService(mockRepo.Object, Reloj);
             var dto = new ActualizarLimitesCalidadDto { AcidezMaxima = 5m, TemperaturaMaxima = 20m, AguaMaxima = 0m };
 
             // Act & Assert
@@ -95,7 +98,7 @@ namespace DairyControl.Application.Tests
             // Arrange
             var mockRepo = new Mock<IConfiguracionCalidadRepository>();
             mockRepo.Setup(r => r.GetAsync()).ReturnsAsync((ConfiguracionCalidad?)null);
-            var service = new ConfiguracionCalidadAppService(mockRepo.Object);
+            var service = new ConfiguracionCalidadAppService(mockRepo.Object, Reloj);
             var dto = new ActualizarLimitesCalidadDto { AcidezMaxima = 19m, TemperaturaMaxima = 20m, AguaMaxima = 0m };
 
             // Act

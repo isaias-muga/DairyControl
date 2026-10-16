@@ -10,11 +10,13 @@ namespace DairyControl.Infrastructure.Persistence
     {
 
         private readonly AppDbContext _context;
+        private readonly TimeProvider _reloj;
         private readonly ILogger<DemoDataSeeder>? _logger;
 
-        public DemoDataSeeder(AppDbContext context, ILogger<DemoDataSeeder>? logger = null)
+        public DemoDataSeeder(AppDbContext context, TimeProvider reloj, ILogger<DemoDataSeeder>? logger = null)
         {
             _context = context;
+            _reloj = reloj;
             _logger = logger;
         }
 
@@ -61,11 +63,11 @@ namespace DairyControl.Infrastructure.Persistence
                 var configuracion = await _context.ConfiguracionesCalidad.FirstOrDefaultAsync();
                 if (configuracion is null)
                 {
-                    _context.ConfiguracionesCalidad.Add(ConfiguracionCalidad.Crear(LimitesCalidad.Predeterminados, DateTime.UtcNow));
+                    _context.ConfiguracionesCalidad.Add(ConfiguracionCalidad.Crear(LimitesCalidad.Predeterminados, _reloj.GetUtcNow().UtcDateTime));
                 }
                 else
                 {
-                    configuracion.CambiarLimites(LimitesCalidad.Predeterminados, DateTime.UtcNow);
+                    configuracion.CambiarLimites(LimitesCalidad.Predeterminados, _reloj.GetUtcNow().UtcDateTime);
                 }
 
                 await AddDemoDataAsync();
@@ -81,7 +83,7 @@ namespace DairyControl.Infrastructure.Persistence
 
         private Task AddDemoDataAsync()
         {
-            var ahoraPlanta = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, HoraPlanta.ZonaHoraria);
+            var ahoraPlanta = HoraPlanta.Ahora(_reloj);
             var desde = ahoraPlanta.Date.AddDays(-DemoDataGenerator.DiasHistorial);
 
             _context.Proveedores.AddRange(new DemoDataGenerator().Generar(desde));

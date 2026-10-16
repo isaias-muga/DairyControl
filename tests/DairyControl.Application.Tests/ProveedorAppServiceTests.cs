@@ -15,11 +15,6 @@ namespace DairyControl.Application.Tests
         private static readonly DateTime FechaValida = new(2026, 10, 15, 11, 0, 0);
         private static readonly TimeProvider Reloj = new RelojFijo(new DateTimeOffset(2026, 10, 15, 15, 0, 0, TimeSpan.Zero));
 
-        private sealed class RelojFijo(DateTimeOffset ahora) : TimeProvider
-        {
-            public override DateTimeOffset GetUtcNow() => ahora;
-        }
-
         [Fact]
         public async Task GetByIdAsync_ProveedorDoesNotExist_ReturnsNull()
         {

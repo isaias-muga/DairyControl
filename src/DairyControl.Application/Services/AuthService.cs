@@ -13,11 +13,13 @@ namespace DairyControl.Application.Services
     {
         private readonly IOptions<JwtSettings> _jwtSettings;
         private readonly IOptions<AdminUserSettings> _adminUserSettings;
+        private readonly TimeProvider _reloj;
 
-        public AuthService(IOptions<JwtSettings> jwtSettings, IOptions<AdminUserSettings> adminUserSettings)
+        public AuthService(IOptions<JwtSettings> jwtSettings, IOptions<AdminUserSettings> adminUserSettings, TimeProvider reloj)
         {
             _jwtSettings = jwtSettings;
             _adminUserSettings = adminUserSettings;
+            _reloj = reloj;
         }
 
         public string? Login(LoginDto dto)
@@ -30,11 +32,15 @@ namespace DairyControl.Application.Services
                 var keyBytes = Encoding.UTF8.GetBytes(_jwtSettings.Value.SigningKey);
                 var signingKey = new SymmetricSecurityKey(keyBytes);
                 var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+                // The handler stamps nbf/iat with the system clock unless told otherwise: every date comes from one clock
+                var ahora = _reloj.GetUtcNow().UtcDateTime;
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
                     // Generate a JWT token with the username as a claim
                     Subject = new ClaimsIdentity(new[] { new Claim(ClaimTypes.Name, dto.Username) }),
-                    Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.Value.ExpiryMinutes),
+                    NotBefore = ahora,
+                    IssuedAt = ahora,
+                    Expires = ahora.AddMinutes(_jwtSettings.Value.ExpiryMinutes),
                     Issuer = _jwtSettings.Value.Issuer,
                     Audience = _jwtSettings.Value.Audience,
                     SigningCredentials = credentials

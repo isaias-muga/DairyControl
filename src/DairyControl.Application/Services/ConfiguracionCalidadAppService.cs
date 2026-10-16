@@ -8,10 +8,12 @@ namespace DairyControl.Application.Services
     public class ConfiguracionCalidadAppService
     {
         private readonly IConfiguracionCalidadRepository _repository;
+        private readonly TimeProvider _reloj;
 
-        public ConfiguracionCalidadAppService(IConfiguracionCalidadRepository repository)
+        public ConfiguracionCalidadAppService(IConfiguracionCalidadRepository repository, TimeProvider reloj)
         {
             _repository = repository;
+            _reloj = reloj;
         }
 
         public async Task<LimitesCalidadDto?> GetAsync()
@@ -28,7 +30,7 @@ namespace DairyControl.Application.Services
             if (configuracion is null)
                 return null;
 
-            configuracion.CambiarLimites(limites, DateTime.UtcNow);
+            configuracion.CambiarLimites(limites, _reloj.GetUtcNow().UtcDateTime);
             await _repository.UpdateAsync(configuracion);
             return ToDto(configuracion);
         }
