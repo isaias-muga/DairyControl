@@ -9,6 +9,7 @@ export interface OpcionesNumero {
 
 const MENSAJE_FORMATO = 'Usá punto para los miles y coma para los decimales (1.234,5).';
 const MENSAJE_INVALIDO = 'Escribí solo números, con coma para los decimales (3,5).';
+const MENSAJE_INVALIDO_ENTERO = 'Escribí solo números enteros, sin signo ni letras.';
 const MENSAJE_ENTERO = 'Ingresá un número entero, sin decimales.';
 const MENSAJE_GRANDE = 'El número es demasiado grande.';
 const MAX_DIGITOS = 15;
@@ -41,7 +42,7 @@ export function parsearNumeroEs(texto: string, opciones: OpcionesNumero = {}): R
     return { ok: true, valor: null };
   }
   if (!/^[0-9.,]+$/.test(t)) {
-    return rechazar(MENSAJE_INVALIDO);
+    return rechazar(opciones.entero ? MENSAJE_INVALIDO_ENTERO : MENSAJE_INVALIDO);
   }
 
   const comas = t.split(',').length - 1;

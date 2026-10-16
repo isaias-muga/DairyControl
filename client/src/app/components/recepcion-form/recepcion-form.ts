@@ -46,6 +46,8 @@ import {
 } from '../../models/limits';
 import { getApiErrorField, getApiErrorMessage } from '../../utils/api-error';
 import { litrosReales, motivosFueraDeRango } from '../../utils/calidad';
+import { errorNumero } from '../../utils/numero-es';
+import { NumeroInput } from '../numero-input/numero-input';
 import { ahoraEnPlanta } from '../../utils/periodos';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
@@ -79,6 +81,7 @@ function fechaHoraEnRango(control: AbstractControl): ValidationErrors | null {
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    NumeroInput,
   ],
   templateUrl: './recepcion-form.html',
   styleUrl: './recepcion-form.css',
@@ -127,6 +130,8 @@ export class RecepcionForm {
     ],
     observaciones: ['', Validators.maxLength(OBSERVACIONES_MAX_LENGTH)],
   });
+
+  protected readonly errorNumero = errorNumero;
 
   saving = signal(false);
   saveError = signal<string | null>(null);

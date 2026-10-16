@@ -229,6 +229,82 @@ describe('RecepcionForm', () => {
     expect(req.request.body.ticket).toBeNull();
   });
 
+  describe('numbers typed the es-AR way', () => {
+    const escribir = (id: string, texto: string): HTMLInputElement => {
+      const campo = fixture.nativeElement.querySelector(`#${id}`) as HTMLInputElement;
+      campo.value = texto;
+      campo.dispatchEvent(new Event('input'));
+      campo.dispatchEvent(new Event('blur'));
+      fixture.detectChanges();
+      return campo;
+    };
+
+    it('uses text inputs, never type=number', () => {
+      fixture.detectChanges();
+
+      for (const id of ['ticket', 'litros', 'aguaPorcentaje', 'acidez', 'temperatura', 'grasa', 'silo']) {
+        expect((fixture.nativeElement.querySelector(`#${id}`) as HTMLInputElement).type).toBe('text');
+      }
+      expect(fixture.nativeElement.querySelector('input[type=number]')).toBeNull();
+    });
+
+    it('sends litros "1.234,5" as 1234.5 and shows it as 1.234,5', () => {
+      fixture.detectChanges();
+      const litros = escribir('litros', '1.234,5');
+      escribir('acidez', '17,5');
+      escribir('temperatura', '5');
+
+      component.submit();
+
+      const req = http.expectOne((r) => r.url.endsWith('/Proveedores/test-id/recepciones'));
+      expect(req.request.body.litros).toBe(1234.5);
+      expect(req.request.body.acidez).toBe(17.5);
+      expect(litros.value).toBe('1.234,5');
+    });
+
+    it('does not read "1.234,5" acidez as 1.2345: it is out of range and nothing is sent', () => {
+      fixture.detectChanges();
+      escribir('litros', '1000');
+      escribir('acidez', '1.234,5');
+      escribir('temperatura', '5');
+
+      component.submit();
+
+      http.expectNone((r) => r.url.endsWith('/Proveedores/test-id/recepciones'));
+      expect(component.form.controls.acidez.value).toBe(1234.5);
+      expect(component.form.controls.acidez.errors?.['max']).toBeDefined();
+    });
+
+    it('does not send an ambiguous litros and shows the parser message', () => {
+      fixture.detectChanges();
+      escribir('litros', '1.2.3');
+      escribir('acidez', '17');
+      escribir('temperatura', '5');
+
+      component.submit();
+      fixture.detectChanges();
+
+      http.expectNone((r) => r.url.endsWith('/Proveedores/test-id/recepciones'));
+      expect(fixture.nativeElement.textContent).toContain('Usá punto para los miles');
+    });
+
+    it.each(['ticket', 'silo'])('rejects a decimal %s with the integer message', (id) => {
+      fixture.detectChanges();
+
+      escribir(id, '2,5');
+
+      expect(component.form.getRawValue()[id as 'ticket' | 'silo']).toBeNull();
+      expect(fixture.nativeElement.textContent).toContain('Ingresá un número entero, sin decimales.');
+    });
+
+    it('shows the suggested ticket plain, without thousands separators', () => {
+      fixture.detectChanges();
+      component.form.controls.ticket.setValue(1000001);
+
+      expect((fixture.nativeElement.querySelector('#ticket') as HTMLInputElement).value).toBe('1000001');
+    });
+  });
+
   it('sends water and ticket when filled', () => {
     completarObligatorios();
     component.form.patchValue({ aguaPorcentaje: 2.5, ticket: 4501 });
