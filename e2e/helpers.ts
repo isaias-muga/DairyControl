@@ -80,6 +80,13 @@ export async function abrirRegistro(page: Page): Promise<Locator> {
   return dialog;
 }
 
+/** Cancelar on a form that has data asks first: confirm the discard and wait until the dialog is gone. */
+export async function descartarRegistro(page: Page): Promise<void> {
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Descartar' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+}
+
 /** Opens the registration dialog on a proveedor's detail page, fills it and presses "Registrar". */
 export async function registrarRecepcion(page: Page, valores: ValoresRecepcion): Promise<void> {
   const dialog = await abrirRegistro(page);

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { abrirRegistro, crearProveedor, loginYEsperarResumen, rellenar } from '../helpers';
+import { abrirRegistro, crearProveedor, descartarRegistro, loginYEsperarResumen, rellenar } from '../helpers';
 
 const ZONA_PLANTA = 'America/Argentina/Buenos_Aires';
 
@@ -51,7 +51,7 @@ test.describe('fechas', () => {
     await dialog.getByRole('button', { name: 'Registrar', exact: true }).click();
 
     await expect(dialog.getByText('No puede ser anterior al 01/01/2000.')).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancelar' }).click();
+    await descartarRegistro(page);
     await expect(page.getByText('No hay recepciones con estos filtros.')).toBeVisible();
   });
 

@@ -7,6 +7,7 @@ import {
 } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { Observable, filter } from 'rxjs';
+import { ConfirmarDescarteDialog } from '../confirmar-descarte-dialog/confirmar-descarte-dialog';
 import { RecepcionForm } from '../recepcion-form/recepcion-form';
 
 export interface RegistrarRecepcionDialogData {
@@ -26,16 +27,23 @@ export class RegistrarRecepcionDialog {
 
   /** True once at least one recepción was saved, even if the dialog stays open ("Registrar y cargar otra"). */
   protected registro = signal(false);
+  private dialog = inject(MatDialog);
+  private confirmando = false;
   private formulario = viewChild(RecepcionForm);
 
   constructor() {
     // The dialog is opened with disableClose so that closing it by any route (Cancelar, Esc, backdrop)
     // reports whether something was saved and the caller can refresh its list.
-    this.dialogRef.backdropClick().subscribe(() => this.cerrar());
+    // A stray click on the backdrop never discards typed data; Esc and Cancelar ask first.
+    this.dialogRef.backdropClick().subscribe(() => {
+      if (!this.formulario()?.tieneDatos()) {
+        this.cerrar();
+      }
+    });
     this.dialogRef
       .keydownEvents()
       .pipe(filter((e) => e.key === 'Escape'))
-      .subscribe(() => this.cerrar());
+      .subscribe(() => this.cancelar());
   }
 
   /**
@@ -58,6 +66,31 @@ export class RegistrarRecepcionDialog {
     if (!cargarOtra) {
       this.cerrar();
     }
+  }
+
+  /** Cancelar and Esc: a form with data asks before it is discarded; a clean one just closes. */
+  protected cancelar(): void {
+    if (this.formulario()?.saving() || this.confirmando) {
+      return;
+    }
+    if (!this.formulario()?.tieneDatos()) {
+      this.cerrar();
+      return;
+    }
+    this.confirmando = true;
+    this.dialog
+      .open<ConfirmarDescarteDialog, void, boolean>(ConfirmarDescarteDialog, {
+        role: 'alertdialog',
+        width: '400px',
+        maxWidth: '95vw',
+      })
+      .afterClosed()
+      .subscribe((descartar) => {
+        this.confirmando = false;
+        if (descartar) {
+          this.cerrar();
+        }
+      });
   }
 
   protected cerrar(): void {

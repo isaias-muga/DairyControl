@@ -186,6 +186,19 @@ export class RecepcionForm {
     });
   }
 
+  /**
+   * True when the operator has typed or changed something that would be lost by closing: any reading or
+   * observation, or a proveedor, ticket or date they touched. The suggested ticket and the default date alone are not data.
+   */
+  tieneDatos(): boolean {
+    const v = this.form.getRawValue();
+    const lectura = [v.litros, v.grasa, v.acidez, v.temperatura, v.silo, v.aguaPorcentaje].some((x) => x != null);
+    const tocado = ['proveedorId', 'ticket', 'fechaHora'].some(
+      (c) => this.form.controls[c as 'proveedorId' | 'ticket' | 'fechaHora'].dirty,
+    );
+    return lectura || (v.observaciones ?? '').trim() !== '' || tocado;
+  }
+
   invalid(control: keyof typeof this.form.controls): boolean {
     const c = this.form.controls[control];
     return c.touched && c.invalid;

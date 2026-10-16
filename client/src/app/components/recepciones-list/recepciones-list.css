@@ -56,7 +56,7 @@ td.mat-mdc-cell {
   text-overflow: ellipsis;
 }
 
-.mat-column-fecha { width: 6%; }
+.mat-column-hora { width: 6%; }
 .mat-column-ticket { width: 8%; }
 .mat-column-proveedor { width: 15%; }
 .mat-column-litros { width: 8%; }

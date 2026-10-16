@@ -84,6 +84,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `provideHttpClient(...)` is called only in `app.config.ts`.
 - Signal inputs (`input()`) are reactive: react to changes with `effect()` or `computed()`; never read them only once in `ngOnInit`.
 - Forms are reactive forms. Client validation mirrors the domain limits in `models/limits.ts`; it exists for user feedback only, and the API remains the source of truth.
+- The registration form may preview the quality limits for UX (the limit values are read from the API, never hardcoded); the domain and the API remain the source of truth.
 - API errors are turned into user messages with `getApiErrorMessage` in `utils/api-error.ts`.
 - Authentication: only `AuthService` reads or writes the token. `authInterceptor` adds the `Authorization` header; never add it manually. Protected routes use `authGuard`.
 - `slowRequestInterceptor` and `ServerStatusService` show the global "waking up" banner when any request takes more than 3 seconds; pages don't add their own cold-start messages.

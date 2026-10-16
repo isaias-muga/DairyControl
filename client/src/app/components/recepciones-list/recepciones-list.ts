@@ -64,7 +64,7 @@ export class RecepcionesList {
 
   protected columnas = computed(() => {
     const base = [
-      'fecha', 'ticket', 'proveedor', 'litros', 'agua', 'litrosReales',
+      'hora', 'ticket', 'proveedor', 'litros', 'agua', 'litrosReales',
       'grasa', 'acidez', 'temperatura', 'silo', 'estado', 'observaciones',
     ];
     return this.mostrarProveedor() ? base : base.filter((c) => c !== 'proveedor');

@@ -137,3 +137,26 @@ test('recepciones: the filters stay in the URL, so reloading keeps them', async 
   await expect(page.getByRole('cell', { name: String(ticket), exact: true })).toBeVisible();
   await expect(page.getByText('1 de 1 recepciones')).toBeVisible();
 });
+
+test.describe('a 1366px screen', () => {
+  test.use({ viewport: { width: 1366, height: 900 } });
+
+  test('recepciones: the table fits its card without horizontal scroll (the list page and the proveedor page)', async ({ page }) => {
+    const ticket = ticketUnico();
+    await crearProveedor(page);
+    await registrarRecepcion(page, { litros: 1000, acidez: 16, temperatura: 5, ticket });
+    await expect(page.getByRole('cell', { name: String(ticket), exact: true })).toBeVisible();
+
+    const sinScroll = () =>
+      page.getByRole('table').evaluate((tabla) => {
+        const contenedor = tabla.parentElement as HTMLElement;
+        return contenedor.scrollWidth <= contenedor.clientWidth;
+      });
+    expect(await sinScroll()).toBe(true);
+
+    await abrirRecepciones(page);
+    await expect(page.getByRole('columnheader', { name: 'Hora de la recepción' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: String(ticket), exact: true })).toBeVisible();
+    expect(await sinScroll()).toBe(true);
+  });
+});

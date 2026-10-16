@@ -79,10 +79,10 @@ describe('RecepcionesList', () => {
     const tooltips = encabezados.map((th) => th.injector.get(MatTooltip, null)?.message ?? null);
 
     expect(visibles).toEqual([
-      'Fecha', 'Ticket', 'Proveedor', 'Litros', 'Agua %', 'L. reales', 'Grasa %', 'Acidez °D', 'Temp. °C', 'Silo', 'Estado', 'Obs.',
+      'Hora', 'Ticket', 'Proveedor', 'Litros', 'Agua %', 'L. reales', 'Grasa %', 'Acidez °D', 'Temp. °C', 'Silo', 'Estado', 'Obs.',
     ]);
     expect(completos).toEqual([
-      'Fecha y hora', 'Ticket', 'Proveedor', 'Litros', '% agua', 'Litros reales', 'Grasa (%)', 'Acidez (°D)',
+      'Hora de la recepción', 'Ticket', 'Proveedor', 'Litros', '% agua', 'Litros reales', 'Grasa (%)', 'Acidez (°D)',
       'Temperatura (°C)', 'Silo', 'Estado', 'Observaciones',
     ]);
     // abbreviated headers carry the full name as a tooltip; headers that are already complete don't repeat it
@@ -276,7 +276,7 @@ describe('RecepcionesList', () => {
       const encabezados = Array.from(fixture.nativeElement.querySelectorAll('th') as NodeListOf<HTMLElement>);
       const celdasFila = Array.from(filas()[0].querySelectorAll('td'));
 
-      // Fecha, Ticket, Proveedor, Litros, Agua %, L. reales, Grasa %, Acidez °D, Temp. °C, Silo, Estado, Obs.
+      // Hora, Ticket, Proveedor, Litros, Agua %, L. reales, Grasa %, Acidez °D, Temp. °C, Silo, Estado, Obs.
       const esperado = [
         'texto:', 'identificador:center', 'texto:', 'cantidad:right', 'cantidad:right', 'cantidad:right',
         'cantidad:right', 'cantidad:right', 'cantidad:right', 'identificador:center', 'texto:', 'texto:',
@@ -295,11 +295,11 @@ describe('RecepcionesList', () => {
       expect(getComputedStyle(tabla).tableLayout).toBe('fixed');
       expect(getComputedStyle(tabla).minWidth).toBe('1100px');
       expect({
-        fecha: ancho('fecha'), ticket: ancho('ticket'), proveedor: ancho('proveedor'), litros: ancho('litros'),
+        hora: ancho('hora'), ticket: ancho('ticket'), proveedor: ancho('proveedor'), litros: ancho('litros'),
         agua: ancho('agua'), litrosReales: ancho('litrosReales'), grasa: ancho('grasa'), acidez: ancho('acidez'),
         temperatura: ancho('temperatura'), silo: ancho('silo'), estado: ancho('estado'),
       }).toEqual({
-        fecha: '6%', ticket: '8%', proveedor: '15%', litros: '8%', agua: '6.5%', litrosReales: '8%',
+        hora: '6%', ticket: '8%', proveedor: '15%', litros: '8%', agua: '6.5%', litrosReales: '8%',
         grasa: '6.5%', acidez: '7.5%', temperatura: '7.5%', silo: '4.5%', estado: '11%',
       });
       // Observaciones has no explicit width: it takes the rest
@@ -332,8 +332,8 @@ describe('RecepcionesList', () => {
       const estilo = (selector: string) => getComputedStyle(fixture.nativeElement.querySelector(selector) as HTMLElement);
 
       for (const [primera, ultima] of [
-        ['th.mat-column-fecha', 'th.mat-column-observaciones'],
-        ['td.mat-column-fecha', 'td.mat-column-observaciones'],
+        ['th.mat-column-hora', 'th.mat-column-observaciones'],
+        ['td.mat-column-hora', 'td.mat-column-observaciones'],
       ]) {
         expect(estilo(primera).paddingLeft).toBe('16px');
         expect(estilo(ultima).paddingRight).toBe('16px');

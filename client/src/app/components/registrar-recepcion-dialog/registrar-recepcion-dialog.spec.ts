@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { By } from '@angular/platform-browser';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { of, Subject } from 'rxjs';
+import { ConfirmarDescarteDialog } from '../confirmar-descarte-dialog/confirmar-descarte-dialog';
 import { RegistrarRecepcionDialog, RegistrarRecepcionDialogData } from './registrar-recepcion-dialog';
 import { RecepcionForm } from '../recepcion-form/recepcion-form';
 
@@ -14,11 +15,13 @@ describe('RegistrarRecepcionDialog', () => {
   let close: ReturnType<typeof vi.fn>;
   let backdrop: Subject<MouseEvent>;
   let teclas: Subject<KeyboardEvent>;
+  let confirmar: ReturnType<typeof vi.fn>;
 
   async function crear(data: RegistrarRecepcionDialogData): Promise<void> {
     close = vi.fn();
     backdrop = new Subject<MouseEvent>();
     teclas = new Subject<KeyboardEvent>();
+    confirmar = vi.fn().mockReturnValue({ afterClosed: () => of(true) });
     await TestBed.configureTestingModule({
       imports: [RegistrarRecepcionDialog],
       providers: [
@@ -35,6 +38,8 @@ describe('RegistrarRecepcionDialog', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(RegistrarRecepcionDialog);
     component = fixture.componentInstance;
+    // MatDialogModule provides MatDialog in the component's own injector: spy on that instance
+    vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open').mockImplementation(confirmar as never);
     await fixture.whenStable();
     http.match((r) => r.url.endsWith('/Recepciones/siguiente-ticket'));
     http.match((r) => r.url.endsWith('/Configuracion/calidad'));
@@ -99,6 +104,105 @@ describe('RegistrarRecepcionDialog', () => {
       backdrop.next(new MouseEvent('click'));
 
       expect(close).not.toHaveBeenCalled();
+    });
+
+    describe('discarding what was typed', () => {
+      const escape = () => teclas.next(new KeyboardEvent('keydown', { key: 'Escape' }));
+      const cancelar = () =>
+        (Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+          (b) => b.textContent?.trim() === 'Cancelar',
+        ) as HTMLButtonElement).click();
+
+      it('closes a clean form with Esc, Cancelar and the backdrop without asking', () => {
+        escape();
+        cancelar();
+        backdrop.next(new MouseEvent('click'));
+
+        expect(confirmar).not.toHaveBeenCalled();
+        expect(close).toHaveBeenCalledTimes(3);
+      });
+
+      it('does not treat the suggested ticket and the default date as data', () => {
+        expect(formulario().tieneDatos()).toBe(false);
+      });
+
+      it('never closes on a backdrop click when the form has data, and does not ask', () => {
+        formulario().form.patchValue({ litros: 1000 });
+
+        backdrop.next(new MouseEvent('click'));
+
+        expect(close).not.toHaveBeenCalled();
+        expect(confirmar).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        ['Esc', () => escape()],
+        ['Cancelar', () => cancelar()],
+      ])('asks "¿Descartar la recepción sin guardar?" on %s when the form has data', (_, accion) => {
+        formulario().form.patchValue({ litros: 1000 });
+
+        accion();
+
+        expect(confirmar).toHaveBeenCalledExactlyOnceWith(
+          ConfirmarDescarteDialog,
+          expect.objectContaining({ role: 'alertdialog' }),
+        );
+        expect(close).toHaveBeenCalledExactlyOnceWith(false);
+      });
+
+      it('stays open when the operator chooses to keep editing', () => {
+        confirmar.mockReturnValue({ afterClosed: () => of(false) });
+        formulario().form.patchValue({ acidez: 17 });
+
+        escape();
+
+        expect(close).not.toHaveBeenCalled();
+        expect(formulario().form.controls.acidez.value).toBe(17);
+      });
+
+      it('reports a previous save when it is discarded after "Registrar y cargar otra"', () => {
+        (component as unknown as { onRegistrada(c: boolean): void }).onRegistrada(true);
+        formulario().form.patchValue({ litros: 500 });
+
+        cancelar();
+
+        expect(close).toHaveBeenCalledExactlyOnceWith(true);
+      });
+
+      it('does not ask twice while the question is open', () => {
+        confirmar.mockReturnValue({ afterClosed: () => new Subject<boolean>() });
+        formulario().form.patchValue({ litros: 1000 });
+
+        escape();
+        escape();
+        cancelar();
+
+        expect(confirmar).toHaveBeenCalledTimes(1);
+      });
+
+      it.each([
+        ['an observation', { observaciones: 'Olor raro' }],
+        ['a silo', { silo: 2 }],
+        ['a fat value', { grasa: 3.5 }],
+        ['water', { aguaPorcentaje: 1 }],
+      ])('counts %s as data', (_, valores) => {
+        formulario().form.patchValue(valores);
+
+        expect(formulario().tieneDatos()).toBe(true);
+      });
+
+      it('counts an observation of only spaces as no data', () => {
+        formulario().form.patchValue({ observaciones: '   ' });
+
+        expect(formulario().tieneDatos()).toBe(false);
+      });
+
+      it('counts a ticket or date the operator changed as data', () => {
+        formulario().form.controls.ticket.setValue(777);
+        formulario().form.controls.ticket.markAsDirty();
+
+        expect(formulario().tieneDatos()).toBe(true);
+      });
     });
 
     it('closes from the Cancelar button', () => {
