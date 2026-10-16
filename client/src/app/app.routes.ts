@@ -21,6 +21,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'recepciones',
+    loadComponent: () => import('./pages/recepciones/recepciones').then((m) => m.Recepciones),
+    canActivate: [authGuard],
+  },
+  {
     path: 'configuracion',
     loadComponent: () =>
       import('./pages/configuracion/configuracion').then((m) => m.Configuracion),

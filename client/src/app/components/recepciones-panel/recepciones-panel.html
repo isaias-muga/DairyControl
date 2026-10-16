@@ -1,0 +1,91 @@
+<mat-card appearance="outlined" class="filtros-card">
+  <mat-card-content>
+    <app-recepciones-filtros
+      [filtros]="filtros()"
+      [proveedores]="proveedoresParaSelector()"
+      (cambio)="cambiarFiltros($event)"
+    />
+  </mat-card-content>
+</mat-card>
+
+@if (loading()) {
+  <div class="state-message">
+    <mat-spinner diameter="32" />
+    <span>Cargando...</span>
+  </div>
+} @else if (error()) {
+  <p class="form-error" role="alert">{{ error() }}</p>
+} @else if (totales(); as t) {
+  <section class="tarjetas" aria-label="Totales del filtro">
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <span class="etiqueta">Litros recibidos</span>
+        <span class="valor">{{ t.litros | number: '1.0-0' }}</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <span class="etiqueta">Litros reales</span>
+        <span class="valor">{{ t.litrosReales | number: '1.0-0' }}</span>
+        @if (litrosPorAgua() > 0) {
+          <span class="detalle">−{{ litrosPorAgua() | number: '1.0-0' }} L por agua</span>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <span class="etiqueta">Recepciones</span>
+        <span class="valor">{{ t.cantidadRecepciones | number: '1.0-0' }}</span>
+        @if (t.ticketMinimo !== null) {
+          <span class="detalle">tickets {{ t.ticketMinimo }} – {{ t.ticketMaximo }}</span>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined" [class.fuera-de-rango]="t.cantidadFueraDeRango > 0">
+      <mat-card-content>
+        <span class="etiqueta">Fuera de rango</span>
+        <span class="valor">{{ t.cantidadFueraDeRango | number: '1.0-0' }}</span>
+        <span class="detalle">
+          @for (m of motivosTotales(); track m.etiqueta; let ultimo = $last) {
+            {{ m.cantidad }} {{ m.etiqueta }}{{ ultimo ? '' : ' · ' }}
+          } @empty {
+            sin desvíos
+          }
+        </span>
+      </mat-card-content>
+    </mat-card>
+  </section>
+
+  @if (t.cantidadRecepciones === 0) {
+    <p class="state-message">No hay recepciones con estos filtros.</p>
+  } @else {
+    <mat-card appearance="outlined" class="lista-card">
+      <app-recepciones-list
+        [items]="items()"
+        [dias]="dias()"
+        [mostrarProveedor]="!proveedorFijo()"
+        [hayMas]="hayMas()"
+        [cargandoMas]="cargandoMas()"
+        (cargarMas)="cargarMas()"
+      />
+
+      @if (errorMas(); as mensaje) {
+        <p class="form-error error-mas" role="alert">{{ mensaje }}</p>
+      }
+
+      <footer class="pie">
+        <span class="limites">
+          @if (limites(); as l) {
+            Límites: acidez &gt; {{ l.acidezMaxima | number: '1.0-2' }} °D · temperatura &gt;
+            {{ l.temperaturaMaxima | number: '1.0-2' }} °C · agua &gt; {{ l.aguaMaxima | number: '1.0-2' }} %
+            (editables en <a routerLink="/configuracion">Configuración</a>)
+          }
+        </span>
+        <span class="conteo">{{ items().length | number: '1.0-0' }} de {{ t.cantidadRecepciones | number: '1.0-0' }} recepciones</span>
+      </footer>
+    </mat-card>
+  }
+}

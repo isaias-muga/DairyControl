@@ -1,0 +1,27 @@
+:host {
+  display: block;
+}
+
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.titulo h2 {
+  margin: 0;
+}
+
+.subtitulo {
+  margin: 4px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@media (max-width: 599px) {
+  .encabezado button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,59 @@
+<div class="filtros">
+  <mat-button-toggle-group
+    aria-label="Período"
+    hideSingleSelectionIndicator
+    [value]="atajo()"
+    (change)="seleccionarAtajo($event.value)"
+  >
+    <mat-button-toggle value="hoy">Hoy</mat-button-toggle>
+    <mat-button-toggle value="ayer">Ayer</mat-button-toggle>
+    <mat-button-toggle value="semana">Semana</mat-button-toggle>
+    <mat-button-toggle value="mes">Mes</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  <mat-form-field class="campo-periodo" subscriptSizing="dynamic">
+    <mat-label>Período</mat-label>
+    <mat-date-range-input [formGroup]="rangoForm" [rangePicker]="selector">
+      <input
+        matStartDate
+        formControlName="inicio"
+        placeholder="Desde"
+        (dateChange)="rangoPersonalizadoCambiado()"
+      />
+      <input
+        matEndDate
+        formControlName="fin"
+        placeholder="Hasta"
+        (dateChange)="rangoPersonalizadoCambiado()"
+      />
+    </mat-date-range-input>
+    <mat-datepicker-toggle matIconSuffix [for]="selector" />
+    <mat-date-range-picker #selector />
+  </mat-form-field>
+
+  @if (proveedores(); as lista) {
+    <mat-form-field class="campo-proveedor" subscriptSizing="dynamic">
+      <mat-label>Proveedor</mat-label>
+      <mat-select [formControl]="proveedorControl" (selectionChange)="proveedorCambiado()">
+        <mat-option [value]="TODOS">Todos</mat-option>
+        @for (p of lista; track p.id) {
+          <mat-option [value]="p.id">{{ p.nombre }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
+  <mat-form-field class="campo-ticket" subscriptSizing="dynamic">
+    <mat-label>Ticket</mat-label>
+    <input matInput type="text" inputmode="numeric" placeholder="Buscar n.º" [formControl]="ticketControl" />
+    @if (ticketControl.invalid) {
+      <mat-error>Número entero entre 1 y 2.147.483.647.</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-checkbox [formControl]="soloControl" (change)="soloCambiado()">Solo fuera de rango</mat-checkbox>
+</div>
+
+@if (errorRango(); as mensaje) {
+  <p class="form-error error-rango" role="alert">{{ mensaje }}</p>
+}

@@ -1,0 +1,147 @@
+:host {
+  display: block;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Always-visible scrollbar for narrow screens (a styled WebKit/Chromium scrollbar does not auto-hide). */
+.table-wrapper::-webkit-scrollbar {
+  height: 12px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: var(--mat-sys-surface-container-high);
+  border-radius: 6px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--mat-sys-outline);
+  border-radius: 6px;
+}
+
+/* Firefox: the standard properties, only where ::-webkit-scrollbar is not supported
+   (in Chromium they would override the styling above). */
+@supports not selector(::-webkit-scrollbar) {
+  .table-wrapper {
+    scrollbar-width: auto;
+    scrollbar-color: var(--mat-sys-outline) var(--mat-sys-surface-container-high);
+  }
+}
+
+/* Fixed layout with percentage widths: it fits the card on desktop and only scrolls
+   horizontally below min-width (phones). Twelve columns need more room than the 860px of the old table. */
+table {
+  --tabla-padding-borde: 16px;
+  --tabla-padding-celda: 8px;
+  --tabla-padding-vertical: 12px;
+  table-layout: fixed;
+  width: 100%;
+  min-width: 1100px;
+}
+
+/* Headers and cells: one line, vertically centered, same vertical padding */
+th.mat-mdc-header-cell,
+td.mat-mdc-cell {
+  box-sizing: border-box; /* the widths below include the cell padding */
+  padding-top: var(--tabla-padding-vertical);
+  padding-bottom: var(--tabla-padding-vertical);
+  padding-left: var(--tabla-padding-celda);
+  padding-right: var(--tabla-padding-celda);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden; /* long text is cut with an ellipsis, never drawn over its neighbour */
+  text-overflow: ellipsis;
+}
+
+.mat-column-fecha { width: 6%; }
+.mat-column-ticket { width: 6%; }
+.mat-column-proveedor { width: 16%; }
+.mat-column-litros { width: 8%; }
+.mat-column-agua { width: 6.5%; }
+.mat-column-litrosReales { width: 8%; }
+.mat-column-grasa { width: 6.5%; }
+.mat-column-acidez { width: 7.5%; }
+.mat-column-temperatura { width: 7.5%; }
+.mat-column-silo { width: 4.5%; }
+.mat-column-estado { width: 11%; }
+/* .mat-column-observaciones: no width, it takes the rest */
+
+/* Same padding on both outer edges, header included */
+th.mat-mdc-header-cell:first-of-type,
+td.mat-mdc-cell:first-of-type {
+  padding-left: var(--tabla-padding-borde);
+}
+
+th.mat-mdc-header-cell:last-of-type,
+td.mat-mdc-cell:last-of-type {
+  padding-right: var(--tabla-padding-borde);
+}
+
+/* Quantities (liters, percentages, measurements) right-aligned; identifiers (ticket, silo) centered.
+   Each header is aligned like its column. */
+th.cantidad,
+td.cantidad {
+  text-align: right;
+}
+
+th.identificador,
+td.identificador {
+  text-align: center;
+  padding-left: 4px; /* narrow columns: more room for the content */
+  padding-right: 4px;
+}
+
+/* Day group header: one cell across the whole row */
+tr.fila-dia td.mat-mdc-cell {
+  background: var(--mat-sys-surface-container);
+  text-align: left;
+}
+
+.subtotal {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.alerta {
+  color: var(--mat-sys-error);
+  font-weight: 600;
+}
+
+.proveedor-link {
+  color: var(--mat-sys-primary);
+  text-decoration: none;
+}
+
+.proveedor-link:hover,
+.proveedor-link:focus-visible {
+  text-decoration: underline;
+}
+
+.estado {
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 2px 10px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.estado-alerta {
+  border-color: var(--mat-sys-error);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font-weight: 500;
+}
+
+.cargar-mas {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}

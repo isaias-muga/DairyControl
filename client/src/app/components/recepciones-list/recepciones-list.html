@@ -1,0 +1,106 @@
+<div class="table-wrapper">
+  <table mat-table [dataSource]="filas()" class="full-width">
+    <ng-container matColumnDef="dia">
+      <td mat-cell *matCellDef="let f" [attr.colspan]="columnas().length">
+        @let d = dia(f);
+        <strong>{{ d.etiqueta }}</strong>
+        @if (d.subtotal; as s) {
+          <span class="subtotal">
+            · {{ s.cantidadRecepciones }} {{ s.cantidadRecepciones === 1 ? 'recepción' : 'recepciones' }}
+            · {{ s.litros | number: '1.0-0' }} L
+            ·
+            @if (s.cantidadFueraDeRango > 0) {
+              <span class="alerta">{{ s.cantidadFueraDeRango }} fuera de rango</span>
+            } @else {
+              sin desvíos
+            }
+          </span>
+        }
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="fecha">
+      <th mat-header-cell *matHeaderCellDef matTooltip="Hora de la recepción" aria-label="Fecha y hora">Fecha</th>
+      <td mat-cell *matCellDef="let f">{{ hora(r(f)) }}</td>
+    </ng-container>
+    <ng-container matColumnDef="ticket">
+      <th mat-header-cell class="identificador" *matHeaderCellDef aria-label="Ticket">Ticket</th>
+      <td mat-cell class="identificador" *matCellDef="let f">{{ r(f).ticket ?? '—' }}</td>
+    </ng-container>
+    <ng-container matColumnDef="proveedor">
+      <th mat-header-cell *matHeaderCellDef aria-label="Proveedor">Proveedor</th>
+      <td mat-cell *matCellDef="let f">
+        <a
+          class="proveedor-link"
+          [routerLink]="['/proveedores', r(f).proveedorId]"
+          [matTooltip]="r(f).proveedorNombre"
+          >{{ r(f).proveedorNombre }}</a
+        >
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="litros">
+      <th mat-header-cell class="cantidad" *matHeaderCellDef aria-label="Litros">Litros</th>
+      <td mat-cell class="cantidad" *matCellDef="let f">{{ r(f).litros | number: '1.0-3' }}</td>
+    </ng-container>
+    <ng-container matColumnDef="agua">
+      <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="% agua" aria-label="% agua">Agua %</th>
+      <td mat-cell class="cantidad" *matCellDef="let f" [class.alerta]="fuera(r(f), 'Agua')">
+        {{ r(f).aguaPorcentaje !== null ? (r(f).aguaPorcentaje | number: '1.0-2') : '—' }}
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="litrosReales">
+      <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="Litros reales" aria-label="Litros reales">L. reales</th>
+      <td mat-cell class="cantidad" *matCellDef="let f">{{ r(f).litrosReales | number: '1.0-3' }}</td>
+    </ng-container>
+    <ng-container matColumnDef="grasa">
+      <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="Grasa (%)" aria-label="Grasa (%)">Grasa %</th>
+      <td mat-cell class="cantidad" *matCellDef="let f">
+        {{ r(f).grasa !== null ? (r(f).grasa | number: '1.2-2') : '—' }}
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="acidez">
+      <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="Acidez (°D)" aria-label="Acidez (°D)">Acidez °D</th>
+      <td mat-cell class="cantidad" *matCellDef="let f" [class.alerta]="fuera(r(f), 'Acidez')">
+        {{ r(f).acidez | number: '1.0-2' }}
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="temperatura">
+      <th mat-header-cell class="cantidad" *matHeaderCellDef matTooltip="Temperatura (°C)" aria-label="Temperatura (°C)">Temp. °C</th>
+      <td mat-cell class="cantidad" *matCellDef="let f" [class.alerta]="fuera(r(f), 'Temperatura')">
+        {{ r(f).temperatura | number: '1.1-2' }}
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="silo">
+      <th mat-header-cell class="identificador" *matHeaderCellDef aria-label="Silo">Silo</th>
+      <td mat-cell class="identificador" *matCellDef="let f">{{ r(f).silo ?? '—' }}</td>
+    </ng-container>
+    <ng-container matColumnDef="estado">
+      <th mat-header-cell *matHeaderCellDef aria-label="Estado">Estado</th>
+      <td mat-cell *matCellDef="let f">
+        @if (r(f).motivos.length === 0) {
+          <span class="estado estado-ok">OK</span>
+        } @else {
+          <span class="estado estado-alerta" [matTooltip]="detalleEstado(r(f))">{{ etiquetaEstado(r(f)) }}</span>
+        }
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="observaciones">
+      <th mat-header-cell *matHeaderCellDef matTooltip="Observaciones" aria-label="Observaciones">Obs.</th>
+      <td mat-cell *matCellDef="let f">
+        <app-observacion-celda [texto]="r(f).observaciones" (abrir)="verObservaciones(r(f))" />
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="columnas()"></tr>
+    <tr mat-row class="fila-dia" *matRowDef="let row; columns: ['dia']; when: esDia"></tr>
+    <tr mat-row *matRowDef="let row; columns: columnas(); when: esRecepcion"></tr>
+  </table>
+</div>
+
+@if (hayMas()) {
+  <div class="cargar-mas">
+    <button mat-stroked-button type="button" [disabled]="cargandoMas()" (click)="cargarMas.emit()">
+      {{ cargandoMas() ? 'Cargando...' : 'Cargar más' }}
+    </button>
+  </div>
+}

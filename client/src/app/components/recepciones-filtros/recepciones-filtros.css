@@ -1,0 +1,40 @@
+:host {
+  display: block;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.campo-periodo {
+  width: 260px;
+}
+
+.campo-proveedor {
+  width: 240px;
+}
+
+.campo-ticket {
+  width: 160px;
+}
+
+.error-rango {
+  margin: 8px 0 0;
+}
+
+@media (max-width: 599px) {
+  .filtros > * {
+    width: 100%;
+  }
+
+  mat-button-toggle-group {
+    display: flex;
+  }
+
+  mat-button-toggle {
+    flex: 1;
+  }
+}

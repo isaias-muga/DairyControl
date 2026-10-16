@@ -60,6 +60,34 @@ export function rangoDePeriodo(preset: PeriodoPreset, hoy: string): RangoFechas 
   }
 }
 
+export type AtajoPeriodo = 'hoy' | 'ayer' | 'semana' | 'mes';
+
+export const ATAJOS_PERIODO: AtajoPeriodo[] = ['hoy', 'ayer', 'semana', 'mes'];
+
+/** The range of a quick filter (Hoy / Ayer / Semana / Mes) of the recepciones list, relative to `hoy`. */
+export function rangoDeAtajo(atajo: AtajoPeriodo, hoy: string): RangoFechas {
+  switch (atajo) {
+    case 'hoy':
+      return rangoDePeriodo('dia', hoy);
+    case 'ayer': {
+      const ayer = sumarDias(hoy, -1);
+      return { desde: ayer, hasta: ayer };
+    }
+    case 'semana':
+      return rangoDePeriodo('semana', hoy);
+    case 'mes':
+      return rangoDePeriodo('mes', hoy);
+  }
+}
+
+/** The quick filter whose range is exactly `rango` (so the toggle can show it), or null for a custom range. */
+export function atajoDeRango(rango: RangoFechas, hoy: string): AtajoPeriodo | null {
+  return ATAJOS_PERIODO.find((a) => {
+    const r = rangoDeAtajo(a, hoy);
+    return r.desde === rango.desde && r.hasta === rango.hasta;
+  }) ?? null;
+}
+
 /** YYYY-MM-DD to dd/MM/yyyy. */
 export function formatearFecha(iso: string): string {
   const [anio, mes, dia] = iso.split('-');
