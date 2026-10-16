@@ -22,11 +22,11 @@ namespace DairyControl.Domain.ValueObjects
         public const decimal AguaMinPorcentaje = 0m;
         public const decimal AguaMaxPorcentaje = 100m;
 
-        public decimal? Grasa { get; init; }
-        public decimal Acidez { get; init; }
-        public decimal Temperatura { get; init; }
-        public decimal Litros { get; init; }
-        public decimal? AguaPorcentaje { get; init; }
+        public decimal? Grasa { get; }
+        public decimal Acidez { get; }
+        public decimal Temperatura { get; }
+        public decimal Litros { get; }
+        public decimal? AguaPorcentaje { get; }
 
         private ParametrosCalidad(decimal? grasa, decimal acidez, decimal temperatura, decimal litros, decimal? aguaPorcentaje)
         {
