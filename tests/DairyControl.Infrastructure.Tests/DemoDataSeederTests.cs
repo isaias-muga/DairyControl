@@ -63,8 +63,8 @@ namespace DairyControl.Infrastructure.Tests
         {
             using var context = NuevoContexto();
             var viejo = Proveedor.Crear("Tambo Viejo");
-            viejo.RegistrarRecepcion(ParametrosCalidad.Create(null, 17m, 5m, 1000m), new DateTime(2026, 1, 1, 6, 0, 0), new DateTime(2026, 1, 2), 1, null, 1);
             context.Proveedores.Add(viejo);
+            context.Recepciones.Add(RecepcionLeche.Registrar(viejo.Id, ParametrosCalidad.Create(null, 17m, 5m, 1000m), new DateTime(2026, 1, 1, 6, 0, 0), new DateTime(2026, 1, 2), 1, null, 1));
             context.ConfiguracionesCalidad.Single().CambiarLimites(LimitesCalidad.Create(25m, 30m, 5m), DateTime.UtcNow);
             context.SaveChanges();
         }
@@ -73,7 +73,7 @@ namespace DairyControl.Infrastructure.Tests
         {
             using var context = NuevoContexto();
             var proveedores = context.Proveedores.AsNoTracking().ToList();
-            var recepciones = proveedores.SelectMany(p => p.Recepciones).ToList();
+            var recepciones = context.Recepciones.AsNoTracking().ToList();
             return (
                 proveedores.Count,
                 recepciones.Count,
@@ -116,8 +116,7 @@ namespace DairyControl.Infrastructure.Tests
 
             // Assert
             using var lectura = NuevoContexto();
-            var fechas = lectura.Proveedores.AsNoTracking().ToList()
-                .SelectMany(p => p.Recepciones)
+            var fechas = lectura.Recepciones.AsNoTracking().ToList()
                 .Select(r => r.FechaHora)
                 .ToList();
             Assert.Equal(ayer, fechas.Max().Date);
@@ -136,8 +135,7 @@ namespace DairyControl.Infrastructure.Tests
 
             // Assert
             using var lectura = NuevoContexto();
-            var agua = lectura.Proveedores.AsNoTracking().ToList()
-                .SelectMany(p => p.Recepciones)
+            var agua = lectura.Recepciones.AsNoTracking().ToList()
                 .Select(r => r.Parametros.AguaPorcentaje)
                 .ToList();
             Assert.All(agua, a => Assert.NotNull(a));
@@ -287,7 +285,7 @@ namespace DairyControl.Infrastructure.Tests
             // Assert
             using var lectura = NuevoContexto();
             Assert.Equal(ahora.UtcDateTime, lectura.ConfiguracionesCalidad.Single().ActualizadoEn);
-            var ultima = lectura.Proveedores.SelectMany(p => p.Recepciones).Max(r => r.FechaHora);
+            var ultima = lectura.Recepciones.AsNoTracking().ToList().Max(r => r.FechaHora);
             Assert.True(ultima <= new DateTime(2026, 10, 15, 12, 0, 0), $"The demo data reaches {ultima}, past the fixed plant time");
         }
     }

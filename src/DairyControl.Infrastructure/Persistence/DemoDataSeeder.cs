@@ -1,4 +1,4 @@
-﻿using DairyControl.Application;
+using DairyControl.Application;
 using DairyControl.Domain.Entities;
 using DairyControl.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -59,7 +59,7 @@ namespace DairyControl.Infrastructure.Persistence
                 _context.ChangeTracker.Clear(); // a retried attempt starts from a clean state
                 await using var transaccion = await _context.Database.BeginTransactionAsync();
 
-                recepcionesBorradas = await _context.Proveedores.SelectMany(p => p.Recepciones).ExecuteDeleteAsync();
+                recepcionesBorradas = await _context.Recepciones.ExecuteDeleteAsync();
                 proveedoresBorrados = await _context.Proveedores.ExecuteDeleteAsync();
 
                 var configuracion = await _context.ConfiguracionesCalidad.FirstOrDefaultAsync();
@@ -96,7 +96,9 @@ namespace DairyControl.Infrastructure.Persistence
             var ahoraPlanta = HoraPlanta.Ahora(_reloj);
             var desde = ahoraPlanta.Date.AddDays(-DemoDataGenerator.DiasHistorial);
 
-            _context.Proveedores.AddRange(new DemoDataGenerator().Generar(desde));
+            var datos = new DemoDataGenerator().Generar(desde);
+            _context.Proveedores.AddRange(datos.Proveedores);
+            _context.Recepciones.AddRange(datos.Recepciones);
             return Task.CompletedTask;
         }
     }

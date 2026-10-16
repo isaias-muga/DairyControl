@@ -1,7 +1,5 @@
 using DairyControl.Domain.Entities;
-using DairyControl.Domain.Exceptions;
 using DairyControl.Domain.Interfaces;
-using DairyControl.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 namespace DairyControl.Infrastructure.Persistence.Repositories
 {
@@ -21,38 +19,15 @@ namespace DairyControl.Infrastructure.Persistence.Repositories
             return await _context.Proveedores.AsNoTracking().ToListAsync();
         }
 
-        public async Task<TicketRegistrado?> GetTicketRegistradoAsync(int ticket)
+        public async Task<bool> ExistsAsync(Guid id)
         {
-            return await _context.Proveedores
-                .AsNoTracking()
-                .SelectMany(p => p.Recepciones
-                    .Where(r => r.Ticket == ticket)
-                    .Select(r => new TicketRegistrado(p.Nombre, r.FechaHora)))
-                .FirstOrDefaultAsync();
+            return await _context.Proveedores.AsNoTracking().AnyAsync(p => p.Id == id);
         }
 
         public async Task AddAsync(Proveedor proveedor)
         {
             _context.Proveedores.Add(proveedor);
-            await SaveAsync();
-        }
-
-        public async Task UpdateAsync(Proveedor proveedor)
-        {
-            await SaveAsync();
-        }
-
-        // The unique index on Ticket is the last line of defense when two operators save the same ticket at once.
-        private async Task SaveAsync()
-        {
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException ex) when (UnicidadSql.EsViolacion(ex))
-            {
-                throw new TicketDuplicadoException("El ticket ya está registrado.");
-            }
+            await _context.SaveChangesAsync();
         }
     }
 }

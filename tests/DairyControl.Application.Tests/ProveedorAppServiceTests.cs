@@ -1,4 +1,5 @@
 ﻿using DairyControl.Application.DTOs;
+using DairyControl.Application.Queries;
 using DairyControl.Application.Services;
 using DairyControl.Domain.Entities;
 using DairyControl.Domain.Exceptions;
@@ -11,253 +12,176 @@ namespace DairyControl.Application.Tests
     public class ProveedorAppServiceTests
     {
         // Plant time is UTC-3: 15:00 UTC is 12:00 in Buenos Aires.
-        private static readonly DateTime AhoraPlanta = new(2026, 10, 15, 12, 0, 0);
         private static readonly DateTime FechaValida = new(2026, 10, 15, 11, 0, 0);
         private static readonly TimeProvider Reloj = new RelojFijo(new DateTimeOffset(2026, 10, 15, 15, 0, 0, TimeSpan.Zero));
+
+        private sealed class Escenario
+        {
+            public Mock<IProveedorRepository> Proveedores { get; } = new();
+            public Mock<IRecepcionRepository> Recepciones { get; } = new();
+            public Mock<IProveedorQueries> Queries { get; } = new();
+            public Guid ProveedorId { get; } = Guid.NewGuid();
+
+            public Escenario(bool proveedorExiste = true, int cantidad = 1)
+            {
+                Proveedores.Setup(r => r.ExistsAsync(ProveedorId)).ReturnsAsync(proveedorExiste);
+                Queries.Setup(q => q.GetByIdAsync(ProveedorId))
+                    .ReturnsAsync(new ProveedorDto { Id = ProveedorId, Nombre = "Proveedor Test", CantidadRecepciones = cantidad });
+            }
+
+            public ProveedorAppService Servicio() => new(Proveedores.Object, Recepciones.Object, Queries.Object, Reloj);
+
+            public void VerificarNadaGuardado() =>
+                Recepciones.Verify(r => r.AddAsync(It.IsAny<RecepcionLeche>()), Times.Never);
+        }
+
+        private static RegistrarRecepcionDto Dto(int? ticket = null) => new()
+        {
+            Acidez = 17m,
+            Temperatura = 5m,
+            Litros = 1000m,
+            FechaHora = FechaValida,
+            Ticket = ticket
+        };
 
         [Fact]
         public async Task GetByIdAsync_ProveedorDoesNotExist_ReturnsNull()
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Proveedor?)null);
-
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var escenario = new Escenario();
+            escenario.Queries.Setup(q => q.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((ProveedorDto?)null);
 
             // Act
-            var result = await service.GetByIdAsync(Guid.NewGuid());
+            var result = await escenario.Servicio().GetByIdAsync(Guid.NewGuid());
+
             // Assert
             Assert.Null(result);
         }
 
         [Fact]
-
-        public async Task GetByIdAsync_ProveedorExists_ReturnsDetalleDto()
+        public async Task GetByIdAsync_ProveedorExists_ReturnsNombreAndCount()
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(Proveedor.Crear("Proveedor Test"));
-
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var escenario = new Escenario(cantidad: 7);
 
             // Act
-            var result = await service.GetByIdAsync(Guid.NewGuid());
+            var result = await escenario.Servicio().GetByIdAsync(escenario.ProveedorId);
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal("Proveedor Test", result.Nombre);
-            Assert.Empty(result.Recepciones);
-
+            Assert.Equal(7, result.CantidadRecepciones);
+            escenario.Queries.Verify(q => q.GetByIdAsync(escenario.ProveedorId), Times.Once);
         }
 
         [Fact]
-        public async Task GetAllAsync_NoProveedores_ReturnsEmptyList()
+        public async Task GetAllAsync_ReturnsTheCountsOfTheQuery()
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor>());
-
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            // Act
-            var result = await service.GetAllAsync();
-
-            // Assert
-            Assert.Empty(result);
-            mockRepo.Verify(r => r.GetAllAsync(), Times.Once);
-            mockRepo.Verify(r => r.AddAsync(It.IsAny<Proveedor>()), Times.Never);
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task GetAllAsync_ProveedoresExist_ReturnsMappedDtos()
-        {
-            // Arrange
-            var proveedorA = Proveedor.Crear("Proveedor A");
-            var proveedorB = Proveedor.Crear("Proveedor B");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor> { proveedorA, proveedorB });
-
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var escenario = new Escenario();
+            escenario.Queries.Setup(q => q.GetAllAsync()).ReturnsAsync(new List<ProveedorDto>
+            {
+                new() { Id = Guid.NewGuid(), Nombre = "A", CantidadRecepciones = 3 },
+                new() { Id = Guid.NewGuid(), Nombre = "B", CantidadRecepciones = 0 }
+            });
 
             // Act
-            var result = await service.GetAllAsync();
+            var result = await escenario.Servicio().GetAllAsync();
 
             // Assert
             Assert.Equal(2, result.Count);
-            Assert.Equal(proveedorA.Id, result[0].Id);
-            Assert.Equal("Proveedor A", result[0].Nombre);
-            Assert.Equal(proveedorB.Id, result[1].Id);
-            Assert.Equal("Proveedor B", result[1].Nombre);
-            mockRepo.Verify(r => r.GetAllAsync(), Times.Once);
-        }
-
-        [Fact]
-        public async Task GetAllAsync_ProveedorWithRecepciones_MapsCantidadRecepciones()
-        {
-            // Arrange
-            var proveedor = Proveedor.Crear("Proveedor Test");
-            proveedor.RegistrarRecepcion(ParametrosCalidad.Create(3.5m, 17m, 4.0m, 1000m), FechaValida, AhoraPlanta, 1, null);
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Proveedor> { proveedor });
-
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            // Act
-            var result = await service.GetAllAsync();
-
-            // Assert
-            var dto = Assert.Single(result);
-            Assert.Equal(1, dto.CantidadRecepciones);
-        }
-        [Fact]
-        public async Task GetByIdAsync_ProveedorWithRecepciones_ReturnsRecepcionesNewestFirst()
-        {
-            // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            var proveedor = Proveedor.Crear("Tambo La Esperanza");
-            var parametros = ParametrosCalidad.Create(3.5m, 17m, 4.0m, 1500m);
-            var anterior = new DateTime(2026, 10, 1, 6, 0, 0);
-            var reciente = new DateTime(2026, 10, 2, 6, 0, 0);
-            proveedor.RegistrarRecepcion(parametros, anterior, AhoraPlanta, 1, null);
-            proveedor.RegistrarRecepcion(parametros, reciente, AhoraPlanta, 2, "Sin novedades");
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-
-            // Act
-            var result = await service.GetByIdAsync(proveedor.Id);
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(2, result.Recepciones.Count);
-            Assert.Equal(reciente, result.Recepciones[0].FechaHora);
-            Assert.Equal(1500m, result.Recepciones[0].Litros);
-            Assert.Equal("Sin novedades", result.Recepciones[0].Observaciones);
+            Assert.Equal(3, result[0].CantidadRecepciones);
+            escenario.Queries.Verify(q => q.GetAllAsync(), Times.Once);
+            escenario.Proveedores.Verify(r => r.GetAllAsync(), Times.Never);
         }
 
         [Fact]
         public async Task CrearAsync_ValidDto_CallsAddAsyncAndReturnsDto()
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            var dto = new CrearProveedorDto { Nombre = "Proveedor Test" };
+            var escenario = new Escenario();
 
             // Act
-            var result = await service.CrearAsync(dto);
+            var result = await escenario.Servicio().CrearAsync(new CrearProveedorDto { Nombre = "Proveedor Test" });
 
             // Assert
             Assert.Equal("Proveedor Test", result.Nombre);
-            mockRepo.Verify(r => r.AddAsync(It.IsAny<Proveedor>()), Times.Once);
-
+            Assert.Equal(0, result.CantidadRecepciones);
+            escenario.Proveedores.Verify(r => r.AddAsync(It.IsAny<Proveedor>()), Times.Once);
         }
 
         [Fact]
-        public async Task RegistrarRecepcionAsync_ProveedorDoesNotExist_ReturnsNullAndNeverCallsUpdate()
+        public async Task RegistrarRecepcionAsync_ProveedorDoesNotExist_ReturnsNullAndNeverTouchesRecepciones()
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Proveedor?)null);
-
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var escenario = new Escenario(proveedorExiste: false);
 
             // Act
-            var result = await service.RegistrarRecepcionAsync(Guid.NewGuid(), new RegistrarRecepcionDto());
+            var result = await escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, new RegistrarRecepcionDto());
 
             // Assert
             Assert.Null(result);
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+            escenario.VerificarNadaGuardado();
+            escenario.Recepciones.Verify(r => r.GetTicketRegistradoAsync(It.IsAny<int>()), Times.Never);
         }
 
         [Fact]
-        public async Task RegistrarRecepcionAsync_ProveedorExists_CallsUpdateAsyncAndReturnsUpdatedDto()
+        public async Task RegistrarRecepcionAsync_ProveedorExists_AddsOneRecepcionAndReturnsTheCount()
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(Proveedor.Crear("Proveedor Test"));
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            var RegistrarRecepcionDto = new RegistrarRecepcionDto
-            {
-                Grasa = 3.5m,
-                Acidez = 17m,
-                Temperatura = 4.0m,
-                Litros = 1000m,
-                FechaHora = FechaValida,
-                Silo = 1,
-                Observaciones = "Observación de prueba"
-            };
+            var escenario = new Escenario(cantidad: 5);
+            RecepcionLeche? agregada = null;
+            escenario.Recepciones.Setup(r => r.AddAsync(It.IsAny<RecepcionLeche>()))
+                .Callback<RecepcionLeche>(r => agregada = r).Returns(Task.CompletedTask);
+            var dto = Dto();
+            dto.Grasa = 3.5m;
+            dto.Silo = 1;
+            dto.Observaciones = "Observación de prueba";
 
             // Act
-            var result = await service.RegistrarRecepcionAsync(Guid.NewGuid(), RegistrarRecepcionDto);
+            var result = await escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(1, result.CantidadRecepciones);
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Once);
+            Assert.Equal(5, result.CantidadRecepciones);
+            Assert.NotNull(agregada);
+            Assert.Equal(escenario.ProveedorId, agregada.ProveedorId);
+            Assert.Equal("Observación de prueba", agregada.Observaciones);
+            escenario.Recepciones.Verify(r => r.AddAsync(It.IsAny<RecepcionLeche>()), Times.Once);
+            escenario.Proveedores.Verify(r => r.GetByIdAsync(It.IsAny<Guid>()), Times.Never); // the proveedor is never loaded
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_WithAguaAndTicket_StoresThemInTheRecepcion()
         {
             // Arrange
-            var proveedor = Proveedor.Crear("Proveedor Test");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            var dto = new RegistrarRecepcionDto
-            {
-                Acidez = 17m,
-                Temperatura = 5m,
-                Litros = 1000m,
-                FechaHora = FechaValida,
-                AguaPorcentaje = 2m,
-                Ticket = 4501
-            };
+            var escenario = new Escenario();
+            RecepcionLeche? agregada = null;
+            escenario.Recepciones.Setup(r => r.AddAsync(It.IsAny<RecepcionLeche>()))
+                .Callback<RecepcionLeche>(r => agregada = r).Returns(Task.CompletedTask);
+            var dto = Dto(4501);
+            dto.AguaPorcentaje = 2m;
 
             // Act
-            await service.RegistrarRecepcionAsync(proveedor.Id, dto);
+            await escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto);
 
             // Assert
-            var recepcion = Assert.Single(proveedor.Recepciones);
-            Assert.Equal(2m, recepcion.Parametros.AguaPorcentaje);
-            Assert.Equal(4501, recepcion.Ticket);
-            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
+            Assert.NotNull(agregada);
+            Assert.Equal(2m, agregada.Parametros.AguaPorcentaje);
+            Assert.Equal(4501, agregada.Ticket);
         }
 
         [Fact]
-        public async Task RegistrarRecepcionAsync_InvalidAgua_ThrowsAndNeverCallsUpdate()
+        public async Task RegistrarRecepcionAsync_InvalidAgua_ThrowsAndNeverSaves()
         {
             // Arrange
-            var proveedor = Proveedor.Crear("Proveedor Test");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, AguaPorcentaje = 120m };
+            var escenario = new Escenario();
+            var dto = Dto();
+            dto.AguaPorcentaje = 120m;
 
             // Act & Assert
-            await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task RegistrarRecepcionAsync_InvalidTicket_ThrowsAndNeverCallsUpdate()
-        {
-            // Arrange
-            var proveedor = Proveedor.Crear("Proveedor Test");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, Ticket = 0 };
-
-            // Act & Assert
-            await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+            await Assert.ThrowsAsync<ReglaDeNegocioException>(() => escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto));
+            escenario.VerificarNadaGuardado();
         }
 
         [Theory]
@@ -266,15 +190,13 @@ namespace DairyControl.Application.Tests
         [InlineData("temperatura")]
         [InlineData("litros")]
         [InlineData("silo")]
-        public async Task RegistrarRecepcionAsync_ImpossibleValue_ThrowsAndNeverCallsUpdate(string campo)
+        public async Task RegistrarRecepcionAsync_ImpossibleValue_ThrowsAndNeverSaves(string campo)
         {
             // Arrange
-            var proveedor = Proveedor.Crear("Proveedor Test");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-
-            var dto = new RegistrarRecepcionDto { Grasa = 3.5m, Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = FechaValida, Silo = 2 };
+            var escenario = new Escenario();
+            var dto = Dto();
+            dto.Grasa = 3.5m;
+            dto.Silo = 2;
             switch (campo)
             {
                 case "grasa": dto.Grasa = 12m; break;
@@ -285,173 +207,121 @@ namespace DairyControl.Application.Tests
             }
 
             // Act & Assert
-            await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
-            Assert.Empty(proveedor.Recepciones);
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+            await Assert.ThrowsAsync<ReglaDeNegocioException>(() => escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto));
+            escenario.VerificarNadaGuardado();
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_ValueOutsideQualityLimitsButPlausible_IsAccepted()
         {
             // Arrange: acidity 28 °D and 35 °C are far above the default quality limits but plausible
-            var proveedor = Proveedor.Crear("Proveedor Test");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-            var dto = new RegistrarRecepcionDto { Acidez = 28m, Temperatura = 35m, Litros = 1000m, FechaHora = FechaValida };
+            var escenario = new Escenario();
+            var dto = Dto();
+            dto.Acidez = 28m;
+            dto.Temperatura = 35m;
 
             // Act
-            var result = await service.RegistrarRecepcionAsync(proveedor.Id, dto);
+            var result = await escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto);
 
             // Assert
             Assert.NotNull(result);
-            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
+            escenario.Recepciones.Verify(r => r.AddAsync(It.IsAny<RecepcionLeche>()), Times.Once);
         }
 
-        private static RegistrarRecepcionDto DtoConTicket(int? ticket) => new()
-        {
-            Acidez = 17m,
-            Temperatura = 5m,
-            Litros = 1000m,
-            FechaHora = FechaValida,
-            Ticket = ticket
-        };
-
         [Fact]
-        public async Task RegistrarRecepcionAsync_TicketUsedByAnotherProveedor_ThrowsTicketDuplicadoAndNeverCallsUpdate()
+        public async Task RegistrarRecepcionAsync_TicketUsedByAnotherProveedor_ThrowsTicketDuplicadoAndNeverSaves()
         {
             // Arrange
-            var proveedor = Proveedor.Crear("Tambo Nuevo");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            mockRepo.Setup(r => r.GetTicketRegistradoAsync(6311))
+            var escenario = new Escenario();
+            escenario.Recepciones.Setup(r => r.GetTicketRegistradoAsync(6311))
                 .ReturnsAsync(new TicketRegistrado("Tambo Las Acacias", new DateTime(2026, 10, 11, 11, 6, 0)));
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
 
             // Act
             var ex = await Assert.ThrowsAsync<TicketDuplicadoException>(() =>
-                service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(6311)));
+                escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, Dto(6311)));
 
             // Assert
             Assert.Equal("El ticket 6311 ya está registrado (Tambo Las Acacias, 11/10/2026)", ex.Message);
-            Assert.Empty(proveedor.Recepciones);
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+            escenario.VerificarNadaGuardado();
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_UnusedTicket_ChecksOnceAndRegisters()
         {
             // Arrange
-            var proveedor = Proveedor.Crear("Tambo Nuevo");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            mockRepo.Setup(r => r.GetTicketRegistradoAsync(7000)).ReturnsAsync((TicketRegistrado?)null);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var escenario = new Escenario();
+            escenario.Recepciones.Setup(r => r.GetTicketRegistradoAsync(7000)).ReturnsAsync((TicketRegistrado?)null);
 
             // Act
-            var result = await service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(7000));
+            var result = await escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, Dto(7000));
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(7000, Assert.Single(proveedor.Recepciones).Ticket);
-            mockRepo.Verify(r => r.GetTicketRegistradoAsync(7000), Times.Once);
-            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
+            escenario.Recepciones.Verify(r => r.GetTicketRegistradoAsync(7000), Times.Once);
+            escenario.Recepciones.Verify(r => r.AddAsync(It.Is<RecepcionLeche>(x => x.Ticket == 7000)), Times.Once);
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_NoTicket_NeverChecksTicket()
         {
             // Arrange
-            var proveedor = Proveedor.Crear("Tambo Nuevo");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var escenario = new Escenario();
 
             // Act
-            await service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(null));
+            await escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, Dto());
 
             // Assert
-            mockRepo.Verify(r => r.GetTicketRegistradoAsync(It.IsAny<int>()), Times.Never);
-            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
+            escenario.Recepciones.Verify(r => r.GetTicketRegistradoAsync(It.IsAny<int>()), Times.Never);
+            escenario.Recepciones.Verify(r => r.AddAsync(It.IsAny<RecepcionLeche>()), Times.Once);
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_NonPositiveTicket_ThrowsReglaDeNegocioExceptionWithoutChecking()
         {
             // Arrange
-            var proveedor = Proveedor.Crear("Tambo Nuevo");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            var escenario = new Escenario();
 
             // Act & Assert
             await Assert.ThrowsAsync<ReglaDeNegocioException>(() =>
-                service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(0)));
-            mockRepo.Verify(r => r.GetTicketRegistradoAsync(It.IsAny<int>()), Times.Never);
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+                escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, Dto(0)));
+            escenario.Recepciones.Verify(r => r.GetTicketRegistradoAsync(It.IsAny<int>()), Times.Never);
+            escenario.VerificarNadaGuardado();
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_UniqueViolationOnSave_ThrowsTicketDuplicadoWithDetails()
         {
             // Arrange: the pre-check passes, then another operator wins the race
-            var proveedor = Proveedor.Crear("Tambo Nuevo");
-            var mockRepo = new Mock<IProveedorRepository>();
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            mockRepo.SetupSequence(r => r.GetTicketRegistradoAsync(6311))
+            var escenario = new Escenario();
+            escenario.Recepciones.SetupSequence(r => r.GetTicketRegistradoAsync(6311))
                 .ReturnsAsync((TicketRegistrado?)null)
                 .ReturnsAsync(new TicketRegistrado("Tambo Las Acacias", new DateTime(2026, 10, 15, 11, 50, 0)));
-            mockRepo.Setup(r => r.UpdateAsync(proveedor)).ThrowsAsync(new TicketDuplicadoException("El ticket ya está registrado."));
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
+            escenario.Recepciones.Setup(r => r.AddAsync(It.IsAny<RecepcionLeche>()))
+                .ThrowsAsync(new TicketDuplicadoException("El ticket ya está registrado."));
 
             // Act
             var ex = await Assert.ThrowsAsync<TicketDuplicadoException>(() =>
-                service.RegistrarRecepcionAsync(proveedor.Id, DtoConTicket(6311)));
+                escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, Dto(6311)));
 
             // Assert
             Assert.Equal("El ticket 6311 ya está registrado (Tambo Las Acacias, 15/10/2026)", ex.Message);
-            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
-        }
-
-        [Fact]
-        public async Task GetByIdAsync_RecepcionWithAguaAndTicket_MapsThemAndLitrosAPagar()
-        {
-            // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-            var proveedor = Proveedor.Crear("Tambo La Esperanza");
-            var parametros = ParametrosCalidad.Create(null, 17m, 4m, 1000m, 10m);
-            proveedor.RegistrarRecepcion(parametros, new DateTime(2026, 10, 1, 6, 0, 0), AhoraPlanta, 1, null, 77);
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-
-            // Act
-            var result = await service.GetByIdAsync(proveedor.Id);
-
-            // Assert
-            Assert.NotNull(result);
-            var recepcion = Assert.Single(result.Recepciones);
-            Assert.Equal(10m, recepcion.AguaPorcentaje);
-            Assert.Equal(77, recepcion.Ticket);
-            Assert.Equal(900m, recepcion.LitrosAPagar);
+            escenario.Recepciones.Verify(r => r.AddAsync(It.IsAny<RecepcionLeche>()), Times.Once);
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_FechaHoraMissing_ThrowsReglaDeNegocioExceptionAndDoesNotSave()
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            var proveedor = Proveedor.Crear("Tambo Test");
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-            var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = null };
+            var escenario = new Escenario();
+            var dto = Dto();
+            dto.FechaHora = null;
 
             // Act
-            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto));
 
             // Assert
             Assert.Equal("fechaHora", ex.Campo);
-            Assert.Empty(proveedor.Recepciones);
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+            escenario.VerificarNadaGuardado();
         }
 
         [Theory]
@@ -460,57 +330,47 @@ namespace DairyControl.Application.Tests
         public async Task RegistrarRecepcionAsync_FechaHoraOutOfRange_ThrowsReglaDeNegocioExceptionAndDoesNotSave(string fechaHora)
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            var proveedor = Proveedor.Crear("Tambo Test");
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-            var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = DateTime.Parse(fechaHora) };
+            var escenario = new Escenario();
+            var dto = Dto();
+            dto.FechaHora = DateTime.Parse(fechaHora);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.RegistrarRecepcionAsync(proveedor.Id, dto));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto));
 
             // Assert
             Assert.Equal("fechaHora", ex.Campo);
-            mockRepo.Verify(r => r.UpdateAsync(It.IsAny<Proveedor>()), Times.Never);
+            escenario.VerificarNadaGuardado();
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_FechaHoraWithinTheNextHourOfPlantTime_Registers()
         {
             // Arrange
-            var mockRepo = new Mock<IProveedorRepository>();
-            var proveedor = Proveedor.Crear("Tambo Test");
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-            var dto = new RegistrarRecepcionDto { Acidez = 17m, Temperatura = 5m, Litros = 1000m, FechaHora = new DateTime(2026, 10, 15, 13, 0, 0) };
+            var escenario = new Escenario();
+            var dto = Dto();
+            dto.FechaHora = new DateTime(2026, 10, 15, 13, 0, 0);
 
             // Act
-            var result = await service.RegistrarRecepcionAsync(proveedor.Id, dto);
+            var result = await escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto);
 
             // Assert
             Assert.NotNull(result);
-            mockRepo.Verify(r => r.UpdateAsync(proveedor), Times.Once);
+            escenario.Recepciones.Verify(r => r.AddAsync(It.IsAny<RecepcionLeche>()), Times.Once);
         }
 
         [Fact]
         public async Task RegistrarRecepcionAsync_FechaHoraInUtc_IsConvertedToPlantTimeBeforeValidating()
         {
             // Arrange: 15:30 UTC is 12:30 plant time, within the next hour of the 12:00 plant now
-            var mockRepo = new Mock<IProveedorRepository>();
-            var proveedor = Proveedor.Crear("Tambo Test");
-            mockRepo.Setup(r => r.GetByIdAsync(proveedor.Id)).ReturnsAsync(proveedor);
-            var service = new ProveedorAppService(mockRepo.Object, Reloj);
-            var dto = new RegistrarRecepcionDto
-            {
-                Acidez = 17m, Temperatura = 5m, Litros = 1000m,
-                FechaHora = new DateTime(2026, 10, 15, 15, 30, 0, DateTimeKind.Utc)
-            };
+            var escenario = new Escenario();
+            var dto = Dto();
+            dto.FechaHora = new DateTime(2026, 10, 15, 15, 30, 0, DateTimeKind.Utc);
 
             // Act
-            await service.RegistrarRecepcionAsync(proveedor.Id, dto);
+            await escenario.Servicio().RegistrarRecepcionAsync(escenario.ProveedorId, dto);
 
             // Assert
-            Assert.Equal(new DateTime(2026, 10, 15, 12, 30, 0), proveedor.Recepciones.Single().FechaHora);
+            escenario.Recepciones.Verify(r => r.AddAsync(It.Is<RecepcionLeche>(x => x.FechaHora == new DateTime(2026, 10, 15, 12, 30, 0))), Times.Once);
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using DairyControl.Domain.Entities;
-using DairyControl.Domain.ValueObjects;
+using DairyControl.Domain.Entities;
 namespace DairyControl.Domain.Interfaces
 {
     public interface IProveedorRepository
@@ -8,10 +7,8 @@ namespace DairyControl.Domain.Interfaces
 
         Task<IReadOnlyList<Proveedor>> GetAllAsync();
 
+        Task<bool> ExistsAsync(Guid id);
+
         Task AddAsync(Proveedor proveedor);
-
-        Task UpdateAsync(Proveedor proveedor);
-
-        Task<TicketRegistrado?> GetTicketRegistradoAsync(int ticket);
     }
 }

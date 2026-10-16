@@ -1,4 +1,5 @@
 using DairyControl.Domain.Exceptions;
+using DairyControl.Domain.Rules;
 using System.Linq.Expressions;
 
 namespace DairyControl.Domain.ValueObjects
@@ -90,21 +91,6 @@ namespace DairyControl.Domain.ValueObjects
         {
             var regla = FueraDeRango<(decimal Acidez, decimal Temperatura, decimal Agua)>(x => x.Acidez, x => x.Temperatura, x => x.Agua).Compile();
             return regla((acidez, temperatura, agua));
-        }
-
-        private sealed class ReemplazarParametro : ExpressionVisitor
-        {
-            private readonly ParameterExpression _origen;
-            private readonly ParameterExpression _destino;
-
-            public ReemplazarParametro(ParameterExpression origen, ParameterExpression destino)
-            {
-                _origen = origen;
-                _destino = destino;
-            }
-
-            protected override Expression VisitParameter(ParameterExpression node)
-                => node == _origen ? _destino : base.VisitParameter(node);
         }
     }
 }

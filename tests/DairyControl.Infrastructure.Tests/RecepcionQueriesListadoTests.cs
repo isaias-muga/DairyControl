@@ -54,9 +54,8 @@ namespace DairyControl.Infrastructure.Tests
             string? observaciones = null)
         {
             using var context = NuevoContexto();
-            var proveedor = context.Proveedores.Include(p => p.Recepciones).Single(p => p.Id == proveedorId);
-            proveedor.RegistrarRecepcion(
-                ParametrosCalidad.Create(null, acidez, temperatura, litros, agua), fechaHora, Ahora, 1, observaciones, ticket);
+            context.Recepciones.Add(RecepcionLeche.Registrar(
+                proveedorId, ParametrosCalidad.Create(null, acidez, temperatura, litros, agua), fechaHora, Ahora, 1, observaciones, ticket));
             context.SaveChanges();
         }
 
@@ -229,7 +228,7 @@ namespace DairyControl.Infrastructure.Tests
             Registrar(a.Id, new DateTime(2026, 10, 15, 7, 0, 0), 1, litros: 1905m, agua: 1.5m);
             Registrar(a.Id, new DateTime(2026, 10, 15, 8, 0, 0), 2, litros: 1214.333m);
             using var context = NuevoContexto();
-            var esperado = context.Proveedores.Include(p => p.Recepciones).Single().Recepciones.Sum(r => r.LitrosAPagar);
+            var esperado = context.Recepciones.AsNoTracking().ToList().Sum(r => r.LitrosAPagar);
 
             // Act
             var listado = await new RecepcionQueries(context).GetListadoAsync(Filtro("2026-10-15", "2026-10-15"));

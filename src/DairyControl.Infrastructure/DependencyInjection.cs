@@ -22,6 +22,8 @@ public static class DependencyInjection
                     errorNumbersToAdd: null)));
 
         services.AddScoped<IProveedorRepository, ProveedorRepository>();
+        services.AddScoped<IRecepcionRepository, RecepcionRepository>();
+        services.AddScoped<IProveedorQueries, ProveedorQueries>();
         services.AddScoped<IConfiguracionCalidadRepository, ConfiguracionCalidadRepository>();
         services.AddScoped<IRecepcionQueries, RecepcionQueries>();
         return services;

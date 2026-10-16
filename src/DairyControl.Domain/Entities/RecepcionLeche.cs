@@ -1,4 +1,5 @@
-﻿using DairyControl.Domain.Exceptions;
+using DairyControl.Domain.Exceptions;
+using DairyControl.Domain.Rules;
 using DairyControl.Domain.ValueObjects;
 namespace DairyControl.Domain.Entities
 {
@@ -11,19 +12,25 @@ namespace DairyControl.Domain.Entities
         public const int AdelantoMaximoHoras = 1;
         public ParametrosCalidad Parametros { get; private set; } = null!;
         public Guid Id { get; private set; }
+        public Guid ProveedorId { get; private set; } // another aggregate is referenced by id
         public DateTime FechaHora { get; private set; }
         public int? Silo { get; private set; }
         public string? Observaciones { get; private set; }
         public int? Ticket { get; private set; }
 
-        // Liters to pay: the added water is deducted (water null = 0).
-        public decimal LitrosAPagar =>
-            Math.Round(Parametros.Litros * (1 - (Parametros.AguaPorcentaje ?? 0) / 100m), ParametrosCalidad.ScaleLitros);
+        // Liters to pay: the added water is deducted (water null = 0). The formula is defined once (LitrosAPagarRegla);
+        // the queries use the same expression in SQL.
+        public decimal LitrosAPagar => Math.Round(LitrosAPagarRegla.De(this), ParametrosCalidad.ScaleLitros);
 
         private RecepcionLeche() { }
 
-        public static RecepcionLeche Registrar(ParametrosCalidad parametros, DateTime fechaHora, DateTime ahoraPlanta, int? silo, string? observaciones, int? ticket = null)
+        public static RecepcionLeche Registrar(Guid proveedorId, ParametrosCalidad parametros, DateTime fechaHora, DateTime ahoraPlanta, int? silo, string? observaciones, int? ticket = null)
         {
+            ArgumentNullException.ThrowIfNull(parametros);
+            if (proveedorId == Guid.Empty)
+            {
+                throw new ReglaDeNegocioException("El proveedor es obligatorio.", nameof(proveedorId));
+            }
             if (fechaHora == default)
             {
                 throw new ReglaDeNegocioException("La fecha y hora es obligatoria.", nameof(fechaHora));
@@ -56,6 +63,7 @@ namespace DairyControl.Domain.Entities
             return new RecepcionLeche
             {
                 Id = Guid.NewGuid(),
+                ProveedorId = proveedorId,
                 FechaHora = fechaHora,
                 Silo = silo,
                 Observaciones = observacionesTrim,

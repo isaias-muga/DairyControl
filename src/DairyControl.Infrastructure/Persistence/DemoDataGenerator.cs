@@ -29,11 +29,13 @@ namespace DairyControl.Infrastructure.Persistence
             new("Tambo Las Acacias", 300, 1300, 2, 11, false)
         ];
 
+        public record DatosDemo(IReadOnlyList<Proveedor> Proveedores, IReadOnlyList<RecepcionLeche> Recepciones);
+
         private record RecepcionPendiente(Proveedor Proveedor, ParametrosCalidad Parametros, DateTime FechaHora, int Silo, string? Observaciones);
 
         private readonly Random _random = new(Semilla);
 
-        public IReadOnlyList<Proveedor> Generar(DateTime desde)
+        public DatosDemo Generar(DateTime desde)
         {
             var proveedores = new List<Proveedor>();
             var recepciones = new List<RecepcionPendiente>();
@@ -59,12 +61,13 @@ namespace DairyControl.Infrastructure.Persistence
             // One ticket sequence for the whole plant, in delivery order (OrderBy is stable, so ties stay deterministic).
             var ticket = TicketInicial;
             var ahora = desde.AddDays(DiasHistorial); // after the last generated reception
+            var registradas = new List<RecepcionLeche>();
             foreach (var r in recepciones.OrderBy(r => r.FechaHora))
             {
-                r.Proveedor.RegistrarRecepcion(r.Parametros, r.FechaHora, ahora, r.Silo, r.Observaciones, ticket++);
+                registradas.Add(RecepcionLeche.Registrar(r.Proveedor.Id, r.Parametros, r.FechaHora, ahora, r.Silo, r.Observaciones, ticket++));
             }
 
-            return proveedores;
+            return new DatosDemo(proveedores, registradas);
         }
 
         private RecepcionPendiente GenerarRecepcion(Proveedor proveedor, PerfilTambo perfil, DateTime fechaHora)

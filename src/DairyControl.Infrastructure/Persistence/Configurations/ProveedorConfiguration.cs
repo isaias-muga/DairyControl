@@ -1,5 +1,4 @@
-﻿using DairyControl.Domain.Entities;
-using DairyControl.Domain.ValueObjects;
+using DairyControl.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace DairyControl.Infrastructure.Persistence.Configurations
@@ -12,27 +11,6 @@ namespace DairyControl.Infrastructure.Persistence.Configurations
             builder.Property(p => p.Nombre)
                 .IsRequired()
                 .HasMaxLength(Proveedor.NombreMaxLength);
-            builder.OwnsMany(p => p.Recepciones, r =>
-            {
-                r.WithOwner().HasForeignKey("ProveedorId");
-                r.ToTable("Recepciones");
-                r.HasKey("Id");
-                r.Property(x => x.Id).ValueGeneratedNever();
-                r.OwnsOne(x => x.Parametros, p =>
-                {
-                    p.Property(x => x.Grasa).HasPrecision(ParametrosCalidad.Precision, ParametrosCalidad.Scale);
-                    p.Property(x => x.Acidez).IsRequired().HasPrecision(ParametrosCalidad.Precision, ParametrosCalidad.Scale);
-                    p.Property(x => x.Temperatura).IsRequired().HasPrecision(ParametrosCalidad.Precision, ParametrosCalidad.Scale);
-                    p.Property(x => x.AguaPorcentaje).HasPrecision(ParametrosCalidad.Precision, ParametrosCalidad.Scale);
-                    p.Property(x => x.Litros).IsRequired().HasPrecision(ParametrosCalidad.PrecisionLitros, ParametrosCalidad.ScaleLitros);
-                });
-                r.Property(x => x.FechaHora).IsRequired();
-                r.Property(x => x.Silo);
-                r.Property(x => x.Ticket);
-                // The ticket is unique across the whole plant; old recepciones have none.
-                r.HasIndex(x => x.Ticket).IsUnique().HasFilter("[Ticket] IS NOT NULL");
-                r.Property(x => x.Observaciones).HasMaxLength(RecepcionLeche.ObservacionesMaxLength);
-            });
         }
     }
 }
