@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { FECHA_MIN, RESUMEN_MAX_DIAS, TICKET_MAX, TICKET_MIN } from '../../models/limits';
 import { Proveedor } from '../../models/proveedor';
+import { errorNumero, parsearNumeroEs } from '../../utils/numero-es';
 import { FiltroRecepciones } from '../../models/recepcion-listado';
 import {
   AtajoPeriodo,
@@ -54,6 +55,7 @@ export class RecepcionesFiltros {
   protected readonly TODOS = 'todos'; // value of the "Todos" option (mat-select ignores null as a selection)
   protected readonly ticketMax = TICKET_MAX;
   protected readonly errorAlEscribir = errorAlEscribir;
+  protected readonly errorNumero = errorNumero;
 
   protected atajo = computed<AtajoPeriodo | null>(() =>
     atajoDeRango({ desde: this.filtros().desde, hasta: this.filtros().hasta }, hoyEnPlanta()),
@@ -65,14 +67,17 @@ export class RecepcionesFiltros {
     fin: this.fb.control<Date | null>(null),
   });
   protected proveedorControl = this.fb.control<string>(this.TODOS);
-  // Whitespace around (or only whitespace) counts as an empty search, not as an invalid ticket.
+  // A string control (debounce, URL echo), not appNumero: it shares the parser, so "1.234" is ticket 1234.
+  // Typed the es-AR way ("1.234" is ticket 1234; decimals are rejected). Whitespace around (or only whitespace)
+  // counts as an empty search, not as an invalid ticket.
   protected ticketControl = this.fb.control<string>('', [
     (c) => {
-      const valor = String(c.value ?? '').trim();
-      if (valor === '') {
-        return null;
+      const resultado = parsearNumeroEs(String(c.value ?? ''), { entero: true });
+      if (!resultado.ok) {
+        return { numero: resultado.mensaje };
       }
-      return /^\d+$/.test(valor) && Number(valor) >= TICKET_MIN && Number(valor) <= TICKET_MAX ? null : { ticket: true };
+      const ticket = resultado.valor;
+      return ticket === null || (ticket >= TICKET_MIN && ticket <= TICKET_MAX) ? null : { ticket: true };
     },
   ]);
   protected soloControl = this.fb.control(false);
@@ -144,10 +149,8 @@ export class RecepcionesFiltros {
   private emitir(cambios: Partial<FiltroRecepciones>): void {
     // The ticket may still be waiting for its debounce: every change carries what is typed, so a change of
     // another filter right after typing the ticket does not lose it (the URL would not have it yet).
-    const escrito = this.ticketControl.value.trim();
-    const ticket = this.ticketControl.valid
-      ? escrito === '' ? null : Number(escrito)
-      : this.filtros().ticket;
+    const escrito = parsearNumeroEs(this.ticketControl.value, { entero: true });
+    const ticket = this.ticketControl.valid && escrito.ok ? escrito.valor : this.filtros().ticket;
     this.ticketEmitido = cambios.ticket !== undefined ? cambios.ticket : ticket;
     this.cambio.emit({ ...this.filtros(), ticket, ...cambios, pagina: undefined });
   }

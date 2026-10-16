@@ -46,6 +46,8 @@ import {
 } from '../../models/limits';
 import { getApiErrorField, getApiErrorMessage } from '../../utils/api-error';
 import { litrosReales, motivosFueraDeRango } from '../../utils/calidad';
+import { errorNumero } from '../../utils/numero-es';
+import { NumeroInput } from '../numero-input/numero-input';
 import { ahoraEnPlanta } from '../../utils/periodos';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
@@ -79,6 +81,7 @@ function fechaHoraEnRango(control: AbstractControl): ValidationErrors | null {
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    NumeroInput,
   ],
   templateUrl: './recepcion-form.html',
   styleUrl: './recepcion-form.css',
@@ -127,6 +130,8 @@ export class RecepcionForm {
     ],
     observaciones: ['', Validators.maxLength(OBSERVACIONES_MAX_LENGTH)],
   });
+
+  protected readonly errorNumero = errorNumero;
 
   saving = signal(false);
   saveError = signal<string | null>(null);
@@ -193,10 +198,12 @@ export class RecepcionForm {
   tieneDatos(): boolean {
     const v = this.form.getRawValue();
     const lectura = [v.litros, v.grasa, v.acidez, v.temperatura, v.silo, v.aguaPorcentaje].some((x) => x != null);
+    // Text the parser rejected leaves null in the control, but it is still something the operator typed
+    const textoInvalido = Object.values(this.form.controls).some((c) => c.errors?.['numero']);
     const tocado = ['proveedorId', 'ticket', 'fechaHora'].some(
       (c) => this.form.controls[c as 'proveedorId' | 'ticket' | 'fechaHora'].dirty,
     );
-    return lectura || (v.observaciones ?? '').trim() !== '' || tocado;
+    return lectura || textoInvalido || (v.observaciones ?? '').trim() !== '' || tocado;
   }
 
   invalid(control: keyof typeof this.form.controls): boolean {
@@ -284,7 +291,7 @@ export class RecepcionForm {
     this.recepcionesService.getSiguienteTicket().subscribe({
       next: ({ ticket }) => {
         // Never overwrite what the operator already typed while the suggestion was loading
-        if (ticket != null && this.form.controls.ticket.value == null) {
+        if (ticket != null && this.form.controls.ticket.value == null && !this.form.controls.ticket.errors?.['numero']) {
           this.form.controls.ticket.setValue(ticket);
           this.ticketSugerido.set(true);
         }

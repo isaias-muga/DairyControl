@@ -19,6 +19,8 @@ import {
 import { LimitesCalidad } from '../../models/configuracion';
 import { ConfiguracionService } from '../../services/configuracion';
 import { getApiErrorMessage } from '../../utils/api-error';
+import { errorNumero } from '../../utils/numero-es';
+import { NumeroInput } from '../../components/numero-input/numero-input';
 
 @Component({
   selector: 'app-configuracion',
@@ -30,6 +32,7 @@ import { getApiErrorMessage } from '../../utils/api-error';
     MatFormFieldModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    NumeroInput,
   ],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.css',
@@ -39,6 +42,7 @@ export class Configuracion {
   private fb = inject(FormBuilder);
   private snackBar = inject(MatSnackBar);
 
+  protected readonly errorNumero = errorNumero;
   readonly acidezMin = ACIDEZ_LIMITE_MIN;
   readonly acidezMax = ACIDEZ_LIMITE_MAX;
   readonly temperaturaMin = TEMPERATURA_LIMITE_MIN;

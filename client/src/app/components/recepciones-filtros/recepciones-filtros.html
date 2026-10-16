@@ -47,7 +47,7 @@
     <mat-label>Ticket</mat-label>
     <input matInput type="text" inputmode="numeric" placeholder="Buscar n.º" [formControl]="ticketControl" [errorStateMatcher]="errorAlEscribir" />
     @if (ticketControl.invalid) {
-      <mat-error>Número entero entre 1 y 2.147.483.647.</mat-error>
+      <mat-error>{{ errorNumero(ticketControl, 'Número entero entre 1 y 2.147.483.647.') }}</mat-error>
     }
   </mat-form-field>
 

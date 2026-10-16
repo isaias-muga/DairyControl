@@ -62,3 +62,18 @@ for (const demoraMs of [0, 500]) {
     }
   });
 }
+
+test('calidad: a limit typed as "19,5" is saved as 19.5 and shown as 19,5 after reloading', async ({ page, request }) => {
+  await page.getByRole('link', { name: 'Configuración' }).click();
+  await expect(page.getByLabel(/^Acidez máxima/)).toBeVisible();
+
+  try {
+    await rellenar(page.getByLabel(/^Acidez máxima/), '19,5');
+    await guardarLimites(page);
+
+    await page.reload();
+    await expect(page.getByLabel(/^Acidez máxima/)).toHaveValue('19,5');
+  } finally {
+    await restaurarAcidezMaxima(request);
+  }
+});

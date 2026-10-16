@@ -83,7 +83,7 @@ test('recepción: a form with data asks before discarding, a backdrop click neve
   await expect(pregunta.getByText('¿Descartar la recepción sin guardar?')).toBeVisible();
   await pregunta.getByRole('button', { name: 'Seguir editando' }).click();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
-  await expect(abierto.getByLabel(/^Litros/)).toHaveValue('1000');
+  await expect(abierto.getByLabel(/^Litros/)).toHaveValue('1.000');
 
   // Cancelar asks too; "Descartar" closes
   await abierto.getByRole('button', { name: 'Cancelar' }).click();
@@ -91,4 +91,35 @@ test('recepción: a form with data asks before discarding, a backdrop click neve
   await page.getByRole('alertdialog').getByRole('button', { name: 'Descartar' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('1 de 1 recepciones')).toHaveCount(0);
+});
+
+test('recepción: litros typed as "1.234,5" are saved as 1234.5 and shown as 1.234,5', async ({ page }) => {
+  await crearProveedor(page);
+
+  await registrarRecepcion(page, { litros: '1.234,5', acidez: '17,5', temperatura: 5 });
+
+  // Never 1,2345: the list shows the saved liters with es-AR separators
+  await expect(page.getByRole('cell', { name: '1.234,5', exact: true }).first()).toBeVisible();
+  await expect(page.getByText('1 de 1 recepciones')).toBeVisible();
+});
+
+test('recepción: an ambiguous number shows its message and is not saved', async ({ page }) => {
+  await crearProveedor(page);
+
+  await registrarRecepcion(page, { litros: '1.2.3', acidez: 16, temperatura: 5 });
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Usá punto para los miles y coma para los decimales (1.234,5).')).toBeVisible();
+  await descartarRegistro(page);
+  await expect(page.getByText('No hay recepciones con estos filtros.')).toBeVisible();
+});
+
+test('recepción: a decimal ticket is rejected with the integer message', async ({ page }) => {
+  await crearProveedor(page);
+  const dialog = await abrirRegistro(page);
+
+  await rellenar(dialog.getByLabel(/^Ticket/), '12,5');
+  await dialog.getByLabel(/^Litros/).click(); // leave the field so its error shows
+
+  await expect(dialog.getByText('Ingresá un número entero, sin decimales.')).toBeVisible();
 });

@@ -27,9 +27,8 @@
           <mat-label>Ticket (opcional)</mat-label>
           <input
             matInput
+            appNumero="entero"
             id="ticket"
-            type="number"
-            step="1"
             formControlName="ticket"
             (input)="ticketSugerido.set(false)"
           />
@@ -37,7 +36,7 @@
             <mat-hint>Siguiente número sugerido; se puede cambiar.</mat-hint>
           }
           @if (invalid('ticket')) {
-            <mat-error>{{ form.controls.ticket.errors?.['duplicado'] ?? 'Número entero entre 1 y 2.147.483.647.' }}</mat-error>
+            <mat-error>{{ form.controls.ticket.errors?.['duplicado'] ?? errorNumero(form.controls.ticket, 'Número entero entre 1 y 2.147.483.647.') }}</mat-error>
           }
         </mat-form-field>
 
@@ -55,53 +54,52 @@
             matInput
             #litrosInput
             [attr.cdkFocusInitial]="proveedorId() ? '' : null"
+            appNumero
             id="litros"
-            type="number"
-            step="0.001"
             formControlName="litros"
           />
           @if (invalid('litros')) {
-            <mat-error>Entre 0,001 y 30.000.</mat-error>
+            <mat-error>{{ errorNumero(form.controls.litros, 'Entre 0,001 y 30.000.') }}</mat-error>
           }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>% agua (opcional)</mat-label>
-          <input matInput id="aguaPorcentaje" type="number" step="0.01" formControlName="aguaPorcentaje" />
+          <input matInput appNumero id="aguaPorcentaje" formControlName="aguaPorcentaje" />
           @if (invalid('aguaPorcentaje')) {
-            <mat-error>Entre 0 y 100.</mat-error>
+            <mat-error>{{ errorNumero(form.controls.aguaPorcentaje, 'Entre 0 y 100.') }}</mat-error>
           }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Acidez</mat-label>
-          <input matInput id="acidez" type="number" step="0.01" formControlName="acidez" />
+          <input matInput appNumero id="acidez" formControlName="acidez" />
           @if (invalid('acidez')) {
-            <mat-error>Requerido, entre 10 y 30 °D.</mat-error>
+            <mat-error>{{ errorNumero(form.controls.acidez, 'Requerido, entre 10 y 30 °D.') }}</mat-error>
           }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Temperatura (°C)</mat-label>
-          <input matInput id="temperatura" type="number" step="0.1" formControlName="temperatura" />
+          <input matInput appNumero id="temperatura" formControlName="temperatura" />
           @if (invalid('temperatura')) {
-            <mat-error>Requerido, entre 0 y 45 °C.</mat-error>
+            <mat-error>{{ errorNumero(form.controls.temperatura, 'Requerido, entre 0 y 45 °C.') }}</mat-error>
           }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Grasa (%) (opcional)</mat-label>
-          <input matInput id="grasa" type="number" step="0.01" formControlName="grasa" />
+          <input matInput appNumero id="grasa" formControlName="grasa" />
           @if (invalid('grasa')) {
-            <mat-error>Entre 1 y 10 %.</mat-error>
+            <mat-error>{{ errorNumero(form.controls.grasa, 'Entre 1 y 10 %.') }}</mat-error>
           }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Silo (opcional)</mat-label>
-          <input matInput id="silo" type="number" step="1" formControlName="silo" />
+          <input matInput appNumero="entero" id="silo" formControlName="silo" />
           @if (invalid('silo')) {
-            <mat-error>Número entero entre 1 y 20.</mat-error>
+            <mat-error>{{ errorNumero(form.controls.silo, 'Número entero entre 1 y 20.') }}</mat-error>
           }
         </mat-form-field>
       </div>
