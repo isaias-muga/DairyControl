@@ -41,7 +41,8 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                     AcidezMinima = g.Min(x => x.Acidez),
                     AcidezMaxima = g.Max(x => x.Acidez),
                     GrasaPromedio = g.Average(x => x.Grasa),
-                    CantidadConGrasa = g.Count(x => x.Grasa != null)
+                    // Count(predicate) on a nullable owned column does not translate; a conditional sum does
+                    CantidadConGrasa = g.Sum(x => x.Grasa != null ? 1 : 0)
                 })
                 .FirstOrDefaultAsync() ?? new TotalesResumenDto();
 
@@ -277,17 +278,20 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                 recepciones = recepciones.Where(r => r.ProveedorId == id);
             }
 
+            // Join first, then project: reading the owned Parametros inside the join's result selector does not translate
+            // once the rows are grouped.
             return recepciones
-                .Join(_context.Proveedores, r => r.ProveedorId, p => p.Id, (r, p) => new FilaRecepcion
+                .Join(_context.Proveedores, r => r.ProveedorId, p => p.Id, (r, p) => new RecepcionConProveedor { Recepcion = r, Proveedor = p })
+                .Select(x => new FilaRecepcion
                 {
-                    ProveedorId = p.Id,
-                    Nombre = p.Nombre,
-                    FechaHora = r.FechaHora,
-                    Litros = r.Parametros.Litros,
-                    Acidez = r.Parametros.Acidez,
-                    Temperatura = r.Parametros.Temperatura,
-                    Grasa = r.Parametros.Grasa,
-                    Agua = r.Parametros.AguaPorcentaje ?? 0
+                    ProveedorId = x.Proveedor.Id,
+                    Nombre = x.Proveedor.Nombre,
+                    FechaHora = x.Recepcion.FechaHora,
+                    Litros = x.Recepcion.Parametros.Litros,
+                    Acidez = x.Recepcion.Parametros.Acidez,
+                    Temperatura = x.Recepcion.Parametros.Temperatura,
+                    Grasa = x.Recepcion.Parametros.Grasa,
+                    Agua = x.Recepcion.Parametros.AguaPorcentaje ?? 0
                 });
         }
 

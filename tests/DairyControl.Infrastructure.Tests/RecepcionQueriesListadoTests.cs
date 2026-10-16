@@ -436,5 +436,31 @@ namespace DairyControl.Infrastructure.Tests
             // Assert
             Assert.Equal(4981, ticket);
         }
+
+        [Fact]
+        public async Task GetResumenAsync_TwoProveedores_TranslatesAndAggregatesPerProveedor()
+        {
+            // Arrange
+            var a = AgregarProveedor("Tambo A");
+            var b = AgregarProveedor("Tambo B");
+            Registrar(a.Id, new DateTime(2026, 10, 15, 7, 0, 0), 1, litros: 1000m);
+            Registrar(a.Id, new DateTime(2026, 10, 15, 9, 0, 0), 2, litros: 500m, acidez: 25m);
+            Registrar(b.Id, new DateTime(2026, 10, 14, 9, 0, 0), 3, litros: 2000m);
+            Registrar(b.Id, new DateTime(2026, 10, 13, 9, 0, 0), 4, litros: 300m); // previous period (12 to 13)
+            using var context = NuevoContexto();
+            var queries = new RecepcionQueries(context);
+
+            // Act
+            var resumen = await queries.GetResumenAsync(new DateOnly(2026, 10, 14), new DateOnly(2026, 10, 15), null);
+
+            // Assert
+            Assert.Equal(3, resumen.Totales.CantidadRecepciones);
+            Assert.Equal(3500m, resumen.Totales.Litros);
+            Assert.Equal(1, resumen.Totales.CantidadFueraDeRango);
+            Assert.Equal(["Tambo B", "Tambo A"], resumen.Proveedores.Select(p => p.Nombre));
+            Assert.Equal(2, resumen.Dias.Count);
+            Assert.Equal(300m, resumen.Totales.LitrosPeriodoAnterior);
+            Assert.Equal(0, resumen.Totales.CantidadConGrasa);
+        }
     }
 }
