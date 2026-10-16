@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Queries;
 using DairyControl.Application.Services;
@@ -49,14 +50,14 @@ namespace DairyControl.Application.Tests
         }
 
         [Fact]
-        public async Task GetResumenAsync_EmptyProveedorId_ThrowsArgumentException()
+        public async Task GetResumenAsync_EmptyProveedorId_ThrowsReglaDeNegocioException()
         {
             // Arrange
             var mockQueries = new Mock<IRecepcionQueries>();
             var service = new ResumenRecepcionesAppService(mockQueries.Object);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(
                 () => service.GetResumenAsync(new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 14), Guid.Empty));
 
             // Assert
@@ -66,14 +67,14 @@ namespace DairyControl.Application.Tests
         }
 
         [Fact]
-        public async Task GetResumenAsync_DesdeBefore2000_ThrowsArgumentException()
+        public async Task GetResumenAsync_DesdeBefore2000_ThrowsReglaDeNegocioException()
         {
             // Arrange
             var mockQueries = new Mock<IRecepcionQueries>();
             var service = new ResumenRecepcionesAppService(mockQueries.Object);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(
                 () => service.GetResumenAsync(new DateOnly(1999, 12, 31), new DateOnly(2000, 1, 5)));
 
             // Assert
@@ -101,14 +102,14 @@ namespace DairyControl.Application.Tests
         }
 
         [Fact]
-        public async Task GetResumenAsync_DesdeAfterHasta_ThrowsArgumentException()
+        public async Task GetResumenAsync_DesdeAfterHasta_ThrowsReglaDeNegocioException()
         {
             // Arrange
             var mockQueries = new Mock<IRecepcionQueries>();
             var service = new ResumenRecepcionesAppService(mockQueries.Object);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(
                 () => service.GetResumenAsync(new DateOnly(2026, 10, 14), new DateOnly(2026, 10, 1)));
 
             // Assert
@@ -118,7 +119,7 @@ namespace DairyControl.Application.Tests
         }
 
         [Fact]
-        public async Task GetResumenAsync_RangeOver366Days_ThrowsArgumentException()
+        public async Task GetResumenAsync_RangeOver366Days_ThrowsReglaDeNegocioException()
         {
             // Arrange
             var mockQueries = new Mock<IRecepcionQueries>();
@@ -126,7 +127,7 @@ namespace DairyControl.Application.Tests
             var desde = new DateOnly(2025, 1, 1);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(
                 () => service.GetResumenAsync(desde, desde.AddDays(366)));
 
             // Assert

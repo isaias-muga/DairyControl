@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using System.Linq.Expressions;
 
 namespace DairyControl.Domain.ValueObjects
@@ -14,9 +15,9 @@ namespace DairyControl.Domain.ValueObjects
         // The limits a plant starts with (and the demo reset restores): 19 °D, 20 °C, 0 % water.
         public static LimitesCalidad Predeterminados { get; } = Create(19m, 20m, 0m);
 
-        public decimal AcidezMaxima { get; init; }
-        public decimal TemperaturaMaxima { get; init; }
-        public decimal AguaMaxima { get; init; }
+        public decimal AcidezMaxima { get; }
+        public decimal TemperaturaMaxima { get; }
+        public decimal AguaMaxima { get; }
 
         private LimitesCalidad(decimal acidezMaxima, decimal temperaturaMaxima, decimal aguaMaxima)
         {
@@ -29,17 +30,17 @@ namespace DairyControl.Domain.ValueObjects
         {
             if (acidezMaxima < AcidezMinimaPermitida || acidezMaxima > AcidezMaximaPermitida)
             {
-                throw new ArgumentException($"La acidez máxima debe estar entre {AcidezMinimaPermitida} y {AcidezMaximaPermitida} °D.", nameof(acidezMaxima));
+                throw new ReglaDeNegocioException($"La acidez máxima debe estar entre {AcidezMinimaPermitida} y {AcidezMaximaPermitida} °D.", nameof(acidezMaxima));
             }
 
             if (temperaturaMaxima < TemperaturaMinimaPermitida || temperaturaMaxima > TemperaturaMaximaPermitida)
             {
-                throw new ArgumentException($"La temperatura máxima debe estar entre {TemperaturaMinimaPermitida} y {TemperaturaMaximaPermitida} °C.", nameof(temperaturaMaxima));
+                throw new ReglaDeNegocioException($"La temperatura máxima debe estar entre {TemperaturaMinimaPermitida} y {TemperaturaMaximaPermitida} °C.", nameof(temperaturaMaxima));
             }
 
             if (aguaMaxima < AguaMinimaPermitida || aguaMaxima > AguaMaximaPermitida)
             {
-                throw new ArgumentException($"El agua máxima debe estar entre {AguaMinimaPermitida} y {AguaMaximaPermitida} %.", nameof(aguaMaxima));
+                throw new ReglaDeNegocioException($"El agua máxima debe estar entre {AguaMinimaPermitida} y {AguaMaximaPermitida} %.", nameof(aguaMaxima));
             }
 
             return new LimitesCalidad(acidezMaxima, temperaturaMaxima, aguaMaxima);

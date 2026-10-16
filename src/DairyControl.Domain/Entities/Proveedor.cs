@@ -1,4 +1,5 @@
-﻿using DairyControl.Domain.ValueObjects;
+﻿using DairyControl.Domain.Exceptions;
+using DairyControl.Domain.ValueObjects;
 
 namespace DairyControl.Domain.Entities
 {
@@ -21,14 +22,14 @@ namespace DairyControl.Domain.Entities
         {
             if (string.IsNullOrWhiteSpace(nombre))
             {
-                throw new ArgumentException("El nombre del proveedor no puede estar vacío.", nameof(nombre));
+                throw new ReglaDeNegocioException("El nombre del proveedor no puede estar vacío.", nameof(nombre));
             }
 
             var nombreTrim = nombre.Trim();
 
             if (nombreTrim.Length > NombreMaxLength)
             {
-                throw new ArgumentException($"El nombre del proveedor no puede exceder {NombreMaxLength} caracteres.", nameof(nombre));
+                throw new ReglaDeNegocioException($"El nombre del proveedor no puede exceder {NombreMaxLength} caracteres.", nameof(nombre));
             }
             return new Proveedor()
             {

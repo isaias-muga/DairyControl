@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Queries;
 
@@ -21,17 +22,17 @@ namespace DairyControl.Application.Services
 
             if (filtro.Ticket < 1)
             {
-                throw new ArgumentException("El número de ticket debe ser mayor a cero.", nameof(filtro.Ticket));
+                throw new ReglaDeNegocioException("El número de ticket debe ser mayor a cero.", "ticket");
             }
 
             if (filtro.Pagina < 1)
             {
-                throw new ArgumentException("La página debe ser mayor a cero.", nameof(filtro.Pagina));
+                throw new ReglaDeNegocioException("La página debe ser mayor a cero.", "pagina");
             }
 
             if (filtro.Pagina > MaxPagina)
             {
-                throw new ArgumentException($"La página no puede superar {MaxPagina:N0}.", nameof(filtro.Pagina));
+                throw new ReglaDeNegocioException($"La página no puede superar {MaxPagina:N0}.", "pagina");
             }
 
             return _queries.GetListadoAsync(filtro);

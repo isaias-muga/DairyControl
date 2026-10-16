@@ -1,12 +1,9 @@
-using DairyControl.Api.Health;
+﻿using DairyControl.Api.Health;
 using DairyControl.Api.Middleware;
-using DairyControl.Application.Queries;
-using DairyControl.Application.Services;
+using DairyControl.Application;
 using DairyControl.Application.Settings;
-using DairyControl.Domain.Interfaces;
+using DairyControl.Infrastructure;
 using DairyControl.Infrastructure.Persistence;
-using DairyControl.Infrastructure.Persistence.Queries;
-using DairyControl.Infrastructure.Persistence.Repositories;
 using DairyControl.Api.Validation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -37,24 +34,9 @@ builder.Services.AddSwaggerGen(options =>
         [new OpenApiSecuritySchemeReference("Bearer", document)] = []
     });
 });
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("Default"),
-        sql => sql.EnableRetryOnFailure(
-            maxRetryCount: 10,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null)));
-
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("Default"));
 builder.Services.AddDairyControlHealthChecks();
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddScoped<IProveedorRepository, ProveedorRepository>();
-builder.Services.AddScoped<ProveedorAppService>();
-builder.Services.AddScoped<IRecepcionQueries, RecepcionQueries>();
-builder.Services.AddScoped<ResumenRecepcionesAppService>();
-builder.Services.AddScoped<ListadoRecepcionesAppService>();
-builder.Services.AddScoped<IConfiguracionCalidadRepository, ConfiguracionCalidadRepository>();
-builder.Services.AddScoped<ConfiguracionCalidadAppService>();
-builder.Services.AddScoped<AuthService>();
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<AdminUserSettings>(builder.Configuration.GetSection("AdminUser"));
@@ -99,6 +81,7 @@ if (resetDemoData || seedDemoData)
     using var scope = app.Services.CreateScope();
     var seeder = new DemoDataSeeder(
         scope.ServiceProvider.GetRequiredService<AppDbContext>(),
+        scope.ServiceProvider.GetRequiredService<TimeProvider>(),
         scope.ServiceProvider.GetRequiredService<ILogger<DemoDataSeeder>>());
     await seeder.InitializeAsync(resetDemoData, seedDemoData);
 }

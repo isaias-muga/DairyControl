@@ -115,14 +115,38 @@ export async function guardarLimites(page: Page): Promise<void> {
   await expect(page.getByText('Configuración guardada.').first()).toBeVisible();
 }
 
+/** Logs in through the API (no page needed) and returns the headers of an authenticated request. */
+async function cabecerasAutenticadas(request: APIRequestContext): Promise<{ Authorization: string }> {
+  const login = await request.post('/api/Auth/login', { data: { username: 'admin', password: adminPassword() } });
+  expect(login.status()).toBe(200);
+  return { Authorization: `Bearer ${(await login.json()).token}` };
+}
+
+/**
+ * Sets acidez máxima through the API, like another user saving the Configuración page. Sends the version it has just
+ * read, so the save is accepted and the stored version changes (a page that loaded before is now stale).
+ */
+export async function cambiarAcidezMaximaPorApi(request: APIRequestContext, acidezMaxima: number): Promise<void> {
+  const headers = await cabecerasAutenticadas(request);
+  const actuales = await (await request.get('/api/Configuracion/calidad', { headers })).json();
+  const guardado = await request.put('/api/Configuracion/calidad', {
+    headers,
+    data: {
+      acidezMaxima,
+      temperaturaMaxima: actuales.temperaturaMaxima,
+      aguaMaxima: actuales.aguaMaxima,
+      version: actuales.version,
+    },
+  });
+  expect(guardado.status()).toBe(200);
+}
+
 /**
  * Puts acidez máxima back to its default through the API (own login, no page needed), so it also works when the
  * test timed out or the page is gone, and checks the stored value. The other two limits are left as they are.
  */
 export async function restaurarAcidezMaxima(request: APIRequestContext): Promise<void> {
-  const login = await request.post('/api/Auth/login', { data: { username: 'admin', password: adminPassword() } });
-  expect(login.status()).toBe(200);
-  const headers = { Authorization: `Bearer ${(await login.json()).token}` };
+  const headers = await cabecerasAutenticadas(request);
 
   const actuales = await (await request.get('/api/Configuracion/calidad', { headers })).json();
   const guardado = await request.put('/api/Configuracion/calidad', {
@@ -131,6 +155,7 @@ export async function restaurarAcidezMaxima(request: APIRequestContext): Promise
       acidezMaxima: ACIDEZ_MAXIMA_PREDETERMINADA,
       temperaturaMaxima: actuales.temperaturaMaxima,
       aguaMaxima: actuales.aguaMaxima,
+      version: actuales.version,
     },
   });
   expect(guardado.status()).toBe(200);

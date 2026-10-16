@@ -9,9 +9,11 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - `src/DairyControl.Application`: services, DTOs, settings
 - `src/DairyControl.Infrastructure`: `AppDbContext`, EF Core configurations, migrations, repositories
 - `src/DairyControl.Api`: controllers, middleware, `Program.cs`
-- `tests/DairyControl.Domain.Tests`, `tests/DairyControl.Application.Tests`, `tests/DairyControl.Api.Tests` and `tests/DairyControl.Infrastructure.Tests`
+- `tests/DairyControl.Domain.Tests`, `tests/DairyControl.Application.Tests`, `tests/DairyControl.Api.Tests`, `tests/DairyControl.Infrastructure.Tests` and `tests/DairyControl.ArchitectureTests` (the rules of this file that a test can check; see "Architecture tests")
 - `client/`: Angular client (see "Client conventions")
 - `e2e/`: Playwright end-to-end tests (see "E2E tests")
+- `Directory.Build.props`: for every project, `Nullable` enabled, warnings as errors and the latest analysis level. The build must have zero warnings; fix the cause, and never suppress a warning without a justification written next to it.
+- `docs/`: deployment notes, the architecture review process (`docs/architecture-review.md`) and its records (`docs/reviews/`).
 - `global.json`: opts `dotnet test` into Microsoft.Testing.Platform. Required on the .NET 10 SDK; do not delete it or pin an SDK version in it.
 
 ## Dependency rules (never break these)
@@ -22,6 +24,8 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Api references Application and Infrastructure. It is the composition root.
 - EF Core types never appear in Domain or Application.
 - If a type is needed by both Api and Application, it belongs in Application.
+- Services are registered in `AddApplication()` (Application) and `AddInfrastructure(connectionString)` (Infrastructure), called from `Program.cs`; options, authentication, CORS and health checks stay in `Program.cs`.
+- These rules are enforced by `tests/DairyControl.ArchitectureTests`: a change that breaks one fails the build.
 
 ## Naming
 
@@ -32,8 +36,9 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 ## Domain conventions
 
 - Entities: properties use `private set`. Each entity has a private parameterless constructor (for EF Core) and a static factory method (`Crear`, `Registrar`) that validates input.
-- Value objects are `record`s with a private constructor and a static `Create` method that validates.
-- Validation failures throw `ArgumentException` with a clear message, using `nameof(parameter)` for the parameter name.
+- Value objects are `record`s with a private constructor and a static `Create` method that validates. Their properties are get-only (no `init`, no setter of any kind), so `with` cannot build an invalid instance.
+- Every exception the domain raises on purpose derives from `ExcepcionDeDominio` (in `Domain/Exceptions`). A validation failure throws `ReglaDeNegocioException(mensaje, campo)` with a clear Spanish message and `nameof(parameter)` as `campo` (the field the API reports). Do not throw `ArgumentException` for a business rule: Application validation (filters, versions) uses `ReglaDeNegocioException` too. `ArgumentNullException.ThrowIfNull` stays for null arguments: that is a bug, not a rule.
+- The other domain exceptions are `TicketDuplicadoException` (ticket already used) and `ConflictoDeConcurrenciaException` (stale edit of the quality limits).
 - Trim strings before validating their length.
 - `Proveedor` is the aggregate root. `RecepcionLeche` is only created and added through `Proveedor.RegistrarRecepcion`.
 - Collections are exposed as `IReadOnlyCollection<T>` backed by a private `List<T>`.
@@ -51,7 +56,8 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Return `null` when something is not found; the controller turns it into a 404.
 - Methods are `async` only when they await I/O.
 - Settings classes live in `Application/Settings` and are injected as `IOptions<T>`.
-- Quality limits are not configuration files: they are the single `ConfiguracionCalidad` row (aggregate root, own repository), seeded with 19 °D / 20 °C / 0 % water and editable at runtime through `GET/PUT /api/Configuracion/calidad` (`ConfiguracionCalidadAppService`). `RecepcionQueries` reads the current limits from the database on every request. The rule "out of range = acidity > max OR temperature > max OR water > max" lives only in the domain (`LimitesCalidad.FueraDeRango`, an expression so EF Core can translate it); never copy the thresholds or the rule elsewhere. Fat has no limit. Water null counts as 0.
+- Every "now" comes from the injected `TimeProvider` (`HoraPlanta.Ahora(reloj)` for plant time); never `DateTime.Now/UtcNow/Today` or `DateTimeOffset.Now/UtcNow` in `src`. Tests use a fixed clock (`RelojFijo`).
+- Quality limits are not configuration files: they are the single `ConfiguracionCalidad` row (aggregate root, own repository), seeded with 19 °D / 20 °C / 0 % water and editable at runtime through `GET/PUT /api/Configuracion/calidad` (`ConfiguracionCalidadAppService`). The GET returns a `version` (the row version, kept in a shadow property, never a field of the entity); the PUT must send it back: without it the API answers 400 (`field: "version"`), and if someone saved in between it answers 409 (`ConflictoDeConcurrenciaException`). `RecepcionQueries` reads the current limits from the database on every request. The rule "out of range = acidity > max OR temperature > max OR water > max" lives only in the domain (`LimitesCalidad.FueraDeRango`, an expression so EF Core can translate it); never copy the thresholds or the rule elsewhere. Fat has no limit. Water null counts as 0.
 
 ## Infrastructure conventions
 
@@ -59,24 +65,26 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Child entities are mapped with `OwnsMany`; value objects with `OwnsOne`.
 - Domain-generated IDs are configured with `ValueGeneratedNever()`.
 - One `IEntityTypeConfiguration<T>` class per aggregate, in `Persistence/Configurations`, declared `internal`.
-- Never edit a migration that has already been applied. Add a new migration instead.
+- Never edit a migration that has already been applied. Add a new migration instead (the old `Designer` files and the snapshot refer to `AppDbContext` through the project-level `<Using>` in the csproj; leave it).
+- `AppDbContext` is in `DairyControl.Infrastructure.Persistence`. Concurrency tokens are shadow properties configured in the entity configuration (`IsRowVersion`), not fields of the domain entity.
 - `AppDbContext` uses `EnableRetryOnFailure` (Azure SQL serverless pauses when idle). Explicit transactions must run inside `Database.CreateExecutionStrategy().ExecuteAsync(...)`; a plain `BeginTransaction` throws with a retrying strategy.
 
 ## API conventions
 
 - Controllers are thin: call one service method and translate the result to an HTTP response. No business logic.
 - Every controller has `[ApiController]` and `[Route("api/[controller]")]`.
-- `ProveedoresController` has `[Authorize]` at class level: every endpoint requires a JWT, including reads. Only `AuthController` is public.
+- Every controller except `AuthController` has `[Authorize]` at class level: every endpoint requires a JWT, including reads. `/health` and `AuthController` are the only anonymous endpoints; a new anonymous endpoint needs an explicit decision in the plan.
 - For 201 responses, use a named route plus `CreatedAtRoute` (ASP.NET Core strips the `Async` suffix from action names, so `CreatedAtAction(nameof(...))` fails).
-- `ExceptionHandlingMiddleware` maps `ArgumentException` to 400 with `{ "error": "..." }`, `TicketDuplicadoException` (the plant ticket is unique across all proveedores) to 409 with the same shape, and every other exception to a generic 500. Do not catch domain exceptions in controllers.
+- `ExceptionHandlingMiddleware` maps `ReglaDeNegocioException` to 400 `{ "error": "...", "field": "..." }` (`field` only when there is a `campo`), `TicketDuplicadoException` (the plant ticket is unique across all proveedores) and `ConflictoDeConcurrenciaException` to 409 `{ "error": "..." }`, and every other exception (including `ArgumentException` and `ArgumentNullException`: those are bugs) to a logged 500 `{ "error": "Ocurrió un error inesperado.", "traceId": "..." }`. Model-binding errors keep their own 400 path (`ApiErrors`). Do not catch domain exceptions in controllers.
+- Every unexpected error is logged: the middleware logs each 500 at Error level with the exception, the request method and path (not the query string) and the trace id, and never request bodies, passwords or tokens. Do not add a `catch` that swallows an exception; if a `catch` is needed, log it (the one deliberate exception, a request aborted by the client, is logged at Debug). Every controller except `AuthController` having `[Authorize]` is checked by an architecture test.
 - Pipeline order matters: exception middleware first, then HTTPS redirection, CORS, `UseAuthentication`, `UseAuthorization`, `MapControllers`.
 
 ## Client conventions
 
 - Standalone components only (no NgModules). Use signals for component state and the built-in control flow (`@if`, `@for`, `@empty`).
 - Folders under `client/src/app`:
-  - `pages/`: routed components (`login`, `resumen`, `proveedores-list`, `proveedor-detail`, `configuracion`)
-  - `components/`: reusable components and dialogs (`recepcion-form`, `registrar-recepcion-dialog`, `crear-proveedor-dialog`, `observacion-celda`, `observaciones-dialog`)
+  - `pages/`: routed components (`login`, `resumen`, `recepciones`, `proveedores-list`, `proveedor-detail`, `configuracion`)
+  - `components/`: reusable components and dialogs (`recepcion-form`, `registrar-recepcion-dialog`, `confirmar-descarte-dialog`, `crear-proveedor-dialog`, `numero-input` (the `appNumero` directive), `observacion-celda`, `observaciones-dialog`, `recepciones-filtros`, `recepciones-list`, `recepciones-panel`)
   - `services/`: the only place that uses `HttpClient` (`ProveedoresService`, `RecepcionesService`, `ConfiguracionService`, `AuthService`)
   - `models/`: TypeScript interfaces mirroring the API DTOs, plus `limits.ts`
   - `guards/`, `interceptors/`, `utils/`
@@ -110,10 +118,16 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Test names: `Method_Scenario_ExpectedResult`.
 - Domain tests use real objects and no mocks.
 - Application tests mock `IProveedorRepository`, created inside each test (`var mockRepo = new Mock<IProveedorRepository>();`). Domain, Application and Api tests never touch a database.
+- `DairyControl.Application.Tests` does not reference Infrastructure; tests of Infrastructure types (`UnicidadSql`, `DemoDataGenerator`, the seeder, the repositories) live in `DairyControl.Infrastructure.Tests`.
 - Only `DairyControl.Infrastructure.Tests` may use a database, and only an in-memory SQLite one (schema from `EnsureCreated`, since the migrations are SQL Server-specific), for the reset/seeder logic.
 - SQLite tests don't cover SQL Server-specific behavior (migrations, unique-violation error codes, query translation); those are verified manually against SQL Server until we add Testcontainers integration tests.
 - Verify persistence calls with `Verify(..., Times.Once)` or `Times.Never`, not just the returned data.
 - Call `Assert.NotNull(result)` before asserting on properties of a nullable result.
+
+### Architecture tests
+
+- `tests/DairyControl.ArchitectureTests` (NetArchTest.Rules, reflection and a scan of the `src` sources) fails the build when a rule of this file is broken: Domain references only the BCL; Application does not use Infrastructure, EF Core or ASP.NET Core; Infrastructure does not use Api; controllers do not use `AppDbContext` or the repositories; entities have no public setters; value objects have no setters; every exception in `DairyControl.Domain.Exceptions` derives from `ExcepcionDeDominio`; no `new ArgumentException` or `ArgumentException.ThrowIf...` anywhere in `src` (`ArgumentNullException` is allowed); every controller except `AuthController` has `[Authorize]` and none has `[AllowAnonymous]`; no direct clock reads in `src`.
+- When a rule of this file can be checked by a test, add the test in the same PR that adds the rule.
 
 ### E2E tests
 
@@ -175,6 +189,8 @@ Fix small findings in the same PR. For anything bigger, propose a separate issue
 - For UI changes, also do the visual check described in Client conventions > UI conventions.
 - Before every PR, run the Exploratory checks (Testing > Exploratory checks) and the e2e tests locally.
 - If a request conflicts with a rule in this file, stop and ask.
+- Every bug that escapes to `main` gets a regression test and, when it is a class of error (it could happen again elsewhere), a rule in this file or an architecture test, in the same PR as the fix.
+- Run the architecture review (`docs/architecture-review.md`) every 5 merged PRs and before any freeze or release: a fresh subagent reviews `main` with that checklist and this file, ranks the findings by severity and proposes issues (do not open them without approval). Every recurring class of finding becomes an architecture test or a rule here. Record each review in `docs/reviews/<yyyy-mm-dd>.md`.
 - Git: follow the Git workflow below.
 
 ## Git workflow
@@ -186,7 +202,7 @@ Claude handles branches, commits, pushes and pull requests; the developer review
 - Self-review before every commit: read the full staged diff (`git diff --cached`) and check it against the issue's acceptance criteria, the CLAUDE.md conventions, tests for new behavior, leftover debug code or TODOs, and secrets. Fix what you find before committing.
 - Independent review before the PR: run a fresh subagent that has not seen the implementation conversation. Give it only the issue text, `CLAUDE.md` and `git diff main...HEAD`, and ask for bugs, risks, missing tests and convention breaks, ranked by severity. Fix every real finding (as new commits), then rerun the build, the tests and the visual check.
 - Open the PR when the build, tests, visual check and independent review are done: push the branch (`git push -u origin <branch>`) and open it with `gh pr create`. Title `Feature <N>/<issue title>` (N is the issue number); body with Summary / Changes / Evidence / Self-review / Notes (`.github/pull_request_template.md`) and `Closes #<N>`.
-- PR evidence: screenshots (demo app, synthetic data only; never real plant data) go to the `pr-evidence` branch, folder `pr-<N>/` (here N is the PR number, so publish them after the PR exists). Use a git worktree outside the repo so the feature branch is not touched. If `pr-evidence` does not exist, create it as an orphan branch (`git worktree add --orphan -b pr-evidence <dir>`) with a short README saying it is never merged. Embed each image in the PR body by commit SHA: `![<name>](https://raw.githubusercontent.com/isaias-muga/DairyControl/<sha>/pr-<N>/<file>.png)`, then update the body with `gh pr edit <N> --body-file <file>`.
+- PR evidence: screenshots (demo app, synthetic data only; never real plant data) go to the `pr-evidence` branch, folder `pr-<N>/` (here N is the PR number, so publish them after the PR exists). Use a git worktree at `artifacts/wt-evidence` inside the repo (the `artifacts/` folder is git-ignored; never a system temp folder) so the feature branch is not touched, and remove it with `git worktree remove` once the PR body is updated. If `pr-evidence` does not exist, create it as an orphan branch (`git worktree add --orphan -b pr-evidence <dir>`) with a short README saying it is never merged. Embed each image in the PR body by commit SHA: `![<name>](https://raw.githubusercontent.com/isaias-muga/DairyControl/<sha>/pr-<N>/<file>.png)`, then update the body with `gh pr edit <N> --body-file <file>`.
 - The PR body has a Self-review section: what the independent review found and how each finding was fixed (or why it was rejected), plus the Exploratory checks results.
 - The PR body has a Notes section that records the process numbers: lead time (issue opened to PR ready), what the independent review, the E2E tests and the Exploratory checks each caught, and the number of review rounds (update it when review rounds happen).
 - Review changes: the developer comments on the PR or tells Claude. Fix them on the same branch, push, and reply with what changed.
@@ -195,7 +211,9 @@ Claude handles branches, commits, pushes and pull requests; the developer review
 
 ## Never do
 
-- Public setters on domain entities.
+- Public setters on domain entities, and setters or `init` on value objects.
+- `throw new ArgumentException` for a business rule (use `ReglaDeNegocioException`), or a `catch` that swallows an exception without logging it.
+- `DateTime.Now/UtcNow/Today` or `DateTimeOffset.Now/UtcNow` in `src` (use `TimeProvider`).
 - A `DbSet` for anything inside an aggregate.
 - Business logic in controllers, DTOs or Angular components.
 - Domain entities returned from Application or Api.

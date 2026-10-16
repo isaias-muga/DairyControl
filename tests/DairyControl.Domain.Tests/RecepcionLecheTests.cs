@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using DairyControl.Domain.Entities;
 using DairyControl.Domain.ValueObjects;
 
@@ -82,13 +83,13 @@ namespace DairyControl.Domain.Tests
         [Theory]
         [InlineData(0)]
         [InlineData(-3)]
-        public void Registrar_NonPositiveTicket_ThrowsArgumentException(int ticket)
+        public void Registrar_NonPositiveTicket_ThrowsReglaDeNegocioException(int ticket)
         {
             // Act
-            var ex = Assert.Throws<ArgumentException>(() => Registrar(1000m, null, ticket));
+            var ex = Assert.Throws<ReglaDeNegocioException>(() => Registrar(1000m, null, ticket));
 
             // Assert
-            Assert.Equal("ticket", ex.ParamName);
+            Assert.Equal("ticket", ex.Campo);
         }
 
         // Silo: 1 to 20
@@ -127,63 +128,63 @@ namespace DairyControl.Domain.Tests
         [InlineData(-1)]
         [InlineData(21)]
         [InlineData(99)]
-        public void Registrar_SiloOutOfRange_ThrowsArgumentException(int silo)
+        public void Registrar_SiloOutOfRange_ThrowsReglaDeNegocioException(int silo)
         {
             // Arrange
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
 
             // Act
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = Assert.Throws<ReglaDeNegocioException>(() =>
                 RecepcionLeche.Registrar(parametros, Fecha, Ahora, silo, null));
 
             // Assert
-            Assert.Equal("silo", ex.ParamName);
+            Assert.Equal("silo", ex.Campo);
             Assert.Contains("El silo debe estar entre 1 y 20.", ex.Message);
         }
 
         [Fact]
-        public void Registrar_FechaHoraOneSecondOverTheLimit_ThrowsArgumentException()
+        public void Registrar_FechaHoraOneSecondOverTheLimit_ThrowsReglaDeNegocioException()
         {
             // Arrange
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
 
             // Act
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = Assert.Throws<ReglaDeNegocioException>(() =>
                 RecepcionLeche.Registrar(parametros, Ahora.AddHours(1).AddSeconds(1), Ahora, 1, null));
 
             // Assert
-            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Equal("fechaHora", ex.Campo);
         }
 
         // FechaHora: required, from 2000-01-01 to now + 1 hour (plant time)
 
         [Fact]
-        public void Registrar_DefaultFechaHora_ThrowsArgumentException()
+        public void Registrar_DefaultFechaHora_ThrowsReglaDeNegocioException()
         {
             // Arrange
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
 
             // Act
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = Assert.Throws<ReglaDeNegocioException>(() =>
                 RecepcionLeche.Registrar(parametros, default, Ahora, 1, null));
 
             // Assert
-            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Equal("fechaHora", ex.Campo);
             Assert.Contains("obligatoria", ex.Message);
         }
 
         [Fact]
-        public void Registrar_FechaHoraBeforeYear2000_ThrowsArgumentException()
+        public void Registrar_FechaHoraBeforeYear2000_ThrowsReglaDeNegocioException()
         {
             // Arrange
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
 
             // Act
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = Assert.Throws<ReglaDeNegocioException>(() =>
                 RecepcionLeche.Registrar(parametros, new DateTime(1999, 12, 31, 23, 59, 0), Ahora, 1, null));
 
             // Assert
-            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Equal("fechaHora", ex.Campo);
             Assert.Contains("01/01/2000", ex.Message);
         }
 
@@ -216,17 +217,17 @@ namespace DairyControl.Domain.Tests
         [Theory]
         [InlineData(1)]
         [InlineData(60 * 24 * 365 * 70)]
-        public void Registrar_FechaHoraMoreThanOneHourAhead_ThrowsArgumentException(int minutosExtra)
+        public void Registrar_FechaHoraMoreThanOneHourAhead_ThrowsReglaDeNegocioException(int minutosExtra)
         {
             // Arrange
             var parametros = ParametrosCalidad.Create(null, 18m, 4m, 1000m);
 
             // Act
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = Assert.Throws<ReglaDeNegocioException>(() =>
                 RecepcionLeche.Registrar(parametros, Ahora.AddHours(1).AddMinutes(minutosExtra), Ahora, 1, null));
 
             // Assert
-            Assert.Equal("fechaHora", ex.ParamName);
+            Assert.Equal("fechaHora", ex.Campo);
             Assert.Contains("hora actual", ex.Message);
         }
     }

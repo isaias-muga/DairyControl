@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Text.Json;
 
@@ -16,13 +16,8 @@ namespace DairyControl.Api.Validation
         public static object Body(string error, string? field = null) =>
             field is null ? new { error } : new { error, field };
 
-        // ArgumentException.Message ends with " (Parameter 'x')" when ParamName is set; users must not see it.
-        public static string Message(ArgumentException ex)
-        {
-            if (string.IsNullOrEmpty(ex.ParamName))
-                return ex.Message;
-            return ex.Message.Replace($" (Parameter '{ex.ParamName}')", string.Empty);
-        }
+        // The 500 also carries the trace id that the log line has, so a report can be matched to its error.
+        public static object BodyInesperado(string error, string traceId) => new { error, traceId };
 
         public static IActionResult InvalidModelState(ActionContext context)
         {

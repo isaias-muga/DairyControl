@@ -74,6 +74,8 @@ export class Configuracion {
   error = signal<string | null>(null);
   saveError = signal<string | null>(null);
   actualizadoEn = signal<string | null>(null);
+  /** The version of the limits on screen: sent back on save so the API can tell if someone else changed them. */
+  private version: string | null = null;
 
   // The API sends UTC timestamps; make sure the browser reads them as UTC and shows local time.
   ultimaModificacion = computed(() => {
@@ -108,6 +110,10 @@ export class Configuracion {
   }
 
   guardar(): void {
+    // A second click can arrive before the disabled button is rendered; it would send the version that the first save just replaced and be reported as a conflict
+    if (this.saving()) {
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -122,6 +128,7 @@ export class Configuracion {
         acidezMaxima: v.acidezMaxima!,
         temperaturaMaxima: v.temperaturaMaxima!,
         aguaMaxima: v.aguaMaxima!,
+        version: this.version!,
       })
       .subscribe({
         next: (limites) => {
@@ -143,5 +150,6 @@ export class Configuracion {
       aguaMaxima: limites.aguaMaxima,
     });
     this.actualizadoEn.set(limites.actualizadoEn);
+    this.version = limites.version;
   }
 }

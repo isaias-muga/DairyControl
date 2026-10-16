@@ -1,7 +1,7 @@
 using DairyControl.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 
-namespace DairyControl.Application.Tests
+namespace DairyControl.Infrastructure.Tests
 {
     public class UnicidadSqlTests
     {

@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using DairyControl.Domain.ValueObjects;
 
 namespace DairyControl.Domain.Tests
@@ -62,14 +63,14 @@ namespace DairyControl.Domain.Tests
         [InlineData(19, 40.01, 0, "temperaturaMaxima")]
         [InlineData(19, 20, -0.01, "aguaMaxima")]
         [InlineData(19, 20, 10.01, "aguaMaxima")]
-        public void Create_LimitOutOfRange_ThrowsArgumentException(double acidez, double temperatura, double agua, string parametro)
+        public void Create_LimitOutOfRange_ThrowsReglaDeNegocioException(double acidez, double temperatura, double agua, string parametro)
         {
             // Act
-            var ex = Assert.Throws<ArgumentException>(() =>
+            var ex = Assert.Throws<ReglaDeNegocioException>(() =>
                 LimitesCalidad.Create((decimal)acidez, (decimal)temperatura, (decimal)agua));
 
             // Assert
-            Assert.Equal(parametro, ex.ParamName);
+            Assert.Equal(parametro, ex.Campo);
         }
 
         [Fact]

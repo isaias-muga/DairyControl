@@ -1,6 +1,8 @@
 ﻿using DairyControl.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
+namespace DairyControl.Infrastructure.Persistence;
+
 public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }

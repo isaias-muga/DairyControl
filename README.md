@@ -232,10 +232,13 @@ The app runs at `http://localhost:4200`. In development, the API's CORS policy a
 dotnet test --solution DairyControl.slnx
 ```
 
-Unit tests, none of which touch a database:
+Five test projects; only `Infrastructure.Tests` uses a database (in-memory SQLite):
 
 - **Domain:** `ParametrosCalidad` validation (negative values, minimum volume, optional fat, water range), `LimitesCalidad` ranges and the out-of-range rule including water, `LitrosAPagar`, ticket validation and `ConfiguracionCalidad`.
-- **Application:** `ProveedorAppService` and `ConfiguracionCalidadAppService` with mocked repositories (Moq), covering found and not-found paths, listing, recepciones mapping and ordering, and verifying that persistence methods are called exactly as often as they should be.
+- **Application:** `ProveedorAppService`, `ConfiguracionCalidadAppService` (including the stale-version and missing-version cases) and `AuthService` with mocked repositories (Moq) and a fixed clock, covering found and not-found paths, listing, recepciones mapping and ordering, and verifying that persistence methods are called exactly as often as they should be.
+- **Api:** the exception middleware (400 / 409 / logged 500 with trace id), the Spanish model-binding messages, the controllers and `/health`.
+- **Infrastructure:** the demo-data reset and seeder, the list queries, the quality-limits repository (stale edits) and the unique-ticket error detection, on in-memory SQLite.
+- **Architecture:** the rules of `CLAUDE.md` that a test can check (layer dependencies, no public setters, exception base type, no direct clock reads), so breaking one fails the build. See `docs/architecture-review.md` for the periodic review.
 
 **Client**
 

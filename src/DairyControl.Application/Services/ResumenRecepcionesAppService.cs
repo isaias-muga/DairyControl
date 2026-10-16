@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Queries;
 
@@ -27,22 +28,22 @@ namespace DairyControl.Application.Services
         {
             if (desde < DesdeMinimo)
             {
-                throw new ArgumentException($"La fecha desde no puede ser anterior al {DesdeMinimo:dd/MM/yyyy}.", nameof(desde));
+                throw new ReglaDeNegocioException($"La fecha desde no puede ser anterior al {DesdeMinimo:dd/MM/yyyy}.", nameof(desde));
             }
 
             if (desde > hasta)
             {
-                throw new ArgumentException("La fecha desde no puede ser posterior a la fecha hasta.", nameof(desde));
+                throw new ReglaDeNegocioException("La fecha desde no puede ser posterior a la fecha hasta.", nameof(desde));
             }
 
             if (hasta.DayNumber - desde.DayNumber + 1 > MaxDias)
             {
-                throw new ArgumentException($"El período no puede superar los {MaxDias} días.", nameof(hasta));
+                throw new ReglaDeNegocioException($"El período no puede superar los {MaxDias} días.", nameof(hasta));
             }
 
             if (proveedorId == Guid.Empty)
             {
-                throw new ArgumentException("El proveedor indicado no es válido.", nameof(proveedorId));
+                throw new ReglaDeNegocioException("El proveedor indicado no es válido.", nameof(proveedorId));
             }
         }
     }

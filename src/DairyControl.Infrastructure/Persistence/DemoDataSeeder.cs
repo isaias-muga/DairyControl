@@ -10,11 +10,13 @@ namespace DairyControl.Infrastructure.Persistence
     {
 
         private readonly AppDbContext _context;
+        private readonly TimeProvider _reloj;
         private readonly ILogger<DemoDataSeeder>? _logger;
 
-        public DemoDataSeeder(AppDbContext context, ILogger<DemoDataSeeder>? logger = null)
+        public DemoDataSeeder(AppDbContext context, TimeProvider reloj, ILogger<DemoDataSeeder>? logger = null)
         {
             _context = context;
+            _reloj = reloj;
             _logger = logger;
         }
 
@@ -50,6 +52,8 @@ namespace DairyControl.Infrastructure.Persistence
 
             // EnableRetryOnFailure: explicit transactions must run inside the execution strategy
             var strategy = _context.Database.CreateExecutionStrategy();
+            try
+            {
             await strategy.ExecuteAsync(async () =>
             {
                 _context.ChangeTracker.Clear(); // a retried attempt starts from a clean state
@@ -61,17 +65,25 @@ namespace DairyControl.Infrastructure.Persistence
                 var configuracion = await _context.ConfiguracionesCalidad.FirstOrDefaultAsync();
                 if (configuracion is null)
                 {
-                    _context.ConfiguracionesCalidad.Add(ConfiguracionCalidad.Crear(LimitesCalidad.Predeterminados, DateTime.UtcNow));
+                    _context.ConfiguracionesCalidad.Add(ConfiguracionCalidad.Crear(LimitesCalidad.Predeterminados, _reloj.GetUtcNow().UtcDateTime));
                 }
                 else
                 {
-                    configuracion.CambiarLimites(LimitesCalidad.Predeterminados, DateTime.UtcNow);
+                    configuracion.CambiarLimites(LimitesCalidad.Predeterminados, _reloj.GetUtcNow().UtcDateTime);
                 }
 
                 await AddDemoDataAsync();
                 await _context.SaveChangesAsync();
                 await transaccion.CommitAsync();
             });
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Another instance started at the same time and changed the quality limits first (the row has a version):
+                // its reset is the one that counts, and this transaction was rolled back.
+                _logger?.LogWarning("Demo data reset skipped: another instance changed the quality limits while this one was resetting.");
+                return;
+            }
 
             _logger?.LogWarning(
                 "Demo data reset: deleted {Proveedores} proveedores and {Recepciones} recepciones, restored the default quality limits and reseeded.",
@@ -81,7 +93,7 @@ namespace DairyControl.Infrastructure.Persistence
 
         private Task AddDemoDataAsync()
         {
-            var ahoraPlanta = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, HoraPlanta.ZonaHoraria);
+            var ahoraPlanta = HoraPlanta.Ahora(_reloj);
             var desde = ahoraPlanta.Date.AddDays(-DemoDataGenerator.DiasHistorial);
 
             _context.Proveedores.AddRange(new DemoDataGenerator().Generar(desde));

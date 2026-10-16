@@ -39,11 +39,23 @@ namespace DairyControl.Infrastructure.Tests
                 Entradas.Add((logLevel, formatter(state, exception)));
         }
 
+        private sealed class RelojFijo(DateTimeOffset ahora) : TimeProvider
+        {
+            public override DateTimeOffset GetUtcNow() => ahora;
+        }
+
         // Fails on save: the deletes have already run inside the transaction by then
         private sealed class ContextoQueFallaAlGuardar(DbContextOptions<AppDbContext> options) : AppDbContext(options)
         {
             public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) =>
                 throw new InvalidOperationException("Fallo simulado al guardar.");
+        }
+
+        // Another instance changed the quality limits between this one's read and its save
+        private sealed class ContextoConConflictoDeConcurrencia(DbContextOptions<AppDbContext> options) : AppDbContext(options)
+        {
+            public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) =>
+                throw new DbUpdateConcurrencyException("Otra instancia cambió los límites.");
         }
 
         // Existing data that a reset must wipe: an old proveedor with one recepción, and custom limits
@@ -77,7 +89,7 @@ namespace DairyControl.Infrastructure.Tests
             CargarDatosViejos();
             var logger = new LoggerEnMemoria();
             using var context = NuevoContexto();
-            var seeder = new DemoDataSeeder(context, logger);
+            var seeder = new DemoDataSeeder(context, TimeProvider.System, logger);
 
             // Act
             await seeder.InitializeAsync(resetOnStartup: true, seedOnStartup: false);
@@ -96,7 +108,7 @@ namespace DairyControl.Infrastructure.Tests
         {
             // Arrange
             using var context = NuevoContexto();
-            var seeder = new DemoDataSeeder(context);
+            var seeder = new DemoDataSeeder(context, TimeProvider.System);
             var ayer = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "America/Argentina/Buenos_Aires").Date.AddDays(-1);
 
             // Act
@@ -117,7 +129,7 @@ namespace DairyControl.Infrastructure.Tests
         {
             // Arrange
             using var context = NuevoContexto();
-            var seeder = new DemoDataSeeder(context);
+            var seeder = new DemoDataSeeder(context, TimeProvider.System);
 
             // Act
             await seeder.InitializeAsync(resetOnStartup: true, seedOnStartup: false);
@@ -140,7 +152,7 @@ namespace DairyControl.Infrastructure.Tests
             CargarDatosViejos();
             using var contexto = new ContextoQueFallaAlGuardar(
                 new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
-            var seeder = new DemoDataSeeder(contexto);
+            var seeder = new DemoDataSeeder(contexto, TimeProvider.System);
 
             // Act
             await Assert.ThrowsAsync<InvalidOperationException>(() => seeder.ResetAndSeedAsync());
@@ -159,7 +171,7 @@ namespace DairyControl.Infrastructure.Tests
             CargarDatosViejos();
             var logger = new LoggerEnMemoria();
             using var context = NuevoContexto();
-            var seeder = new DemoDataSeeder(context, logger);
+            var seeder = new DemoDataSeeder(context, TimeProvider.System, logger);
 
             // Act
             await seeder.InitializeAsync(resetOnStartup: true, seedOnStartup: false);
@@ -175,7 +187,7 @@ namespace DairyControl.Infrastructure.Tests
             // Arrange
             var logger = new LoggerEnMemoria();
             using var context = NuevoContexto();
-            var seeder = new DemoDataSeeder(context, logger);
+            var seeder = new DemoDataSeeder(context, TimeProvider.System, logger);
 
             // Act
             await seeder.InitializeAsync(resetOnStartup: true, seedOnStartup: false);
@@ -193,7 +205,7 @@ namespace DairyControl.Infrastructure.Tests
             CargarDatosViejos();
             var logger = new LoggerEnMemoria();
             using var context = NuevoContexto();
-            var seeder = new DemoDataSeeder(context, logger);
+            var seeder = new DemoDataSeeder(context, TimeProvider.System, logger);
 
             // Act
             await seeder.InitializeAsync(resetOnStartup: false, seedOnStartup: false);
@@ -213,7 +225,7 @@ namespace DairyControl.Infrastructure.Tests
             // Arrange
             CargarDatosViejos();
             using var context = NuevoContexto();
-            var seeder = new DemoDataSeeder(context);
+            var seeder = new DemoDataSeeder(context, TimeProvider.System);
 
             // Act
             await seeder.InitializeAsync(resetOnStartup: false, seedOnStartup: true);
@@ -229,7 +241,7 @@ namespace DairyControl.Infrastructure.Tests
         {
             // Arrange
             using var context = NuevoContexto();
-            var seeder = new DemoDataSeeder(context);
+            var seeder = new DemoDataSeeder(context, TimeProvider.System);
 
             // Act
             await seeder.InitializeAsync(resetOnStartup: false, seedOnStartup: true);
@@ -239,6 +251,44 @@ namespace DairyControl.Infrastructure.Tests
             Assert.Equal(8, datos.Proveedores);
             Assert.Equal(Enumerable.Range(4900, datos.Recepciones), datos.Tickets);
             Assert.Equal(LimitesCalidad.Predeterminados, datos.Limites);
+        }
+
+        [Fact]
+        public async Task ResetAndSeedAsync_AnotherInstanceChangedTheLimits_SkipsTheResetWithAWarningAndKeepsTheData()
+        {
+            // Arrange
+            CargarDatosViejos();
+            using var contexto = new ContextoConConflictoDeConcurrencia(
+                new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection).Options);
+            var logger = new LoggerEnMemoria();
+            var seeder = new DemoDataSeeder(contexto, TimeProvider.System, logger);
+
+            // Act
+            await seeder.ResetAndSeedAsync();
+
+            // Assert: no exception reaches the startup, the transaction was rolled back and a warning says why
+            var datos = Leer();
+            Assert.Equal(["Tambo Viejo"], datos.Nombres);
+            Assert.Equal(LimitesCalidad.Create(25m, 30m, 5m), datos.Limites);
+            Assert.Contains(logger.Entradas, e => e.Nivel == LogLevel.Warning && e.Mensaje.Contains("skipped"));
+        }
+
+        [Fact]
+        public async Task ResetAndSeedAsync_FixedClock_StampsTheLimitsAndSeedsRelativeToThatClock()
+        {
+            // Arrange: 2026-10-15 15:00 UTC is 12:00 in the plant (UTC-3)
+            var ahora = new DateTimeOffset(2026, 10, 15, 15, 0, 0, TimeSpan.Zero);
+            using var context = NuevoContexto();
+            var seeder = new DemoDataSeeder(context, new RelojFijo(ahora));
+
+            // Act
+            await seeder.ResetAndSeedAsync();
+
+            // Assert
+            using var lectura = NuevoContexto();
+            Assert.Equal(ahora.UtcDateTime, lectura.ConfiguracionesCalidad.Single().ActualizadoEn);
+            var ultima = lectura.Proveedores.SelectMany(p => p.Recepciones).Max(r => r.FechaHora);
+            Assert.True(ultima <= new DateTime(2026, 10, 15, 12, 0, 0), $"The demo data reaches {ultima}, past the fixed plant time");
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using DairyControl.Domain.ValueObjects;
+﻿using DairyControl.Domain.Exceptions;
+using DairyControl.Domain.ValueObjects;
 namespace DairyControl.Domain.Entities
 {
     public class RecepcionLeche
@@ -25,23 +26,23 @@ namespace DairyControl.Domain.Entities
         {
             if (fechaHora == default)
             {
-                throw new ArgumentException("La fecha y hora es obligatoria.", nameof(fechaHora));
+                throw new ReglaDeNegocioException("La fecha y hora es obligatoria.", nameof(fechaHora));
             }
             if (fechaHora < FechaMinima)
             {
-                throw new ArgumentException($"La fecha y hora no puede ser anterior al {FechaMinima:dd/MM/yyyy}.", nameof(fechaHora));
+                throw new ReglaDeNegocioException($"La fecha y hora no puede ser anterior al {FechaMinima:dd/MM/yyyy}.", nameof(fechaHora));
             }
             if (fechaHora > ahoraPlanta.AddHours(AdelantoMaximoHoras))
             {
-                throw new ArgumentException($"La fecha y hora no puede superar la hora actual en más de {AdelantoMaximoHoras} hora.", nameof(fechaHora));
+                throw new ReglaDeNegocioException($"La fecha y hora no puede superar la hora actual en más de {AdelantoMaximoHoras} hora.", nameof(fechaHora));
             }
             if (ticket != null && ticket < 1)
             {
-                throw new ArgumentException("El número de ticket debe ser un entero positivo.", nameof(ticket));
+                throw new ReglaDeNegocioException("El número de ticket debe ser un entero positivo.", nameof(ticket));
             }
             if (silo != null && (silo < SiloMin || silo > SiloMax))
             {
-                throw new ArgumentException($"El silo debe estar entre {SiloMin} y {SiloMax}.", nameof(silo));
+                throw new ReglaDeNegocioException($"El silo debe estar entre {SiloMin} y {SiloMax}.", nameof(silo));
             }
             var observacionesTrim = observaciones?.Trim();
             if (observacionesTrim?.Length == 0)
@@ -50,7 +51,7 @@ namespace DairyControl.Domain.Entities
             }
             if (observacionesTrim != null && observacionesTrim.Length > ObservacionesMaxLength)
             {
-                throw new ArgumentException($"Las observaciones no pueden superar los {ObservacionesMaxLength} caracteres.", nameof(observaciones));
+                throw new ReglaDeNegocioException($"Las observaciones no pueden superar los {ObservacionesMaxLength} caracteres.", nameof(observaciones));
             }
             return new RecepcionLeche
             {

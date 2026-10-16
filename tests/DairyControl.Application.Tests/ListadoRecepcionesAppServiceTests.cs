@@ -1,3 +1,4 @@
+using DairyControl.Domain.Exceptions;
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Queries;
 using DairyControl.Application.Services;
@@ -41,10 +42,10 @@ namespace DairyControl.Application.Tests
             filtro.Desde = new DateOnly(2026, 11, 1);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.GetListadoAsync(filtro));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.GetListadoAsync(filtro));
 
             // Assert
-            Assert.Equal("desde", ex.ParamName);
+            Assert.Equal("desde", ex.Campo);
             mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
         }
 
@@ -58,10 +59,10 @@ namespace DairyControl.Application.Tests
             filtro.Desde = new DateOnly(2025, 1, 1);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.GetListadoAsync(filtro));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.GetListadoAsync(filtro));
 
             // Assert
-            Assert.Equal("hasta", ex.ParamName);
+            Assert.Equal("hasta", ex.Campo);
             mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
         }
 
@@ -75,10 +76,10 @@ namespace DairyControl.Application.Tests
             filtro.Desde = new DateOnly(1999, 12, 31);
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.GetListadoAsync(filtro));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.GetListadoAsync(filtro));
 
             // Assert
-            Assert.Equal("desde", ex.ParamName);
+            Assert.Equal("desde", ex.Campo);
             mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
         }
 
@@ -92,10 +93,10 @@ namespace DairyControl.Application.Tests
             filtro.ProveedorId = Guid.Empty;
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.GetListadoAsync(filtro));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.GetListadoAsync(filtro));
 
             // Assert
-            Assert.Equal("proveedorId", ex.ParamName);
+            Assert.Equal("proveedorId", ex.Campo);
             mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
         }
 
@@ -111,10 +112,10 @@ namespace DairyControl.Application.Tests
             filtro.Ticket = ticket;
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.GetListadoAsync(filtro));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.GetListadoAsync(filtro));
 
             // Assert
-            Assert.Equal("Ticket", ex.ParamName);
+            Assert.Equal("ticket", ex.Campo);
             mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
         }
 
@@ -130,10 +131,10 @@ namespace DairyControl.Application.Tests
             filtro.Pagina = pagina;
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.GetListadoAsync(filtro));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.GetListadoAsync(filtro));
 
             // Assert
-            Assert.Equal("Pagina", ex.ParamName);
+            Assert.Equal("pagina", ex.Campo);
             mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
         }
 
@@ -147,10 +148,10 @@ namespace DairyControl.Application.Tests
             filtro.Pagina = ListadoRecepcionesAppService.MaxPagina + 1;
 
             // Act
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.GetListadoAsync(filtro));
+            var ex = await Assert.ThrowsAsync<ReglaDeNegocioException>(() => service.GetListadoAsync(filtro));
 
             // Assert
-            Assert.Equal("Pagina", ex.ParamName);
+            Assert.Equal("pagina", ex.Campo);
             mockQueries.Verify(q => q.GetListadoAsync(It.IsAny<FiltroRecepciones>()), Times.Never);
         }
 

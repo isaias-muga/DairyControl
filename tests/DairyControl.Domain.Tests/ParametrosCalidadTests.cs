@@ -1,4 +1,5 @@
-﻿using DairyControl.Domain.ValueObjects;
+﻿using DairyControl.Domain.Exceptions;
+using DairyControl.Domain.ValueObjects;
 
 namespace DairyControl.Domain.Tests
 {
@@ -56,13 +57,13 @@ namespace DairyControl.Domain.Tests
         [InlineData(0.0009)]
         [InlineData(30000.001)]
         [InlineData(100000)]
-        public void Create_LitrosOutOfRange_ThrowsArgumentException(double litros)
+        public void Create_LitrosOutOfRange_ThrowsReglaDeNegocioException(double litros)
         {
             // Act
-            var ex = Assert.Throws<ArgumentException>(() => Crear(litros: (decimal)litros));
+            var ex = Assert.Throws<ReglaDeNegocioException>(() => Crear(litros: (decimal)litros));
 
             // Assert
-            Assert.Equal("litros", ex.ParamName);
+            Assert.Equal("litros", ex.Campo);
             Assert.Contains("Los litros deben estar entre 0.001 y 30000.", ex.Message);
         }
 
@@ -87,13 +88,13 @@ namespace DairyControl.Domain.Tests
         [InlineData(-5)]
         [InlineData(10.01)]
         [InlineData(12)]
-        public void Create_GrasaOutOfRange_ThrowsArgumentException(double grasa)
+        public void Create_GrasaOutOfRange_ThrowsReglaDeNegocioException(double grasa)
         {
             // Act
-            var ex = Assert.Throws<ArgumentException>(() => Crear(grasa: (decimal)grasa));
+            var ex = Assert.Throws<ReglaDeNegocioException>(() => Crear(grasa: (decimal)grasa));
 
             // Assert
-            Assert.Equal("grasa", ex.ParamName);
+            Assert.Equal("grasa", ex.Campo);
             Assert.Equal("La grasa debe estar entre 1 y 10 %.", ex.Message.Split(" (Parameter")[0]);
         }
 
@@ -117,13 +118,13 @@ namespace DairyControl.Domain.Tests
         [InlineData(0)]
         [InlineData(-5)]
         [InlineData(30.01)]
-        public void Create_AcidezOutOfRange_ThrowsArgumentException(double acidez)
+        public void Create_AcidezOutOfRange_ThrowsReglaDeNegocioException(double acidez)
         {
             // Act
-            var ex = Assert.Throws<ArgumentException>(() => Crear(acidez: (decimal)acidez));
+            var ex = Assert.Throws<ReglaDeNegocioException>(() => Crear(acidez: (decimal)acidez));
 
             // Assert
-            Assert.Equal("acidez", ex.ParamName);
+            Assert.Equal("acidez", ex.Campo);
             Assert.Contains("entre 10 y 30 °D", ex.Message);
         }
 
@@ -147,13 +148,13 @@ namespace DairyControl.Domain.Tests
         [InlineData(-12)]
         [InlineData(45.01)]
         [InlineData(100)]
-        public void Create_TemperaturaOutOfRange_ThrowsArgumentException(double temperatura)
+        public void Create_TemperaturaOutOfRange_ThrowsReglaDeNegocioException(double temperatura)
         {
             // Act
-            var ex = Assert.Throws<ArgumentException>(() => Crear(temperatura: (decimal)temperatura));
+            var ex = Assert.Throws<ReglaDeNegocioException>(() => Crear(temperatura: (decimal)temperatura));
 
             // Assert
-            Assert.Equal("temperatura", ex.ParamName);
+            Assert.Equal("temperatura", ex.Campo);
             Assert.Contains("entre 0 y 45 °C", ex.Message);
         }
 
@@ -185,13 +186,13 @@ namespace DairyControl.Domain.Tests
         [Theory]
         [InlineData(-0.01)]
         [InlineData(100.01)]
-        public void Create_AguaOutOfRange_ThrowsArgumentException(double agua)
+        public void Create_AguaOutOfRange_ThrowsReglaDeNegocioException(double agua)
         {
             // Act
-            var ex = Assert.Throws<ArgumentException>(() => Crear(agua: (decimal)agua));
+            var ex = Assert.Throws<ReglaDeNegocioException>(() => Crear(agua: (decimal)agua));
 
             // Assert
-            Assert.Equal("aguaPorcentaje", ex.ParamName);
+            Assert.Equal("aguaPorcentaje", ex.Campo);
         }
 
         // An impossible value is a typing error; a value outside the quality limits is not
