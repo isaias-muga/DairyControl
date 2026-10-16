@@ -83,6 +83,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Components get dependencies with `inject()`. Components never call `HttpClient` directly.
 - `provideHttpClient(...)` is called only in `app.config.ts`.
 - Signal inputs (`input()`) are reactive: react to changes with `effect()` or `computed()`; never read them only once in `ngOnInit`.
+- Numeric fields use the `appNumero` directive (a text input with `inputmode`, never `type="number"`, which reinterprets "1.234,5" as 1.2345); `appNumero="entero"` for integers (ticket, silo). es-AR rules ("." thousands, "," decimals, ambiguous input rejected with a message) live only in `utils/numero-es.ts`; the form value and the API stay plain numbers. Integer identifiers (ticket, silo) are shown without separators.
 - Forms are reactive forms. Client validation mirrors the domain limits in `models/limits.ts`; it exists for user feedback only, and the API remains the source of truth.
 - The registration form may preview the quality limits for UX (the limit values are read from the API, never hardcoded); the domain and the API remain the source of truth.
 - API errors are turned into user messages with `getApiErrorMessage` in `utils/api-error.ts`.
