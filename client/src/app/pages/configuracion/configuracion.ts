@@ -110,6 +110,10 @@ export class Configuracion {
   }
 
   guardar(): void {
+    // A second click can arrive before the disabled button is rendered; it would send the version that the first save just replaced and be reported as a conflict
+    if (this.saving()) {
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;

@@ -175,6 +175,16 @@ describe('Configuracion', () => {
     expect(open).toHaveBeenCalledWith('Configuración guardada.', 'Cerrar', { duration: 4000 });
   });
 
+  it('sends only one request when Guardar is pressed twice before the response arrives', async () => {
+    await setup();
+    await cargarLimites();
+
+    component.guardar();
+    component.guardar();
+
+    http.expectOne(esCalidad).flush(limites);
+  });
+
   it('sends the version returned by the last save, not the one from the first load', async () => {
     await setup();
     await cargarLimites();

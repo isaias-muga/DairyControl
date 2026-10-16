@@ -120,3 +120,42 @@ test('calidad: the API rejects a limits update without version (400) and with a 
     await restaurarAcidezMaxima(request);
   }
 });
+
+test('calidad: a double click on Guardar saves once and shows no conflict', async ({ page, request }) => {
+  await page.getByRole('link', { name: 'Configuración' }).click();
+  await expect(page.getByLabel(/^Acidez máxima/)).toHaveValue('19');
+  const guardados: string[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'PUT' && r.url().endsWith('/api/Configuracion/calidad')) {
+      guardados.push(r.url());
+    }
+  });
+
+  try {
+    await rellenar(page.getByLabel(/^Acidez máxima/), '20');
+    await page.getByRole('button', { name: 'Guardar' }).dblclick();
+
+    await expect(page.getByText('Configuración guardada.').first()).toBeVisible();
+    await expect(page.getByText('Los límites fueron modificados por otro usuario.')).toHaveCount(0);
+    expect(guardados).toHaveLength(1);
+  } finally {
+    await restaurarAcidezMaxima(request);
+  }
+});
+
+test('calidad: a session rejected by the API while saving sends the user to the login page', async ({ page, request }) => {
+  await page.getByRole('link', { name: 'Configuración' }).click();
+  await expect(page.getByLabel(/^Acidez máxima/)).toHaveValue('19');
+  await page.route('**/api/Configuracion/calidad', (route) =>
+    route.request().method() === 'PUT' ? route.fulfill({ status: 401, body: '' }) : route.continue(),
+  );
+
+  try {
+    await rellenar(page.getByLabel(/^Acidez máxima/), '20');
+    await page.getByRole('button', { name: 'Guardar' }).click();
+
+    await expect(page).toHaveURL(/\/login/);
+  } finally {
+    await restaurarAcidezMaxima(request);
+  }
+});
