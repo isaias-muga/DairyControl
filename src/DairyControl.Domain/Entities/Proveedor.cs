@@ -1,4 +1,4 @@
-﻿using DairyControl.Domain.Exceptions;
+using DairyControl.Domain.Exceptions;
 using DairyControl.Domain.ValueObjects;
 
 namespace DairyControl.Domain.Entities
@@ -10,14 +10,6 @@ namespace DairyControl.Domain.Entities
         public Guid Id { get; private set; }
         public string Nombre { get; private set; } = null!;
 
-        private readonly List<RecepcionLeche> _recepciones = new();
-        public IReadOnlyCollection<RecepcionLeche> Recepciones => _recepciones;
-        public void RegistrarRecepcion(ParametrosCalidad parametros, DateTime fechaHora, DateTime ahoraPlanta, int? silo, string? observaciones, int? ticket = null)
-        {
-            ArgumentNullException.ThrowIfNull(parametros);
-            var recepcion = RecepcionLeche.Registrar(parametros, fechaHora, ahoraPlanta, silo, observaciones, ticket);
-            _recepciones.Add(recepcion);
-        }
         public static Proveedor Crear(string nombre)
         {
             if (string.IsNullOrWhiteSpace(nombre))

@@ -1,4 +1,5 @@
 using DairyControl.Application.DTOs;
+using DairyControl.Application.Queries;
 using DairyControl.Domain.Entities;
 using DairyControl.Domain.Exceptions;
 using DairyControl.Domain.Interfaces;
@@ -9,74 +10,39 @@ namespace DairyControl.Application.Services
 {
     public class ProveedorAppService
     {
-        private readonly IProveedorRepository _repository;
+        private readonly IProveedorRepository _proveedores;
+        private readonly IRecepcionRepository _recepciones;
+        private readonly IProveedorQueries _queries;
         private readonly TimeProvider _reloj;
 
-        public ProveedorAppService(IProveedorRepository repository, TimeProvider reloj)
+        public ProveedorAppService(IProveedorRepository proveedores, IRecepcionRepository recepciones, IProveedorQueries queries, TimeProvider reloj)
         {
-            _repository = repository;
+            _proveedores = proveedores;
+            _recepciones = recepciones;
+            _queries = queries;
             _reloj = reloj;
         }
 
         public async Task<ProveedorDto> CrearAsync(CrearProveedorDto dto)
         {
             var proveedor = Proveedor.Crear(dto.Nombre);
-            await _repository.AddAsync(proveedor);
+            await _proveedores.AddAsync(proveedor);
 
             return new ProveedorDto
             {
                 Id = proveedor.Id,
                 Nombre = proveedor.Nombre,
-                CantidadRecepciones = proveedor.Recepciones.Count
+                CantidadRecepciones = 0
             };
         }
 
-        public async Task<ProveedorDetalleDto?> GetByIdAsync(Guid id)
-        {
-            var proveedor = await _repository.GetByIdAsync(id);
-            if (proveedor is null)
-                return null;
+        public Task<ProveedorDto?> GetByIdAsync(Guid id) => _queries.GetByIdAsync(id);
 
-            return new ProveedorDetalleDto
-            {
-                Id = proveedor.Id,
-                Nombre = proveedor.Nombre,
-                Recepciones = proveedor.Recepciones
-                    .OrderByDescending(r => r.FechaHora)
-                    .Select(r => new RecepcionDto
-                    {
-                        Id = r.Id,
-                        FechaHora = r.FechaHora,
-                        Litros = r.Parametros.Litros,
-                        Grasa = r.Parametros.Grasa,
-                        Acidez = r.Parametros.Acidez,
-                        Temperatura = r.Parametros.Temperatura,
-                        Silo = r.Silo,
-                        Observaciones = r.Observaciones,
-                        AguaPorcentaje = r.Parametros.AguaPorcentaje,
-                        Ticket = r.Ticket,
-                        LitrosAPagar = r.LitrosAPagar
-                    })
-                    .ToList()
-            };
-        }
-        public async Task<IReadOnlyList<ProveedorDto>> GetAllAsync()
-        {
-            var proveedores = await _repository.GetAllAsync();
-
-            return proveedores.Select(proveedor => new ProveedorDto
-            {
-                Id = proveedor.Id,
-                Nombre = proveedor.Nombre,
-                CantidadRecepciones = proveedor.Recepciones.Count
-            }).ToList();
-        }
+        public Task<IReadOnlyList<ProveedorDto>> GetAllAsync() => _queries.GetAllAsync();
 
         public async Task<ProveedorDto?> RegistrarRecepcionAsync(Guid proveedorId, RegistrarRecepcionDto dto)
         {
-            var proveedor = await _repository.GetByIdAsync(proveedorId);
-
-            if (proveedor == null)
+            if (!await _proveedores.ExistsAsync(proveedorId))
                 return null;
 
             var parametros = ParametrosCalidad.Create(dto.Grasa, dto.Acidez, dto.Temperatura, dto.Litros, dto.AguaPorcentaje);
@@ -85,31 +51,27 @@ namespace DairyControl.Application.Services
             var ticket = dto.Ticket is > 0 ? dto.Ticket : null;
             if (ticket is int numeroTicket)
             {
-                var existente = await _repository.GetTicketRegistradoAsync(numeroTicket);
+                var existente = await _recepciones.GetTicketRegistradoAsync(numeroTicket);
                 if (existente is not null)
                     throw new TicketDuplicadoException(MensajeTicketDuplicado(numeroTicket, existente));
             }
 
             // A missing date becomes default(DateTime), which the domain rejects.
-            proveedor.RegistrarRecepcion(parametros, HoraPlanta.ALaPlanta(dto.FechaHora.GetValueOrDefault()), HoraPlanta.Ahora(_reloj), dto.Silo, dto.Observaciones, dto.Ticket);
+            var recepcion = RecepcionLeche.Registrar(proveedorId, parametros, HoraPlanta.ALaPlanta(dto.FechaHora.GetValueOrDefault()), HoraPlanta.Ahora(_reloj), dto.Silo, dto.Observaciones, dto.Ticket);
 
             try
             {
-                await _repository.UpdateAsync(proveedor);
+                await _recepciones.AddAsync(recepcion);
             }
             catch (TicketDuplicadoException) when (ticket is not null)
             {
                 // Lost a race with another operator: same 409, now with the details of the winner.
-                var existente = await _repository.GetTicketRegistradoAsync(ticket.Value);
+                var existente = await _recepciones.GetTicketRegistradoAsync(ticket.Value);
                 throw new TicketDuplicadoException(MensajeTicketDuplicado(ticket.Value, existente));
             }
 
-            return new ProveedorDto
-            {
-                Id = proveedor.Id,
-                Nombre = proveedor.Nombre,
-                CantidadRecepciones = proveedor.Recepciones.Count
-            };
+            // The count comes from the database; no recepción is loaded.
+            return await _queries.GetByIdAsync(proveedorId);
         }
 
         private static string MensajeTicketDuplicado(int ticket, TicketRegistrado? existente) =>

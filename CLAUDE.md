@@ -29,7 +29,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 
 ## Naming
 
-- Domain concepts stay in Spanish, matching the existing code: `Proveedor`, `RecepcionLeche`, `ParametrosCalidad`, `Crear`, `RegistrarRecepcion`.
+- Domain concepts stay in Spanish, matching the existing code: `Proveedor`, `RecepcionLeche`, `ParametrosCalidad`, `Crear`, `Registrar`.
 - Technical suffixes and infrastructure names are in English: `Repository`, `AppService`, `Dto`, `Async`, `GetByIdAsync`.
 - Follow the existing names in a file before inventing new ones.
 
@@ -40,7 +40,9 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Every exception the domain raises on purpose derives from `ExcepcionDeDominio` (in `Domain/Exceptions`). A validation failure throws `ReglaDeNegocioException(mensaje, campo)` with a clear Spanish message and `nameof(parameter)` as `campo` (the field the API reports). Do not throw `ArgumentException` for a business rule: Application validation (filters, versions) uses `ReglaDeNegocioException` too. `ArgumentNullException.ThrowIfNull` stays for null arguments: that is a bug, not a rule.
 - The other domain exceptions are `TicketDuplicadoException` (ticket already used) and `ConflictoDeConcurrenciaException` (stale edit of the quality limits).
 - Trim strings before validating their length.
-- `Proveedor` is the aggregate root. `RecepcionLeche` is only created and added through `Proveedor.RegistrarRecepcion`.
+- `Proveedor` and `RecepcionLeche` are separate aggregate roots. `RecepcionLeche` references its proveedor by `ProveedorId` and is created with `RecepcionLeche.Registrar(proveedorId, ...)`; `Proveedor` holds no collection of recepciones.
+- Aggregates are small; reference other aggregates by id; a collection that grows without bound never lives inside an aggregate. An architecture test checks that no domain entity exposes a collection of another aggregate root.
+- "Litros a pagar" (`litros × (1 − agua% / 100)`, water null = 0) is defined once in the domain as an expression (`LitrosAPagarRegla`): `RecepcionLeche.LitrosAPagar` compiles it and `RecepcionQueries` expands it into SQL (`LitrosAPagarRegla.De` inside a projection passed through `Expandir`). Never copy the formula elsewhere on the server. Rounding to 3 decimals is applied after the query. The client copy in `utils/calidad.ts` is only the registration preview; lists and totals always show the server value.
 - Collections are exposed as `IReadOnlyCollection<T>` backed by a private `List<T>`.
 - Limits (max lengths, decimal precision/scale) are `public const` fields on the type that owns them, and the EF Core mapping reuses those constants.
 - Plausible ranges reject typing errors and are validated in the domain (`ParametrosCalidad`, `RecepcionLeche`) and mirrored in `client/src/app/models/limits.ts`: litros 0.001-30000 (positive; the column keeps 3 decimals), grasa 1-10 %, acidez 10-30 °D, temperatura 0-45 °C, agua 0-100 %, silo 1-20. They are different from the quality limits (`LimitesCalidad`): a plausible value outside the quality limits is accepted and flagged as out of range; an impossible value is rejected with a clear message.
@@ -51,7 +53,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 
 - Services orchestrate: call the domain factory/methods, call the repository, map to DTOs. Business rules live in Domain, not here.
 - DTOs are plain classes with `get; set;` and no validation. Input and output DTOs are separate classes.
-- DTOs are shaped for their consumer: the list uses the lightweight `ProveedorDto`, the detail uses `ProveedorDetalleDto` with flattened `RecepcionDto`s.
+- DTOs are shaped for their consumer: the list uses the lightweight `ProveedorDto`, there is no detail DTO with the history: `GET /api/Proveedores/{id}` returns the same `ProveedorDto` (id, nombre, count), and recepciones come only from the paged list endpoint. Proveedor counts are computed in SQL by `IProveedorQueries`; a read never materializes recepciones.
 - Never return domain entities from Application. Always map to a DTO.
 - Return `null` when something is not found; the controller turns it into a 404.
 - Methods are `async` only when they await I/O.
@@ -61,7 +63,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 
 ## Infrastructure conventions
 
-- One repository per aggregate root. Only aggregate roots get a `DbSet`.
+- One repository per aggregate root (`IProveedorRepository`, `IRecepcionRepository`, `IConfiguracionCalidadRepository`). Only aggregate roots get a `DbSet`. The foreign key from `Recepciones` to `Proveedores` is `Restrict`: recepciones are historical records and never disappear with a proveedor. Date-range queries rely on the indexes on `FechaHora` and `(ProveedorId, FechaHora)`.
 - Child entities are mapped with `OwnsMany`; value objects with `OwnsOne`.
 - Domain-generated IDs are configured with `ValueGeneratedNever()`.
 - One `IEntityTypeConfiguration<T>` class per aggregate, in `Persistence/Configurations`, declared `internal`.
@@ -93,7 +95,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - Signal inputs (`input()`) are reactive: react to changes with `effect()` or `computed()`; never read them only once in `ngOnInit`.
 - Numeric fields use the `appNumero` directive (a text input with `inputmode`, never `type="number"`, which reinterprets "1.234,5" as 1.2345); `appNumero="entero"` for integers (ticket, silo). es-AR rules ("." thousands, "," decimals, ambiguous input rejected with a message) live only in `utils/numero-es.ts`; the form value and the API stay plain numbers. Integer identifiers (ticket, silo) are shown without separators.
 - Forms are reactive forms. Client validation mirrors the domain limits in `models/limits.ts`; it exists for user feedback only, and the API remains the source of truth.
-- The registration form may preview the quality limits for UX (the limit values are read from the API, never hardcoded); the domain and the API remain the source of truth.
+- The registration form may preview the quality limits for UX (the limit values are read from the API, never hardcoded) and the real liters (`litrosReales` in `utils/calidad.ts`); the domain and the API remain the source of truth, and lists and totals show the server values.
 - API errors are turned into user messages with `getApiErrorMessage` in `utils/api-error.ts`.
 - Authentication: only `AuthService` reads or writes the token. `authInterceptor` adds the `Authorization` header; never add it manually. Protected routes use `authGuard`.
 - `slowRequestInterceptor` and `ServerStatusService` show the global "waking up" banner when any request takes more than 3 seconds; pages don't add their own cold-start messages.
@@ -117,7 +119,7 @@ Milk reception and quality-control system for a dairy plant. Backend: .NET 10, A
 - xUnit with Moq. Arrange-Act-Assert, with the three sections commented.
 - Test names: `Method_Scenario_ExpectedResult`.
 - Domain tests use real objects and no mocks.
-- Application tests mock `IProveedorRepository`, created inside each test (`var mockRepo = new Mock<IProveedorRepository>();`). Domain, Application and Api tests never touch a database.
+- Application tests mock the repositories and queries (`IProveedorRepository`, `IRecepcionRepository`, `IProveedorQueries`), created inside each test (`var mockRepo = new Mock<IProveedorRepository>();`). Domain, Application and Api tests never touch a database.
 - `DairyControl.Application.Tests` does not reference Infrastructure; tests of Infrastructure types (`UnicidadSql`, `DemoDataGenerator`, the seeder, the repositories) live in `DairyControl.Infrastructure.Tests`.
 - Only `DairyControl.Infrastructure.Tests` may use a database, and only an in-memory SQLite one (schema from `EnsureCreated`, since the migrations are SQL Server-specific), for the reset/seeder logic.
 - SQLite tests don't cover SQL Server-specific behavior (migrations, unique-violation error codes, query translation); those are verified manually against SQL Server until we add Testcontainers integration tests.

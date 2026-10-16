@@ -122,8 +122,8 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 
 ## Domain model
 
-- **`Proveedor`** (aggregate root): the single entry point to the aggregate. Its recepciones are exposed read-only and can only be added through `RegistrarRecepcion`.
-- **`RecepcionLeche`** (entity): a single delivery, owned by its `Proveedor`.
+- **`Proveedor`** (aggregate root): a supplier. It holds no recepciones.
+- **`RecepcionLeche`** (aggregate root): a single delivery, created with `RecepcionLeche.Registrar(proveedorId, ...)` and linked to its `Proveedor` by id.
 - **`ParametrosCalidad`** (value object, `record`): quality and volume measurements, including the optional added-water percentage (0–100), validated at creation through a factory method.
 - **`RecepcionLeche`** also carries an optional plant `Ticket` (positive integer) and `LitrosAPagar`: liters × (1 − water % / 100), with no water counting as 0.
 - **`LimitesCalidad`** (value object, `record`): maximum acidity (10–30 °D), temperature (0–40 °C) and water (0–10 %). It defines the out-of-range rule once: acidity > max OR temperature > max OR water > max.
@@ -134,9 +134,9 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 **Domain and persistence**
 
 - **Invariants live in the domain.** Factory methods, private constructors and private setters make invalid state impossible to construct, rather than relying on callers to validate.
-- **One repository per aggregate.** `IProveedorRepository` is defined in Domain and implemented in Infrastructure (dependency inversion).
-- **Owned types for the aggregate.** Recepciones are mapped with `OwnsMany` and quality parameters with `OwnsOne`. Recepciones have no `DbSet`, so they can't be queried or saved outside their aggregate.
-- **Client-generated IDs.** The domain assigns its own `Guid` IDs and EF Core is configured with `ValueGeneratedNever()`, so new recepciones added to a loaded aggregate are inserted, not mistaken for existing rows.
+- **One repository per aggregate root.** `IProveedorRepository` and `IRecepcionRepository` are defined in Domain and implemented in Infrastructure (dependency inversion).
+- **Small aggregates.** `RecepcionLeche` is its own aggregate root and references its `Proveedor` by id, so registering a recepción never loads the supplier's history and proveedor counts are computed in SQL. Quality parameters are an owned type (`OwnsOne`). The foreign key is `Restrict`: recepciones never disappear with a proveedor.
+- **Client-generated IDs.** The domain assigns its own `Guid` IDs and EF Core is configured with `ValueGeneratedNever()`, so new entities are inserted, not mistaken for existing rows.
 - **Shared limits.** Constants such as maximum name length and decimal precision are defined once in the domain and reused by both validation and the database mapping.
 - **Recepciones are records of what happened.** They can be registered but not edited or deleted; a correction flow would void a recepción with a reason rather than remove it.
 
@@ -174,7 +174,7 @@ The same shape as Compose: only the client is public. The API's ingress is inter
 | `POST` | `/api/Auth/login`                   | Public | Returns a signed JWT for valid credentials          |
 | `GET`  | `/api/Proveedores`                  | JWT    | Lists all proveedores                               |
 | `POST` | `/api/Proveedores`                  | JWT    | Creates a proveedor                                 |
-| `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor with its recepciones, newest first |
+| `GET`  | `/api/Proveedores/{id}`             | JWT    | Gets a proveedor (id, nombre and the number of recepciones; the recepciones come from `GET /api/Recepciones`) |
 | `POST` | `/api/Proveedores/{id}/recepciones` | JWT    | Registers a recepción on an existing proveedor (optional `aguaPorcentaje` and `ticket`); `409` if the ticket is already registered by any proveedor |
 | `GET`  | `/api/Configuracion/calidad`        | JWT    | Current quality limits (`acidezMaxima`, `temperaturaMaxima`, `aguaMaxima`) and when they were last changed |
 | `PUT`  | `/api/Configuracion/calidad`        | JWT    | Updates the quality limits; they apply immediately to every report |

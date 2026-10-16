@@ -63,6 +63,40 @@ namespace DairyControl.Infrastructure.Migrations
                     b.ToTable("Proveedores");
                 });
 
+            modelBuilder.Entity("DairyControl.Domain.Entities.RecepcionLeche", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("FechaHora")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ProveedorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("Silo")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Ticket")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FechaHora");
+
+                    b.HasIndex("Ticket")
+                        .IsUnique()
+                        .HasFilter("[Ticket] IS NOT NULL");
+
+                    b.HasIndex("ProveedorId", "FechaHora");
+
+                    b.ToTable("Recepciones", (string)null);
+                });
+
             modelBuilder.Entity("DairyControl.Domain.Entities.ConfiguracionCalidad", b =>
                 {
                     b.OwnsOne("DairyControl.Domain.ValueObjects.LimitesCalidad", "Limites", b1 =>
@@ -103,80 +137,49 @@ namespace DairyControl.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("DairyControl.Domain.Entities.Proveedor", b =>
+            modelBuilder.Entity("DairyControl.Domain.Entities.RecepcionLeche", b =>
                 {
-                    b.OwnsMany("DairyControl.Domain.Entities.RecepcionLeche", "Recepciones", b1 =>
+                    b.HasOne("DairyControl.Domain.Entities.Proveedor", null)
+                        .WithMany()
+                        .HasForeignKey("ProveedorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("DairyControl.Domain.ValueObjects.ParametrosCalidad", "Parametros", b1 =>
                         {
-                            b1.Property<Guid>("Id")
+                            b1.Property<Guid>("RecepcionLecheId")
                                 .HasColumnType("uniqueidentifier");
 
-                            b1.Property<DateTime>("FechaHora")
-                                .HasColumnType("datetime2");
+                            b1.Property<decimal>("Acidez")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("decimal(5,2)");
 
-                            b1.Property<string>("Observaciones")
-                                .HasMaxLength(500)
-                                .HasColumnType("nvarchar(500)");
+                            b1.Property<decimal?>("AguaPorcentaje")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("decimal(5,2)");
 
-                            b1.Property<Guid>("ProveedorId")
-                                .HasColumnType("uniqueidentifier");
+                            b1.Property<decimal?>("Grasa")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("decimal(5,2)");
 
-                            b1.Property<int?>("Silo")
-                                .HasColumnType("int");
+                            b1.Property<decimal>("Litros")
+                                .HasPrecision(8, 3)
+                                .HasColumnType("decimal(8,3)");
 
-                            b1.Property<int?>("Ticket")
-                                .HasColumnType("int");
+                            b1.Property<decimal>("Temperatura")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("decimal(5,2)");
 
-                            b1.HasKey("Id");
+                            b1.HasKey("RecepcionLecheId");
 
-                            b1.HasIndex("ProveedorId");
-
-                            b1.HasIndex("Ticket")
-                                .IsUnique()
-                                .HasFilter("[Ticket] IS NOT NULL");
-
-                            b1.ToTable("Recepciones", (string)null);
+                            b1.ToTable("Recepciones");
 
                             b1.WithOwner()
-                                .HasForeignKey("ProveedorId");
-
-                            b1.OwnsOne("DairyControl.Domain.ValueObjects.ParametrosCalidad", "Parametros", b2 =>
-                                {
-                                    b2.Property<Guid>("RecepcionLecheId")
-                                        .HasColumnType("uniqueidentifier");
-
-                                    b2.Property<decimal>("Acidez")
-                                        .HasPrecision(5, 2)
-                                        .HasColumnType("decimal(5,2)");
-
-                                    b2.Property<decimal?>("AguaPorcentaje")
-                                        .HasPrecision(5, 2)
-                                        .HasColumnType("decimal(5,2)");
-
-                                    b2.Property<decimal?>("Grasa")
-                                        .HasPrecision(5, 2)
-                                        .HasColumnType("decimal(5,2)");
-
-                                    b2.Property<decimal>("Litros")
-                                        .HasPrecision(8, 3)
-                                        .HasColumnType("decimal(8,3)");
-
-                                    b2.Property<decimal>("Temperatura")
-                                        .HasPrecision(5, 2)
-                                        .HasColumnType("decimal(5,2)");
-
-                                    b2.HasKey("RecepcionLecheId");
-
-                                    b2.ToTable("Recepciones");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RecepcionLecheId");
-                                });
-
-                            b1.Navigation("Parametros")
-                                .IsRequired();
+                                .HasForeignKey("RecepcionLecheId");
                         });
 
-                    b.Navigation("Recepciones");
+                    b.Navigation("Parametros")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

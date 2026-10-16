@@ -8,8 +8,8 @@ namespace DairyControl.Infrastructure.Tests
     {
         private static readonly DateTime Desde = new(2026, 4, 15);
 
-        private static List<RecepcionLeche> Recepciones(IReadOnlyList<Proveedor> proveedores) =>
-            proveedores.SelectMany(p => p.Recepciones).OrderBy(r => r.FechaHora).ToList();
+        private static List<RecepcionLeche> Recepciones(DemoDataGenerator.DatosDemo datos) =>
+            datos.Recepciones.OrderBy(r => r.FechaHora).ToList();
 
         [Fact]
         public void Generar_AllProveedores_TicketsAreUniqueAndConsecutiveFrom4900()

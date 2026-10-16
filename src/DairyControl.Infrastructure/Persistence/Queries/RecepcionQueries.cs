@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using DairyControl.Application.DTOs;
 using DairyControl.Application.Queries;
+using DairyControl.Domain.Entities;
+using DairyControl.Domain.Rules;
 using DairyControl.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,7 +41,8 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                     AcidezMinima = g.Min(x => x.Acidez),
                     AcidezMaxima = g.Max(x => x.Acidez),
                     GrasaPromedio = g.Average(x => x.Grasa),
-                    CantidadConGrasa = g.Count(x => x.Grasa != null)
+                    // Count(predicate) on a nullable owned column does not translate; a conditional sum does
+                    CantidadConGrasa = g.Sum(x => x.Grasa != null ? 1 : 0)
                 })
                 .FirstOrDefaultAsync() ?? new TotalesResumenDto();
 
@@ -162,9 +165,8 @@ namespace DairyControl.Infrastructure.Persistence.Queries
 
         public async Task<int?> GetSiguienteTicketAsync()
         {
-            var maximo = await _context.Proveedores
+            var maximo = await _context.Recepciones
                 .AsNoTracking()
-                .SelectMany(p => p.Recepciones)
                 .MaxAsync(r => (int?)r.Ticket);
 
             // Nothing above the largest possible ticket: no suggestion rather than a wrapped (negative) number
@@ -269,25 +271,28 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             var inicio = desde.ToDateTime(TimeOnly.MinValue);
             var fin = hasta.AddDays(1).ToDateTime(TimeOnly.MinValue);
 
-            var proveedores = _context.Proveedores.AsNoTracking();
+            var recepciones = _context.Recepciones.AsNoTracking()
+                .Where(r => r.FechaHora >= inicio && r.FechaHora < fin);
             if (proveedorId is Guid id)
             {
-                proveedores = proveedores.Where(p => p.Id == id);
+                recepciones = recepciones.Where(r => r.ProveedorId == id);
             }
 
-            return proveedores.SelectMany(p => p.Recepciones
-                .Where(r => r.FechaHora >= inicio && r.FechaHora < fin)
-                .Select(r => new FilaRecepcion
+            // Join first, then project: reading the owned Parametros inside the join's result selector does not translate
+            // once the rows are grouped.
+            return recepciones
+                .Join(_context.Proveedores, r => r.ProveedorId, p => p.Id, (r, p) => new RecepcionConProveedor { Recepcion = r, Proveedor = p })
+                .Select(x => new FilaRecepcion
                 {
-                    ProveedorId = p.Id,
-                    Nombre = p.Nombre,
-                    FechaHora = r.FechaHora,
-                    Litros = r.Parametros.Litros,
-                    Acidez = r.Parametros.Acidez,
-                    Temperatura = r.Parametros.Temperatura,
-                    Grasa = r.Parametros.Grasa,
-                    Agua = r.Parametros.AguaPorcentaje ?? 0
-                }));
+                    ProveedorId = x.Proveedor.Id,
+                    Nombre = x.Proveedor.Nombre,
+                    FechaHora = x.Recepcion.FechaHora,
+                    Litros = x.Recepcion.Parametros.Litros,
+                    Acidez = x.Recepcion.Parametros.Acidez,
+                    Temperatura = x.Recepcion.Parametros.Temperatura,
+                    Grasa = x.Recepcion.Parametros.Grasa,
+                    Agua = x.Recepcion.Parametros.AguaPorcentaje ?? 0
+                });
         }
 
         // The same rows plus what the list shows. A join (SelectMany with a result selector) instead of filtering
@@ -297,16 +302,16 @@ namespace DairyControl.Infrastructure.Persistence.Queries
             var inicio = desde.ToDateTime(TimeOnly.MinValue);
             var fin = hasta.AddDays(1).ToDateTime(TimeOnly.MinValue);
 
-            var proveedores = _context.Proveedores.AsNoTracking();
+            var recepciones = _context.Recepciones.AsNoTracking()
+                .Where(r => r.FechaHora >= inicio && r.FechaHora < fin);
             if (proveedorId is Guid id)
             {
-                proveedores = proveedores.Where(p => p.Id == id);
+                recepciones = recepciones.Where(r => r.ProveedorId == id);
             }
 
-            return proveedores
-                .SelectMany(p => p.Recepciones, (p, r) => new { Proveedor = p, Recepcion = r })
-                .Where(x => x.Recepcion.FechaHora >= inicio && x.Recepcion.FechaHora < fin)
-                .Select(x => new FilaListado
+            // The "litros a pagar" formula is the domain's (Expandir swaps De for the expression), without the final
+            // rounding: ROUND is not translated by every provider, so it is applied after the query.
+            Expression<Func<RecepcionConProveedor, FilaListado>> proyeccion = x => new FilaListado
                 {
                     Id = x.Recepcion.Id,
                     ProveedorId = x.Proveedor.Id,
@@ -317,14 +322,22 @@ namespace DairyControl.Infrastructure.Persistence.Queries
                     Observaciones = x.Recepcion.Observaciones,
                     Litros = x.Recepcion.Parametros.Litros,
                     AguaPorcentaje = x.Recepcion.Parametros.AguaPorcentaje,
-                    // Same formula as RecepcionLeche.LitrosAPagar (a C# property, so it cannot be used in SQL), without
-                    // the final rounding: ROUND is not translated by every provider, so it is applied after the query.
-                    LitrosReales = x.Recepcion.Parametros.Litros * (1 - (x.Recepcion.Parametros.AguaPorcentaje ?? 0) / 100m),
+                    LitrosReales = LitrosAPagarRegla.De(x.Recepcion),
                     Acidez = x.Recepcion.Parametros.Acidez,
                     Temperatura = x.Recepcion.Parametros.Temperatura,
                     Grasa = x.Recepcion.Parametros.Grasa,
                     Agua = x.Recepcion.Parametros.AguaPorcentaje ?? 0
-                });
+                };
+
+            return recepciones
+                .Join(_context.Proveedores, r => r.ProveedorId, p => p.Id, (r, p) => new RecepcionConProveedor { Recepcion = r, Proveedor = p })
+                .Select(LitrosAPagarRegla.Expandir(proyeccion));
+        }
+
+        private sealed class RecepcionConProveedor
+        {
+            public RecepcionLeche Recepcion { get; set; } = null!;
+            public Proveedor Proveedor { get; set; } = null!;
         }
 
         private class FilaRecepcion

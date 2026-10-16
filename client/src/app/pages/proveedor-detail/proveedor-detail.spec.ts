@@ -64,9 +64,9 @@ describe('ProveedorDetail', () => {
     http.verify();
   });
 
-  /** Answers the proveedores list and, once the page shows the panel, the panel's own requests. */
-  async function cargar(lista: Proveedor[] = proveedores): Promise<void> {
-    http.expectOne((r) => r.url.endsWith('/Proveedores')).flush(lista);
+  /** Answers the proveedor request and, once the page shows the panel, the panel's own requests. */
+  async function cargar(proveedor: Proveedor = proveedores[1]): Promise<void> {
+    http.expectOne((r) => r.url.endsWith(`/Proveedores/${component.id()}`)).flush(proveedor);
     await fixture.whenStable();
     fixture.detectChanges();
   }
@@ -82,7 +82,7 @@ describe('ProveedorDetail', () => {
   const el = (): HTMLElement => fixture.nativeElement;
 
   it('should create', () => {
-    http.expectOne((r) => r.url.endsWith('/Proveedores'));
+    http.expectOne((r) => r.url.endsWith('/Proveedores/test-id'));
     expect(component).toBeTruthy();
   });
 
@@ -93,15 +93,15 @@ describe('ProveedorDetail', () => {
     expect(el().querySelector('.page-header button')?.textContent?.trim()).toBe('Registrar recepción');
   });
 
-  it('does not load the whole proveedor aggregate: the name comes from the list', async () => {
+  it('asks for this proveedor only, not for the whole list', async () => {
     await cargarPanel();
 
-    http.expectNone((r) => r.url.endsWith('/Proveedores/test-id'));
+    http.expectNone((r) => r.url.endsWith('/Proveedores'));
   });
 
   it('shows the reusable list filtered by this proveedor, from the current month', async () => {
     await fixture.whenStable();
-    http.expectOne((r) => r.url.endsWith('/Proveedores')).flush(proveedores);
+    http.expectOne((r) => r.url.endsWith('/Proveedores/test-id')).flush(proveedores[1]);
     await fixture.whenStable();
     fixture.detectChanges();
     http.expectOne((r) => r.url.endsWith('/Configuracion/calidad')).flush(LIMITES);
@@ -119,14 +119,24 @@ describe('ProveedorDetail', () => {
   });
 
   it('shows "Proveedor no encontrado." when the proveedor does not exist', async () => {
-    await cargar([proveedores[0]]);
+    http.expectOne((r) => r.url.endsWith('/Proveedores/test-id')).flush({}, { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(el().querySelector('.state-message')?.textContent).toContain('Proveedor no encontrado.');
     expect(el().querySelector('app-recepciones-panel')).toBeNull();
   });
 
-  it('shows an error when the proveedores cannot be loaded', async () => {
-    http.expectOne((r) => r.url.endsWith('/Proveedores')).flush({}, { status: 500, statusText: 'Server Error' });
+  it('shows "Proveedor no encontrado." when the id in the URL is malformed (400)', async () => {
+    http.expectOne((r) => r.url.endsWith('/Proveedores/test-id')).flush({}, { status: 400, statusText: 'Bad Request' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el().querySelector('.state-message')?.textContent).toContain('Proveedor no encontrado.');
+  });
+
+  it('shows an error when the proveedor cannot be loaded', async () => {
+    http.expectOne((r) => r.url.endsWith('/Proveedores/test-id')).flush({}, { status: 500, statusText: 'Server Error' });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -165,7 +175,7 @@ describe('ProveedorDetail', () => {
 
     fixture.componentRef.setInput('id', 'otro');
     await fixture.whenStable();
-    http.expectOne((r) => r.url.endsWith('/Proveedores')).flush(proveedores);
+    http.expectOne((r) => r.url.endsWith('/Proveedores/otro')).flush(proveedores[0]);
     await fixture.whenStable();
     fixture.detectChanges();
 
