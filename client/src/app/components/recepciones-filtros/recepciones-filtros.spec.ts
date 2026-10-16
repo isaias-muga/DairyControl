@@ -202,6 +202,29 @@ describe('RecepcionesFiltros', () => {
       expect(emitidos[0].ticket).toBe(4980);
     });
 
+    it('reads the ticket the es-AR way: "1.234" is ticket 1234', async () => {
+      await mostrar(base());
+
+      interno().ticketControl.setValue('1.234');
+      vi.advanceTimersByTime(400);
+
+      expect(emitidos).toHaveLength(1);
+      expect(emitidos[0].ticket).toBe(1234);
+    });
+
+    it('rejects a decimal ticket with the integer message and does not emit', async () => {
+      await mostrar(base());
+
+      const campo = el().querySelector('.campo-ticket input') as HTMLInputElement;
+      campo.value = '1,5';
+      campo.dispatchEvent(new Event('input'));
+      vi.advanceTimersByTime(400);
+      fixture.detectChanges();
+
+      expect(emitidos).toEqual([]);
+      expect(fixture.nativeElement.textContent).toContain('Ingresá un número entero, sin decimales.');
+    });
+
     it('emits null when the ticket is cleared', async () => {
       await mostrar(base({ ticket: 4980 }));
 
@@ -252,11 +275,22 @@ describe('RecepcionesFiltros', () => {
       await mostrar(base());
       const campo = el().querySelector('.campo-ticket input') as HTMLInputElement;
 
-      campo.value = '-5';
+      campo.value = '0';
       campo.dispatchEvent(new Event('input'));
       fixture.detectChanges();
 
       expect(el().querySelector('.campo-ticket mat-error')?.textContent).toContain('Número entero entre 1 y 2.147.483.647.');
+    });
+
+    it('shows the parser message while typing text it cannot read', async () => {
+      await mostrar(base());
+      const campo = el().querySelector('.campo-ticket input') as HTMLInputElement;
+
+      campo.value = '-5';
+      campo.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(el().querySelector('.campo-ticket mat-error')?.textContent).toContain('Escribí solo números enteros');
     });
 
     it('shows no error for a valid or empty ticket', async () => {
