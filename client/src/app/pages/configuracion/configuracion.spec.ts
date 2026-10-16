@@ -92,6 +92,62 @@ describe('Configuracion', () => {
     expect(component.form.controls[campo].invalid).toBe(true);
   });
 
+  describe('numbers typed the es-AR way', () => {
+    const escribir = (id: string, texto: string): HTMLInputElement => {
+      const campo = fixture.nativeElement.querySelector(`#${id}`) as HTMLInputElement;
+      campo.value = texto;
+      campo.dispatchEvent(new Event('input'));
+      campo.dispatchEvent(new Event('blur'));
+      fixture.detectChanges();
+      return campo;
+    };
+
+    it('shows the loaded limits as text, formatted es-AR', async () => {
+      await setup();
+      await cargarLimites();
+
+      const campo = fixture.nativeElement.querySelector('#acidezMaxima') as HTMLInputElement;
+      expect(campo.type).toBe('text');
+      expect(campo.value).toBe('19');
+    });
+
+    it('saves "19,5" as 19.5', async () => {
+      await setup();
+      await cargarLimites();
+      escribir('acidezMaxima', '19,5');
+
+      component.guardar();
+
+      const req = http.expectOne(esCalidad);
+      expect(req.request.body.acidezMaxima).toBe(19.5);
+      req.flush({ ...limites, acidezMaxima: 19.5 });
+    });
+
+    it('does not save an ambiguous number and says why', async () => {
+      await setup();
+      await cargarLimites();
+      escribir('temperaturaMaxima', '1.2.3');
+
+      component.guardar();
+      fixture.detectChanges();
+
+      http.expectNone(esCalidad);
+      expect(fixture.nativeElement.textContent).toContain('Usá punto para los miles');
+    });
+
+    it('reads "1.234,5" as out of range, never as 1.2345', async () => {
+      await setup();
+      await cargarLimites();
+      escribir('aguaMaxima', '1.234,5');
+
+      component.guardar();
+
+      http.expectNone(esCalidad);
+      expect(component.form.controls.aguaMaxima.value).toBe(1234.5);
+      expect(component.form.controls.aguaMaxima.errors?.['max']).toBeDefined();
+    });
+  });
+
   it('sends the three limits with PUT and shows a success snackbar', async () => {
     await setup();
     await cargarLimites();

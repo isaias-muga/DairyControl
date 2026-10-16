@@ -21,9 +21,9 @@
         <div class="grid">
           <mat-form-field appearance="outline">
             <mat-label>Acidez máxima (°D)</mat-label>
-            <input matInput id="acidezMaxima" type="number" step="0.1" formControlName="acidezMaxima" />
+            <input matInput appNumero id="acidezMaxima" formControlName="acidezMaxima" />
             @if (invalid('acidezMaxima')) {
-              <mat-error>Requerido, entre {{ acidezMin }} y {{ acidezMax }}.</mat-error>
+              <mat-error>{{ errorNumero(form.controls.acidezMaxima, 'Requerido, entre ' + acidezMin + ' y ' + acidezMax + '.') }}</mat-error>
             }
           </mat-form-field>
 
@@ -31,21 +31,20 @@
             <mat-label>Temperatura máxima (°C)</mat-label>
             <input
               matInput
+              appNumero
               id="temperaturaMaxima"
-              type="number"
-              step="0.1"
               formControlName="temperaturaMaxima"
             />
             @if (invalid('temperaturaMaxima')) {
-              <mat-error>Requerido, entre {{ temperaturaMin }} y {{ temperaturaMax }}.</mat-error>
+              <mat-error>{{ errorNumero(form.controls.temperaturaMaxima, 'Requerido, entre ' + temperaturaMin + ' y ' + temperaturaMax + '.') }}</mat-error>
             }
           </mat-form-field>
 
           <mat-form-field appearance="outline">
             <mat-label>Agua máxima (%)</mat-label>
-            <input matInput id="aguaMaxima" type="number" step="0.1" formControlName="aguaMaxima" />
+            <input matInput appNumero id="aguaMaxima" formControlName="aguaMaxima" />
             @if (invalid('aguaMaxima')) {
-              <mat-error>Requerido, entre {{ aguaMin }} y {{ aguaMax }}.</mat-error>
+              <mat-error>{{ errorNumero(form.controls.aguaMaxima, 'Requerido, entre ' + aguaMin + ' y ' + aguaMax + '.') }}</mat-error>
             }
           </mat-form-field>
         </div>
