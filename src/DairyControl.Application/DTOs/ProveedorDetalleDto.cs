@@ -1,4 +1,4 @@
-﻿namespace DairyControl.Application.Dtos;
+﻿namespace DairyControl.Application.DTOs;
 
 public class ProveedorDetalleDto
 {

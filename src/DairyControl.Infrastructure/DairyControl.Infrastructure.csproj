@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The applied migrations and the snapshot refer to AppDbContext without a using (it used to be in the global namespace); they must not be edited -->
+    <Using Include="DairyControl.Infrastructure.Persistence" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DairyControl.Application\DairyControl.Application.csproj" />
     <ProjectReference Include="..\DairyControl.Domain\DairyControl.Domain.csproj" />
   </ItemGroup>
