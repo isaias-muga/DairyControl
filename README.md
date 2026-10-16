@@ -131,7 +131,7 @@ Numbers recorded in the notes of the 8 pull requests since the workflow was in p
 | Review rounds | 1 for 7 of the 8 pull requests; 2 for the Recepciones page |
 | Lead time, issue opened to PR ready | 41 minutes to about an hour where it was recorded; the rest were done the same day |
 
-Architecture reviews are described in [docs/architecture-review.md](docs/architecture-review.md) and recorded in [docs/reviews/](docs/reviews/). Two are recorded: [2026-10-16](docs/reviews/2026-10-16.md), run by me and Claude, which produced the architecture tests and the aggregate split below; and [2026-10-16-freeze](docs/reviews/2026-10-16-freeze.md), run by a fresh subagent before the freeze. It found nothing High; its Medium findings (login hardening, startup validation, test gaps and rules that only exist as prose) are listed there as proposed issues for the private repo.
+Architecture reviews are described in [docs/architecture-review.md](docs/architecture-review.md) and recorded in [docs/reviews/](docs/reviews/). Two are recorded: [2026-10-16](docs/reviews/2026-10-16.md), run by me and Claude, which produced the architecture tests and the aggregate split below; and [2026-10-16-freeze](docs/reviews/2026-10-16-freeze.md), run by a fresh subagent before the freeze. It found nothing High; its Medium findings (login hardening, startup validation, test gaps, rules that only exist as prose, and the demo credential in the client build) are listed there as proposed issues for the private repo.
 
 ## Stories
 
